@@ -187,3 +187,33 @@ def test_csrf_is_per_realm_and_impersonation_exchange_ignores_stray_admin_cookie
     # admin API writes still require the admin CSRF token
     adm.c.set_cookie("adm_csrf", "tampered")
     assert adm.post("/admin-api/v1/auth/reverify", json={"code": "123456"}).status_code in (403, 401)
+
+
+def test_internal_job_runner_needs_token(app):
+    c = Client(app)
+    assert c.post("/api/v1/internal/run-jobs").status_code == 404  # disabled until JOBS_TOKEN is configured
+    app.config["JOBS_TOKEN"] = "s3cret-token"
+    assert c.post("/api/v1/internal/run-jobs", headers={"X-Jobs-Token": "wrong"}).status_code == 401
+    r = c.post("/api/v1/internal/run-jobs", headers={"X-Jobs-Token": "s3cret-token"})
+    assert r.status_code == 200 and "jobs.billing_lifecycle" in r.get_json()["data"]
+
+
+def test_encryption_key_of_any_format_is_accepted(app):
+    from app.core import crypto
+
+    with app.app_context():
+        app.config["ENCRYPTION_KEY"] = "not-a-fernet-key-just-a-long-random-string-123"
+        assert crypto.decrypt(crypto.encrypt("hello")) == "hello"
+
+
+def test_admin_bootstrap_cli_creates_first_admin_once(app, monkeypatch):
+    monkeypatch.setenv("ADMIN_BOOTSTRAP_EMAIL", "First@Example.com")
+    monkeypatch.setenv("ADMIN_BOOTSTRAP_PASSWORD", "Weak1")
+    runner = app.test_cli_runner()
+    assert runner.invoke(args=["admin", "bootstrap"]).exit_code != 0  # weak password rejected
+    monkeypatch.setenv("ADMIN_BOOTSTRAP_PASSWORD", "Str0ng-Bootstrap-Pass")
+    r = runner.invoke(args=["admin", "bootstrap"])
+    assert r.exit_code == 0 and "Created superadmin first@example.com" in r.output
+    assert "already exists" in runner.invoke(args=["admin", "bootstrap"]).output
+    with app.app_context(), bypass_scope():
+        assert db.session.query(AdminUser).filter_by(email="first@example.com", role="superadmin").count() == 1

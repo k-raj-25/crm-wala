@@ -48,6 +48,30 @@ def register_cli(app: Flask) -> None:
             db.session.commit()
         click.echo(f"Created {role} admin {email}. 2FA enrolment happens at first login.")
 
+    @admin_group.command("bootstrap")
+    def admin_bootstrap():
+        """Create the first admin from ADMIN_BOOTSTRAP_EMAIL / ADMIN_BOOTSTRAP_PASSWORD if no admin exists yet (for hosts without a shell)."""
+        import os
+
+        from app.core.passwords import hash_password, password_problems
+        from app.core.tenant import bypass_scope
+        from app.extensions import db
+        from app.models import AdminUser
+
+        email, password = (os.environ.get("ADMIN_BOOTSTRAP_EMAIL") or "").strip().lower(), os.environ.get("ADMIN_BOOTSTRAP_PASSWORD") or ""
+        if not email or not password:
+            click.echo("No ADMIN_BOOTSTRAP_EMAIL/PASSWORD set; skipping.")
+            return
+        with bypass_scope():
+            if db.session.query(AdminUser).count():
+                click.echo("An admin already exists; skipping bootstrap.")
+                return
+            if len(password) < 12 or password_problems(password):
+                raise click.ClickException("ADMIN_BOOTSTRAP_PASSWORD must be 12+ characters with letters and numbers.")
+            db.session.add(AdminUser(email=email, name=os.environ.get("ADMIN_BOOTSTRAP_NAME", "Platform Admin"), password_hash=hash_password(password), role="superadmin"))
+            db.session.commit()
+        click.echo(f"Created superadmin {email}. Remove ADMIN_BOOTSTRAP_PASSWORD from the environment now; 2FA enrolment happens at first sign-in.")
+
     @app.cli.group("jobs")
     def jobs_group():
         """Run background jobs once (useful without a worker)."""

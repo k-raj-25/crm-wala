@@ -14,7 +14,12 @@ def _fernet() -> Fernet:
     if not key:
         # Dev fallback derived from SECRET_KEY. Production config validation requires ENCRYPTION_KEY.
         key = base64.urlsafe_b64encode(hashlib.sha256(current_app.config["SECRET_KEY"].encode()).digest()).decode()
-    return Fernet(key.encode() if isinstance(key, str) else key)
+    raw = key.encode() if isinstance(key, str) else key
+    try:
+        return Fernet(raw)
+    except ValueError:
+        # Not a Fernet key (e.g. a host-generated random secret of another length/format): derive a valid key from it deterministically.
+        return Fernet(base64.urlsafe_b64encode(hashlib.sha256(raw).digest()))
 
 
 def encrypt(value: str) -> str:

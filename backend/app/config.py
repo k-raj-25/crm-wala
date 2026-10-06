@@ -107,6 +107,7 @@ class Config:
         "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     }
 
+    JOBS_TOKEN = os.environ.get("JOBS_TOKEN", "")  # enables POST /api/v1/internal/run-jobs for external schedulers
     CELERY_ALWAYS_EAGER = _bool("CELERY_ALWAYS_EAGER", False)
     SENTRY_DSN = os.environ.get("SENTRY_DSN", "")
     LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO")
