@@ -78,4 +78,6 @@ Verified in development (real PostgreSQL + Redis, headless Chromium):
 
 **Placeholders to replace before launch:** landing-page testimonials and "trusted by" logos are illustrative copy, not real customers; legal pages, support email and pricing copy; the dev `ENCRYPTION_KEY` in `docker-compose.yml`. Load/performance testing, a third-party penetration test and full WCAG audit have not been done.
 
+Deploying to Render: see [docs/DEPLOY_RENDER.md](docs/DEPLOY_RENDER.md) (`render.yaml` Blueprint).
+
 See [docs/OPERATIONS.md](docs/OPERATIONS.md) for deployment, backups/DR, observability and runbooks.

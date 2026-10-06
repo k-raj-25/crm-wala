@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
-const API = process.env.API_URL ?? "http://localhost:5000";
+// Accepts a full URL or a bare host:port (what Render's private-network `hostport` gives us).
+const RAW_API = process.env.API_URL ?? "http://localhost:5000";
+const API = /^https?:\/\//.test(RAW_API) ? RAW_API : `http://${RAW_API}`;
 
 const config: NextConfig = {
   transpilePackages: ["@crm/ui"],

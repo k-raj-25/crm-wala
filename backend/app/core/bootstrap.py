@@ -61,7 +61,8 @@ def init_app(flask_app: Flask) -> None:
 
     _configure_logging(flask_app)
     _configure_sentry(flask_app)
-    flask_app.wsgi_app = ProxyFix(flask_app.wsgi_app, x_for=1, x_proto=1, x_host=1)  # type: ignore[method-assign]
+    hops = max(int(flask_app.config.get("TRUSTED_PROXY_HOPS", 1)), 1)
+    flask_app.wsgi_app = ProxyFix(flask_app.wsgi_app, x_for=hops, x_proto=hops, x_host=1)  # type: ignore[method-assign]
     flask_app.url_map.strict_slashes = False
 
     db.init_app(flask_app)

@@ -23,6 +23,14 @@ def _int(name: str, default: int) -> int:
         return default
 
 
+def _db_url(url: str) -> str:
+    """Managed hosts (Render, Heroku...) hand out postgres:// or postgresql:// URLs; SQLAlchemy needs the psycopg3 driver name."""
+    for prefix in ("postgres://", "postgresql://"):
+        if url.startswith(prefix):
+            return "postgresql+psycopg://" + url[len(prefix):]
+    return url
+
+
 class Config:
     ENV = os.environ.get("APP_ENV", "development")
     DEBUG = ENV == "development"
@@ -33,9 +41,7 @@ class Config:
     ADMIN_JWT_SECRET = os.environ.get("ADMIN_JWT_SECRET", _DEV_SECRET + "-admin-jwt")
     ENCRYPTION_KEY = os.environ.get("ENCRYPTION_KEY", "")  # urlsafe base64 32 bytes (Fernet)
 
-    SQLALCHEMY_DATABASE_URI = os.environ.get(
-        "DATABASE_URL", "postgresql+psycopg://crm_app:crm_app_dev@localhost:5432/crm"
-    )
+    SQLALCHEMY_DATABASE_URI = _db_url(os.environ.get("DATABASE_URL", "postgresql+psycopg://crm_app:crm_app_dev@localhost:5432/crm"))
     SQLALCHEMY_ENGINE_OPTIONS = {"pool_pre_ping": True, "pool_size": 10, "max_overflow": 20}
     REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
     RATELIMIT_STORAGE_URI = os.environ.get("RATELIMIT_STORAGE_URI", REDIS_URL)
@@ -55,6 +61,9 @@ class Config:
     COOKIE_DOMAIN = os.environ.get("COOKIE_DOMAIN") or None
     REQUIRE_EMAIL_VERIFICATION = _bool("REQUIRE_EMAIL_VERIFICATION", False)
     ADMIN_REQUIRE_2FA = _bool("ADMIN_REQUIRE_2FA", False)
+    # Reverse proxies in front of the API whose X-Forwarded-* headers to trust (client IPs drive rate limits and the admin allow-list).
+    # 1 = a load balancer in front of the API. 2 = load balancer + the Next.js apps that proxy /api (e.g. Render with a private API).
+    TRUSTED_PROXY_HOPS = _int("TRUSTED_PROXY_HOPS", 1)
     ADMIN_ALLOWED_IPS = [i for i in os.environ.get("ADMIN_ALLOWED_IPS", "").split(",") if i]
     MAX_FAILED_LOGINS = _int("MAX_FAILED_LOGINS", 5)
     LOCKOUT_MINUTES = _int("LOCKOUT_MINUTES", 15)
