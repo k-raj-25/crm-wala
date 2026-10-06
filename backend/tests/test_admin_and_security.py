@@ -174,3 +174,16 @@ def test_admin_requires_2fa_when_configured(app):
         assert cl.get("/admin-api/v1/dashboard").status_code == 200
     finally:
         app.config["ADMIN_REQUIRE_2FA"] = False
+
+
+def test_csrf_is_per_realm_and_impersonation_exchange_ignores_stray_admin_cookies(app):
+    """On a shared host (localhost in dev) the browser sends BOTH apps' cookies; each API must only judge its own."""
+    email, pw = make_admin(app)
+    adm = admin_login(app, email, pw)
+    # the admin's cookies are present, but a customer-API write with no customer cookies has nothing to forge
+    adm.c.set_cookie("adm_access", adm.c.get_cookie("adm_access").value)
+    r = adm.post("/api/v1/auth/impersonate/exchange", json={"code": "not-a-real-code"})
+    assert r.status_code == 400 and r.get_json()["error"]["code"] == "invalid_grant"
+    # admin API writes still require the admin CSRF token
+    adm.c.set_cookie("adm_csrf", "tampered")
+    assert adm.post("/admin-api/v1/auth/reverify", json={"code": "123456"}).status_code in (403, 401)

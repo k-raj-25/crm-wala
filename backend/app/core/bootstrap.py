@@ -2,12 +2,55 @@
 from __future__ import annotations
 
 import logging
+import os
 import uuid
 
-from flask import Flask, g, request
+from flask import Flask, g, has_request_context, request
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from app.extensions import db, limiter, migrate
+
+
+class _JsonFormatter(logging.Formatter):
+    """One JSON object per line so log shippers (Loki, CloudWatch, Datadog) can index fields without regexes."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        import json
+
+        out = {"ts": self.formatTime(record, "%Y-%m-%dT%H:%M:%S%z"), "level": record.levelname, "logger": record.name, "msg": record.getMessage()}
+        try:
+            out["request_id"] = g.request_id if has_request_context() else None
+        except Exception:  # pragma: no cover
+            pass
+        if record.exc_info:
+            out["exc"] = self.formatException(record.exc_info)
+        return json.dumps(out, default=str)
+
+
+def _configure_logging(flask_app: Flask) -> None:
+    handler = logging.StreamHandler()
+    if os.environ.get("LOG_FORMAT", "text" if flask_app.config["ENV"] != "production" else "json") == "json":
+        handler.setFormatter(_JsonFormatter())
+    else:
+        handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+    root = logging.getLogger()
+    root.handlers[:] = [handler]
+    root.setLevel(flask_app.config.get("LOG_LEVEL", "INFO"))
+
+
+def _configure_sentry(flask_app: Flask) -> None:
+    """Error tracking is opt-in: set SENTRY_DSN and install sentry-sdk. PII is not sent by default."""
+    dsn = flask_app.config.get("SENTRY_DSN")
+    if not dsn:
+        return
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.flask import FlaskIntegration
+
+        sentry_sdk.init(dsn=dsn, integrations=[FlaskIntegration()], send_default_pii=False, traces_sample_rate=float(os.environ.get("SENTRY_TRACES", "0.05")),
+                        environment=flask_app.config["ENV"])
+    except ImportError:  # pragma: no cover
+        logging.getLogger(__name__).warning("SENTRY_DSN is set but sentry-sdk is not installed")
 
 
 def init_app(flask_app: Flask) -> None:
@@ -16,9 +59,8 @@ def init_app(flask_app: Flask) -> None:
 
         Config.validate_for_production()
 
-    logging.basicConfig(
-        level=flask_app.config.get("LOG_LEVEL", "INFO"), format="%(asctime)s %(levelname)s %(name)s: %(message)s"
-    )
+    _configure_logging(flask_app)
+    _configure_sentry(flask_app)
     flask_app.wsgi_app = ProxyFix(flask_app.wsgi_app, x_for=1, x_proto=1, x_host=1)  # type: ignore[method-assign]
     flask_app.url_map.strict_slashes = False
 

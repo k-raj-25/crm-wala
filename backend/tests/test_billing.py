@@ -57,3 +57,12 @@ def test_plan_limits_enforced(app):
     assert cl.post("/api/v1/contacts", json={"first_name": "A"}).status_code == 201
     r = cl.post("/api/v1/contacts", json={"first_name": "B"})
     assert r.status_code == 402 and r.get_json()["error"]["code"] == "plan_limit_reached"
+
+
+def test_checkout_info_is_tenant_scoped(app):
+    a, _ = signup(app)
+    b, _ = signup(app, email="other@example.com", company_name="Other Co")
+    sid = a.post("/api/v1/billing/checkout", json={"plan_key": "starter", "interval": "monthly"}).get_json()["data"]["session_id"]
+    info = a.get(f"/api/v1/billing/checkout/{sid}")
+    assert info.status_code == 200 and info.get_json()["data"]["quote"]["plan_key"] == "starter"
+    assert b.get(f"/api/v1/billing/checkout/{sid}").status_code == 404

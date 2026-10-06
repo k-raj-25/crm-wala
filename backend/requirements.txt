@@ -19,3 +19,4 @@ boto3==1.40.35
 stripe==12.5.1
 python-dotenv==1.1.1
 pytest==8.4.2
+sentry-sdk[flask]>=2.20,<3
