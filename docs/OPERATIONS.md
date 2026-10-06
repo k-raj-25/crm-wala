@@ -34,10 +34,10 @@ Release order: build → `flask db upgrade` (one-off job, run as the schema **ow
 - **Audit:** every admin action and sensitive customer action lands in the append-only `audit_logs` table with actor, IP and before/after values.
 
 ## Scaling notes
-Stateless API behind a load balancer; PgBouncer in transaction mode works because tenant context is set per transaction (`SET LOCAL`). Add read replicas for reports first. Heavy imports/exports and report generation already run through Celery. Cache keys are namespaced per workspace.
+Stateless API behind a load balancer; PgBouncer in transaction mode works because tenant context is set per transaction (`SET LOCAL`). Add read replicas for reports first. Scheduled emails, reminders, automation resumes and scheduled reports run through Celery; imports, exports and PDF reports currently run inside the request, so keep an eye on request time for very large workspaces and move them to Celery if needed.
 
 ## Runbooks
 - **Customer locked out after payment issue:** Admin → Workspaces → *Extend trial* or *Extend period* (audit-logged), or *Change plan* for a complimentary assignment.
 - **Suspected account takeover:** Admin → Users → *Suspend* (revokes all sessions immediately), then *Send password reset*.
-- **Provider outage (email/AI/billing):** the System health page shows which provider is failing; emails are queued and retried, AI returns a friendly degraded answer, billing webhooks are idempotent and can be replayed from the provider dashboard.
+- **Provider outage (email/AI/billing):** the System health page shows which provider is failing; failed emails are recorded with the provider error (there is no automatic retry yet — resend from the record or fix the provider and re-trigger), AI calls return a clear 502 "temporarily unavailable" message without consuming the customer's quota, and billing webhooks are idempotent so they can be replayed from the provider dashboard.
 - **Rollback:** previous image + `flask db downgrade -1` only if the release shipped a migration; otherwise redeploy the previous image.

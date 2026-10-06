@@ -136,9 +136,6 @@ def lead_funnel(ws, start, end) -> list[dict]:
 
 def sales_funnel(ws, start, end) -> list[dict]:
     """Deals created in range, by the furthest stage reached (current stage position as proxy)."""
-    rows = db.session.query(PipelineStage.name, PipelineStage.position, func.count(Deal.id)).outerjoin(
-        Deal, and_(Deal.stage_id == PipelineStage.id, Deal.deleted_at.is_(None), Deal.created_at >= start, Deal.created_at <= end)).filter(
-        PipelineStage.workspace_id == ws).group_by(PipelineStage.id).order_by(PipelineStage.position).all()
     from app.api.v1.deals import default_pipeline
 
     pid = default_pipeline().id
