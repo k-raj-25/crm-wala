@@ -250,3 +250,46 @@ def _note_url(n) -> str:
 
 
 _activity_url = _note_url
+
+
+# ---- calendar feed ----------------------------------------------------------------------
+
+@bp.get("/calendar")
+@protect("meetings.read")
+def calendar_feed():
+    """Unified events for the calendar: meetings, scheduled calls, tasks, deadlines and lead follow-ups."""
+    from app.models import Call, Meeting
+
+    a = request.args
+    start, end = parse_date(a.get("from")), parse_date(a.get("to"), end=True)
+    if not start or not end or (end - start).days > 62:
+        raise bad_request("Provide from/to dates spanning up to ~2 months")
+    ws, mine = g.workspace.id, a.get("mine") == "true"
+    events: list[dict] = []
+    q = db.session.query(Meeting).filter(Meeting.workspace_id == ws, Meeting.deleted_at.is_(None), Meeting.starts_at >= start, Meeting.starts_at <= end)
+    if mine:
+        q = q.filter(Meeting.organizer_id == g.user.id)
+    for m in q.limit(300):
+        events.append({"id": str(m.id), "kind": "meeting", "title": m.title, "start": m.starts_at.isoformat(), "end": m.ends_at.isoformat(), "status": m.status,
+                       "location": m.meeting_url or m.location, "entity": {"type": "meeting", "id": str(m.id)}})
+    if "tasks.read" in g.permissions or "*" in g.permissions:
+        q = db.session.query(Task).filter(Task.workspace_id == ws, Task.deleted_at.is_(None), Task.due_at >= start, Task.due_at <= end)
+        if mine:
+            q = q.filter(Task.assignee_id == g.user.id)
+        for t in q.limit(300):
+            events.append({"id": str(t.id), "kind": "deadline" if t.kind == "deadline" else "follow_up" if t.kind == "follow_up" else "task", "title": t.title, "start": t.due_at.isoformat(),
+                           "end": (t.due_at + dt.timedelta(minutes=30)).isoformat(), "status": t.status, "priority": t.priority, "entity": {"type": "task", "id": str(t.id)}})
+        q = db.session.query(Lead).filter(Lead.workspace_id == ws, Lead.deleted_at.is_(None), Lead.status.in_(("new", "contacted", "qualified")), Lead.next_follow_up_at >= start, Lead.next_follow_up_at <= end)
+        if mine:
+            q = q.filter(Lead.owner_id == g.user.id)
+        for l in q.limit(200):
+            events.append({"id": str(l.id), "kind": "follow_up", "title": f"Follow up: {l.name}", "start": l.next_follow_up_at.isoformat(), "end": (l.next_follow_up_at + dt.timedelta(minutes=30)).isoformat(),
+                           "status": "todo", "entity": {"type": "lead", "id": str(l.id)}})
+    q = db.session.query(Call).filter(Call.workspace_id == ws, Call.deleted_at.is_(None), Call.status == "scheduled", Call.scheduled_at >= start, Call.scheduled_at <= end)
+    if mine:
+        q = q.filter(Call.user_id == g.user.id)
+    for c in q.limit(200):
+        events.append({"id": str(c.id), "kind": "call", "title": "Scheduled call", "start": c.scheduled_at.isoformat(), "end": (c.scheduled_at + dt.timedelta(minutes=15)).isoformat(), "status": c.status,
+                       "entity": {"type": "call", "id": str(c.id)}})
+    events.sort(key=lambda e: e["start"])
+    return ok(events)

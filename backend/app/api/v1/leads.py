@@ -66,6 +66,12 @@ class LeadResource(CrudResource):
     def label(self, o):
         return o.name
 
+    def serialize_many(self, objs):
+        out = super().serialize_many(objs)
+        for d, o in zip(out, objs):
+            d["name"] = o.name
+        return out
+
     def extra_filters(self, q):
         now = utcnow()
         f = request.args.get("follow_up")

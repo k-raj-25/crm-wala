@@ -135,6 +135,17 @@ def mock_complete():
     return ok({"status": "active", "subscription": subscription_summary(g.workspace)})
 
 
+@bp.get("/billing/checkout/<sid>")
+@protect("billing.manage", allow_restricted=True)
+def checkout_info(sid):
+    from app.models import CheckoutSession
+
+    cs = db.session.query(CheckoutSession).filter_by(provider_session_id=sid, workspace_id=g.workspace.id).one_or_none()
+    if cs is None:
+        raise not_found("Checkout session")
+    return ok({"status": cs.status, "provider": cs.provider, "quote": core.quote(g.workspace, cs.plan_key, cs.interval, cs.coupon_code)})
+
+
 class CancelIn(Schema):
     immediately: bool = False
     reason: str | None = Field(default=None, max_length=300)

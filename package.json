@@ -1,0 +1,11 @@
+{
+  "name": "crm-wala",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev:web": "npm run dev -w @crm/web",
+    "dev:admin": "npm run dev -w @crm/admin",
+    "build": "npm run build -w @crm/web && npm run build -w @crm/admin",
+    "typecheck": "npm run typecheck -w @crm/ui && npm run typecheck -w @crm/web && npm run typecheck -w @crm/admin"
+  }
+}

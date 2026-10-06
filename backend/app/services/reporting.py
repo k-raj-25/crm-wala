@@ -26,7 +26,7 @@ def day_start(d: dt.datetime | None = None) -> dt.datetime:
 
 def bucket_for(start: dt.datetime, end: dt.datetime) -> str:
     days = (end - start).days
-    return "day" if days <= 31 else "week" if days <= 120 else "month"
+    return "day" if days <= 14 else "week" if days <= 120 else "month"
 
 
 def _fill(rows: dict, start: dt.datetime, end: dt.datetime, bucket: str, keys: list[str]) -> list[dict]:
