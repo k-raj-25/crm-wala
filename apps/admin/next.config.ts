@@ -6,6 +6,7 @@ const config: NextConfig = {
   transpilePackages: ["@crm/ui"],
   poweredByHeader: false,
   reactStrictMode: true,
+  devIndicators: false,
   // Only the admin API is proxied here; the customer API is deliberately unreachable from the admin origin.
   async rewrites() {
     return [{ source: "/admin-api/:path*", destination: `${API}/admin-api/:path*` }];

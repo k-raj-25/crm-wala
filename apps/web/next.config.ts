@@ -6,6 +6,7 @@ const config: NextConfig = {
   transpilePackages: ["@crm/ui"],
   poweredByHeader: false,
   reactStrictMode: true,
+  devIndicators: false,
   // The browser only ever talks to this origin; /api/* is proxied to Flask so auth cookies are same-site and
   // the admin API (/admin-api) is deliberately NOT exposed through the customer app.
   async rewrites() {
