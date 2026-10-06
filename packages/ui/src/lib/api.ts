@@ -95,7 +95,7 @@ export function createApi(cfg: ApiConfig) {
     post: async <T,>(path: string, body?: unknown) => (await request<{ data: T }>("POST", path, body ?? {})).data,
     put: async <T,>(path: string, body?: unknown) => (await request<{ data: T }>("PUT", path, body ?? {})).data,
     patch: async <T,>(path: string, body?: unknown) => (await request<{ data: T }>("PATCH", path, body ?? {})).data,
-    delete: (path: string) => request<void>("DELETE", path),
+    delete: (path: string, body?: unknown) => request<void>("DELETE", path, body),
     upload: async <T,>(path: string, form: FormData) => (await request<{ data: T }>("POST", path, form)).data,
   };
 }

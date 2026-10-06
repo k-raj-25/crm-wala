@@ -59,6 +59,22 @@ def register_cli(app: Flask) -> None:
         for fn in (tasks.billing_lifecycle, tasks.resume_automations, tasks.send_scheduled_emails, tasks.send_reminders, tasks.send_scheduled_reports):
             click.echo(f"{fn.name}: {fn()}")
 
+    @app.cli.command("seed-sample")
+    @click.option("--reset", "do_reset", is_flag=True, help="Only remove previously seeded sample customers")
+    @click.option("--force", is_flag=True, help="Allow in production (not recommended)")
+    def seed_sample_cmd(do_reset, force):
+        """Synthetic customers (sample-*) so Super Admin dashboards have data in development."""
+        from app.config import Config
+
+        if Config.ENV == "production" and not force:
+            raise click.ClickException("Refusing to seed sample data in production.")
+        from app.seeds import sample_platform
+
+        if do_reset:
+            click.echo(f"Removed {sample_platform.reset()} sample workspaces.")
+            return
+        click.echo(f"Seeded {sample_platform.seed()}")
+
     @app.cli.command("seed-demo")
     @click.option("--reset", is_flag=True, help="Delete and recreate the demo workspace")
     @click.option("--plan", default="trial", help="trial (default) or a paid plan key such as growth")

@@ -4,6 +4,7 @@ import { cn } from "../lib/cn";
 
 export const Table = ({ className, ...p }: React.TableHTMLAttributes<HTMLTableElement>) => <table className={cn("w-full border-collapse text-sm", className)} {...p} />;
 export const THead = ({ className, ...p }: React.HTMLAttributes<HTMLTableSectionElement>) => <thead className={cn("sticky top-0 z-[1] bg-surface-2 text-left", className)} {...p} />;
+export const TBody = ({ className, ...p }: React.HTMLAttributes<HTMLTableSectionElement>) => <tbody className={className} {...p} />;
 export const TR = ({ className, ...p }: React.HTMLAttributes<HTMLTableRowElement>) => <tr className={cn("border-b border-border transition-colors last:border-0", className)} {...p} />;
 export const TD = ({ className, ...p }: React.TdHTMLAttributes<HTMLTableCellElement>) => <td className={cn("px-4 py-3 align-middle", className)} {...p} />;
 export function TH({ className, children, sortable, sortDir: dir, onSort, ...p }: React.ThHTMLAttributes<HTMLTableCellElement> & { sortable?: boolean; sortDir?: "asc" | "desc" | null; onSort?: () => void }) {
