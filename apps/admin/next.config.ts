@@ -9,6 +9,8 @@ const config: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
   devIndicators: false,
+  // Memory-constrained hosts (Render free tier) set SKIP_TYPECHECK=1; types are checked in development / CI with `npm run typecheck`.
+  typescript: { ignoreBuildErrors: process.env.SKIP_TYPECHECK === "1" },
   // Only the admin API is proxied here; the customer API is deliberately unreachable from the admin origin.
   async rewrites() {
     return [{ source: "/admin-api/:path*", destination: `${API}/admin-api/:path*` }];

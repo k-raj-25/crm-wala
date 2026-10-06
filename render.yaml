@@ -93,6 +93,10 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "22"
+      - key: NODE_OPTIONS            # explicit (overrides an older 400 MB cap that Render keeps on existing services)
+        value: --max-old-space-size=1536
+      - key: SKIP_TYPECHECK          # the type-check step is the memory hog; types are verified before pushing
+        value: "1"
       - key: API_URL                 # PUBLIC https URL of crmwala-api, e.g. https://crmwala-api.onrender.com (baked in at build time)
         sync: false
 
@@ -106,5 +110,9 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "22"
+      - key: NODE_OPTIONS            # explicit (overrides an older 400 MB cap that Render keeps on existing services)
+        value: --max-old-space-size=1536
+      - key: SKIP_TYPECHECK          # the type-check step is the memory hog; types are verified before pushing
+        value: "1"
       - key: API_URL
         sync: false

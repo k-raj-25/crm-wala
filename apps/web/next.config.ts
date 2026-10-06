@@ -9,6 +9,8 @@ const config: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
   devIndicators: false,
+  // Memory-constrained hosts (Render free tier) set SKIP_TYPECHECK=1; types are checked in development / CI with `npm run typecheck`.
+  typescript: { ignoreBuildErrors: process.env.SKIP_TYPECHECK === "1" },
   // The browser only ever talks to this origin; /api/* is proxied to Flask so auth cookies are same-site and
   // the admin API (/admin-api) is deliberately NOT exposed through the customer app.
   async rewrites() {
