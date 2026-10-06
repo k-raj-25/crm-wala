@@ -2,7 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Eye, EyeOff, SlidersHorizontal } from "lucide-react";
 import * as React from "react";
-import { AreaTrend, BarsChart, Button, Card, CardBody, CardHeader, FunnelBars, LineTrend, Popover, PopoverContent, PopoverTrigger, Segmented, Switch, formatMoney, formatMoneyCompact, formatNumber, formatPercent } from "@crm/ui";
+import { AreaTrend, BarsChart, Button, Card, CardBody, CardHeader, FunnelBars, LineTrend, Popover, PopoverContent, PopoverTrigger, Segmented, Switch, formatMoneyCompact, formatNumber, formatPercent } from "@crm/ui";
 import { ActivityFeed, GettingStarted, Metric, NextBestActions, TodaysFocus, type Focus } from "@/components/dashboard/widgets";
 import { PageContainer, PageHeader, Stagger, StaggerItem } from "@/components/shell/page";
 import { useUI } from "@/components/shell/ui-context";
@@ -86,4 +86,3 @@ export default function Home() {
     </PageContainer>
   );
 }
-export { formatMoney };

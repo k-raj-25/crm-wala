@@ -93,8 +93,6 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "22"
-      - key: NODE_OPTIONS            # keep the build inside the free tier's 512 MB
-        value: --max-old-space-size=400
       - key: API_URL                 # PUBLIC https URL of crmwala-api, e.g. https://crmwala-api.onrender.com (baked in at build time)
         sync: false
 
@@ -108,7 +106,5 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "22"
-      - key: NODE_OPTIONS
-        value: --max-old-space-size=400
       - key: API_URL
         sync: false

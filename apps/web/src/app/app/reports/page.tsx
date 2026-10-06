@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BarChart3, Bookmark, CalendarClock, Download, FileText, Lock, Table2, Trash2 } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
-import { AreaTrend, BarsChart, Button, Card, CardBody, CardHeader, ChartTable, Dialog, DialogContent, DialogFooter, EmptyState, ErrorState, Field, Input, LineTrend, NativeSelect, Segmented, Skeleton, cn, formatMoney, formatMoneyCompact, formatNumber, formatPercent, useToast } from "@crm/ui";
+import { AreaTrend, BarsChart, Button, Card, CardBody, CardHeader, Dialog, DialogContent, DialogFooter, EmptyState, ErrorState, Field, Input, LineTrend, NativeSelect, Segmented, Skeleton, cn, formatMoney, formatMoneyCompact, formatNumber, formatPercent, useToast } from "@crm/ui";
 import { MemberSelect } from "@/components/forms/fields";
 import { PageContainer, PageHeader } from "@/components/shell/page";
 import { api } from "@/lib/api";
@@ -88,4 +88,3 @@ function SaveDialog({ open, onOpenChange, type, params }: { open: boolean; onOpe
       <DialogFooter><Button variant="secondary" onClick={() => onOpenChange(false)}>Cancel</Button><Button onClick={go} loading={busy} disabled={!name.trim()}>Save</Button></DialogFooter></DialogContent></Dialog>
   );
 }
-export { ChartTable };

@@ -14,7 +14,7 @@ Two Blueprints are provided:
 - **Database expires:** Render's free Postgres is **deleted after 30 days**. Fine for a demo; for longer, upgrade it or point `DATABASE_URL` at another Postgres (see "Keeping data longer").
 - **No worker/cron/shell:** background tasks run inline, and the periodic jobs (billing lifecycle, reminders, automations that wait, scheduled emails) are triggered every 15 minutes by a free **GitHub Actions** schedule that I added (`.github/workflows/jobs.yml`).
 - **Emails are not sent** (`EMAIL_PROVIDER=console` prints them to the log), **payments are a test checkout** (`BILLING_PROVIDER=mock`), and **uploaded files are lost** when the service restarts (`STORAGE_BACKEND=local`). Everything else works.
-- Free instances have 512 MB RAM. If a Next.js build fails with an out-of-memory error, see "If a build fails".
+- Free instances have 512 MB RAM and the Next.js builds are heavy. They worked on Render in testing only without a Node heap cap; if a build still fails with an out-of-memory error, see "If a build fails".
 
 ### Steps
 1. **Merge to `main`** (or choose branch `claude/zealous-hamilton-vz3nn9` in Render). GitHub Actions only runs schedules from the default branch.
