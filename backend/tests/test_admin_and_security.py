@@ -210,7 +210,8 @@ def test_admin_bootstrap_cli_creates_first_admin_once(app, monkeypatch):
     monkeypatch.setenv("ADMIN_BOOTSTRAP_EMAIL", "First@Example.com")
     monkeypatch.setenv("ADMIN_BOOTSTRAP_PASSWORD", "Weak1")
     runner = app.test_cli_runner()
-    assert runner.invoke(args=["admin", "bootstrap"]).exit_code != 0  # weak password rejected
+    r0 = runner.invoke(args=["admin", "bootstrap"])
+    assert r0.exit_code == 0 and "no admin was created" in r0.output  # weak password: warn but never block the boot
     monkeypatch.setenv("ADMIN_BOOTSTRAP_PASSWORD", "Str0ng-Bootstrap-Pass")
     r = runner.invoke(args=["admin", "bootstrap"])
     assert r.exit_code == 0 and "Created superadmin first@example.com" in r.output

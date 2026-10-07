@@ -67,7 +67,9 @@ def register_cli(app: Flask) -> None:
                 click.echo("An admin already exists; skipping bootstrap.")
                 return
             if len(password) < 12 or password_problems(password):
-                raise click.ClickException("ADMIN_BOOTSTRAP_PASSWORD must be 12+ characters with letters and numbers.")
+                # Never fail the boot over this: the API must still start. Fix the variable and redeploy.
+                click.echo("WARNING: ADMIN_BOOTSTRAP_PASSWORD must be 12+ characters with letters and numbers; no admin was created.")
+                return
             db.session.add(AdminUser(email=email, name=os.environ.get("ADMIN_BOOTSTRAP_NAME", "Platform Admin"), password_hash=hash_password(password), role="superadmin"))
             db.session.commit()
         click.echo(f"Created superadmin {email}. Remove ADMIN_BOOTSTRAP_PASSWORD from the environment now; 2FA enrolment happens at first sign-in.")

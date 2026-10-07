@@ -27,7 +27,7 @@ services:
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     # Idempotent on every wake-up: migrations, missing platform defaults, first admin (if ADMIN_BOOTSTRAP_* set), optional demo data.
-    startCommand: flask db upgrade && flask seed-platform && flask admin bootstrap && ( [ "$SEED_DEMO" != "true" ] || flask seed-demo ) && gunicorn -c gunicorn.conf.py wsgi:app
+    startCommand: flask db upgrade && flask seed-platform && (flask admin bootstrap || true) && ( [ "$SEED_DEMO" != "true" ] || flask seed-demo || true ) && gunicorn -c gunicorn.conf.py wsgi:app
     healthCheckPath: /healthz
     envVars:
       - key: PYTHON_VERSION
