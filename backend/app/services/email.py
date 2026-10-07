@@ -84,11 +84,17 @@ def render_template(key: str, ctx: dict) -> tuple[str, str]:
 
 
 def send_raw(to: str, subject: str, html: str, *, workspace_id=None, template_key: str | None = None,
-             reply_to: str | None = None) -> bool:
+             reply_to: str | None = None, from_name: str | None = None) -> bool:
     provider = get_provider()
     status, error = "sent", None
+    from_addr = current_app.config["EMAIL_FROM"]
+    if from_name:
+        # We can't send *as* a user's own address without their mailbox (SPF/DKIM would fail), so show their name and route replies to them.
+        from email.utils import formataddr, parseaddr
+
+        from_addr = formataddr((f"{from_name.replace(chr(34), '').replace(chr(10), ' ')[:60]} via CRM Wala", parseaddr(from_addr)[1]))
     try:
-        provider.send(to, subject, html, from_addr=current_app.config["EMAIL_FROM"], reply_to=reply_to)
+        provider.send(to, subject, html, from_addr=from_addr, reply_to=reply_to)
     except Exception as e:  # delivery failure must never break the caller
         status, error = "failed", str(e)[:400]
         log.exception("email send failed")

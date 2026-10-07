@@ -201,9 +201,17 @@ email_res = EmailResource()
 email_res.register(emails_bp)
 
 
+@emails_bp.get("/sender")
+@protect("emails.read")
+def email_sender():
+    return ok(mailbox.sender_info(g.user))
+
+
 @emails_bp.post("/send")
 @protect("emails.create")
 def send_email():
+    if not g.user.email_verified_at:  # email goes out in this person's name, so their address must be proven first
+        raise ApiError(403, "email_not_verified", "Verify your email address to send emails. Check your inbox for the link, or request a new one.")
     data = parse(EmailSendIn)
     check_limit(g.workspace, "emails_month", len(data.to))
     related = _fill_company({k: getattr(data, k) for k in ("lead_id", "contact_id", "company_id", "deal_id")})

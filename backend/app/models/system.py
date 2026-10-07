@@ -85,7 +85,7 @@ class AiConversation(Base, UUIDPk, Timestamps, Tenant, Serializable):
 
 class Integration(Base, UUIDPk, Timestamps, Tenant, Serializable):
     __tablename__ = "integrations"
-    __table_args__ = (UniqueConstraint("workspace_id", "provider", name="uq_integration_ws_provider"),)
+    # Uniqueness is (workspace, provider, connecting user) via a COALESCE index created in migration 0004.
     __hidden__ = ("credentials_enc",)
 
     provider: Mapped[str] = mapped_column(String(40))

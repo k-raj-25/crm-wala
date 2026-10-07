@@ -36,6 +36,12 @@ Two Blueprints are provided:
 7. Open `https://crmwala-web.onrender.com`, sign up and try the product.
    Want sample data? Set `SEED_DEMO=true` on `crmwala-api` and redeploy; log in as `demo@demo.crmwala.dev` / `Demo@12345`. Staging only; switch it back to `false` for anything public.
 
+### How email sending works
+- **A user must verify their email before they can send.** Until then the compose box shows a "Verify your email" notice with a resend button, and the API refuses with `email_not_verified`.
+- **Each user sends through their own mailbox.** Gmail/Outlook connections are personal (Integrations page); nobody can send through a teammate's account. Live Gmail/Outlook needs a Google/Microsoft OAuth app (`GOOGLE_CLIENT_ID/SECRET`); without it the connection runs in preview mode.
+- **If the user hasn't connected a mailbox,** the email is sent by the platform as "*Their Name* via CRM Wala" with **Reply-To set to their own address**, so replies land in their inbox. This path needs a real provider: set `EMAIL_PROVIDER=resend` (+ `RESEND_API_KEY`, and `EMAIL_FROM` on a domain verified in Resend). It is not possible to send *as* an arbitrary @gmail.com address through a platform provider; mail providers reject that.
+- `EMAIL_PROVIDER=console` (the default here) only writes emails to the API log.
+
 ### Turn on the periodic jobs (optional but recommended)
 Without this, trial-ending emails, billing lifecycle and delayed automation steps never run.
 1. Render > crmwala-api > Environment > copy the value of `JOBS_TOKEN`.

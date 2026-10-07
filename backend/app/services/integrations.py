@@ -49,14 +49,23 @@ CATALOG: dict[str, dict] = {
 WEBHOOK_EVENTS = ["lead.created", "deal.created", "deal.stage_changed", "deal.won", "deal.lost", "task.completed", "contact.updated"]
 
 
-def get(workspace_id, provider: str) -> Integration | None:
-    return db.session.query(Integration).filter_by(workspace_id=workspace_id, provider=provider).one_or_none()
+# Mailboxes are personal: each user connects their own, and email is only ever sent through the sender's own account.
+PER_USER = {"gmail", "outlook"}
+
+
+def get(workspace_id, provider: str, user_id=None) -> Integration | None:
+    q = db.session.query(Integration).filter_by(workspace_id=workspace_id, provider=provider)
+    if provider in PER_USER:
+        if user_id is None:
+            return None
+        q = q.filter(Integration.connected_by == user_id)
+    return q.first()
 
 
 def upsert(workspace_id, provider: str, user_id=None) -> Integration:
-    i = get(workspace_id, provider)
+    i = get(workspace_id, provider, user_id)
     if i is None:
-        i = Integration(workspace_id=workspace_id, provider=provider, status="not_connected")
+        i = Integration(workspace_id=workspace_id, provider=provider, status="not_connected", connected_by=user_id if provider in PER_USER else None)
         db.session.add(i)
         db.session.flush()
     return i
