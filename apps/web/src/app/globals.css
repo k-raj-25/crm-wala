@@ -1,3 +1,27 @@
 @import "tailwindcss";
 @import "@crm/ui/styles.css";
 @source "../../../../packages/ui/src";
+
+/* ---- Real estate: the building facade -------------------------------------------------------------------------------- */
+.facade-sky {
+  --sky-top: #9fd3ff; --sky-bot: #eef8ff; --slab: #c4cad8; --slab-edge: #a9b0c2; --frame: #e9ecf3; --frame-edge: #cfd4e0; --ground: #d9dee9;
+  background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-bot) 78%);
+  overflow: clip; /* clouds drift past the edge; `clip` (unlike `hidden`) can never be scrolled into view by focus */
+}
+.dark .facade-sky {
+  --sky-top: #060a1d; --sky-bot: #1b2352; --slab: #2d3450; --slab-edge: #3b4466; --frame: #151a2c; --frame-edge: #262d48; --ground: #11141f;
+}
+.facade-stars { background-image: radial-gradient(1.2px 1.2px at 12% 18%, #fff, transparent), radial-gradient(1px 1px at 38% 8%, #fff, transparent), radial-gradient(1.4px 1.4px at 71% 22%, #fff, transparent), radial-gradient(1px 1px at 88% 10%, #fff, transparent), radial-gradient(1px 1px at 55% 30%, #fff, transparent), radial-gradient(1.2px 1.2px at 25% 38%, #fff, transparent); opacity: 0; transition: opacity 400ms; }
+.dark .facade-stars { opacity: 0.8; }
+@keyframes cloud-drift { from { left: -25%; } to { left: 105%; } }
+@keyframes hold-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.55), inset 0 -5px 0 rgba(0, 0, 0, 0.18); } 50% { box-shadow: 0 0 0 7px rgba(124, 58, 237, 0), inset 0 -5px 0 rgba(0, 0, 0, 0.18); } }
+@keyframes beacon { 0%, 100% { opacity: 0.2; } 50% { opacity: 1; } }
+@keyframes car-drive { from { transform: translateX(-14%); } to { transform: translateX(110%); } }
+@keyframes floor-flash { 0% { background-color: rgba(255, 255, 255, 0); } 20% { background-color: rgba(250, 204, 21, 0.45); } 100% { background-color: rgba(255, 255, 255, 0); } }
+@keyframes sun-breathe { 0%, 100% { transform: scale(1); opacity: 0.9; } 50% { transform: scale(1.08); opacity: 1; } }
+.unit-hold { animation: hold-pulse 2.2s ease-in-out infinite; }
+.floor-flash { animation: floor-flash 1400ms ease-out; }
+.cloud { animation: cloud-drift 90s linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .facade-sky *, .facade-sky { animation: none !important; transition: none !important; }
+}

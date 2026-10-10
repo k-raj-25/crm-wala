@@ -60,6 +60,7 @@ class UnitResource(CrudResource):
             d["tower_name"], p = towers.get(o.tower_id), projects.get(o.project_id)
             d["project_name"], d["project_city"] = (p.name, p.city) if p else (None, None)
             d["floor_label"] = inventory.floor_label(o.floor)
+            d["label"] = f"{o.number} · {d['tower_name']} · {d['project_name']}"
             d["owner_contact"], d["occupant_contact"] = contacts.get(o.owner_contact_id), contacts.get(o.occupant_contact_id)
             d["hold_lead"] = {"id": str(o.hold_lead_id), "name": leads.get(o.hold_lead_id)} if o.hold_lead_id else None
             d["held_by_name"] = users.get(o.held_by)

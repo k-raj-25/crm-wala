@@ -258,3 +258,16 @@ def sync_deal_to_unit(deal, stage_kind: str) -> None:
         apply_status(unit, status, note=f"Deal won: {deal.name}", contact_id=deal.contact_id)
     elif unit.status in ("on_hold", "booked"):
         apply_status(unit, _fallback_status(unit), note=f"Deal lost: {deal.name}")
+
+
+def labels_for(unit_ids: set, project_ids: set) -> tuple[dict, dict]:
+    """({unit_id: "801 · Tower D-13 · Ireo Victory Valley"}, {project_id: "Ireo Victory Valley"}) for list serializers."""
+    unit_ids, project_ids = {i for i in unit_ids if i}, {i for i in project_ids if i}
+    units: dict = {}
+    if unit_ids:
+        rows = db.session.query(Unit.id, Unit.number, Tower.name, Project.name, Unit.project_id).join(Tower, Tower.id == Unit.tower_id).join(
+            Project, Project.id == Unit.project_id).filter(Unit.id.in_(unit_ids)).all()
+        units = {r[0]: f"{r[1]} · {r[2]} · {r[3]}" for r in rows}
+        project_ids |= {r[4] for r in rows}
+    projects = {r.id: r.name for r in db.session.query(Project.id, Project.name).filter(Project.id.in_(project_ids)).all()} if project_ids else {}
+    return units, projects

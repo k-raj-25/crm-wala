@@ -119,7 +119,10 @@ class DealResource(CrudResource):
 
     def serialize_many(self, objs):
         out = super().serialize_many(objs)
+        units, projects = inventory.labels_for({o.unit_id for o in objs}, {o.project_id for o in objs})
         for d, o in zip(out, objs):
+            d["unit"] = {"id": str(o.unit_id), "label": units.get(o.unit_id)} if o.unit_id else None
+            d["project"] = {"id": str(o.project_id), "name": projects.get(o.project_id)} if o.project_id else None
             d["company"] = {"id": str(o.company.id), "name": o.company.name} if o.company else None
             d["contact"] = {"id": str(o.contact.id), "name": o.contact.name} if o.contact else None
             d["stage"] = {"id": str(o.stage.id), "name": o.stage.name, "kind": o.stage.kind, "color": o.stage.color, "position": o.stage.position}

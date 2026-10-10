@@ -196,11 +196,17 @@ def todays_focus(ws, user_id=None) -> dict:
                                           or_(Deal.last_activity_at < stale, Deal.last_activity_at.is_(None), Deal.expected_close_date < now.date())),
                      Deal.owner_id).order_by(Deal.value.desc()).limit(20).all()
     overdue = mine(s.query(Task).filter(Task.workspace_id == ws, Task.deleted_at.is_(None), Task.status != "completed", Task.due_at < start), Task.assignee_id).order_by(Task.due_at).all()
+    from app.models import Unit
+
+    holds = mine(s.query(Unit).filter(Unit.workspace_id == ws, Unit.deleted_at.is_(None), Unit.status == "on_hold", Unit.hold_until.isnot(None),
+                                      Unit.hold_until < now + dt.timedelta(hours=24)), Unit.held_by).order_by(Unit.hold_until).all()
     return {
+        "holds_expiring": {"count": len(holds), "items": [{"type": "unit", "id": str(u.id), "title": f"{u.name} hold", "due_at": u.hold_until.isoformat(),
+                                                           "url": f"/app/projects/{u.project_id}?tower={u.tower_id}&unit={u.id}"} for u in holds[:5]]},
         "follow_ups": {"count": len(follow_tasks) + len(follow_leads), "items": [
             *[{"type": "task", "id": str(t.id), "title": t.title, "due_at": t.due_at.isoformat(), "url": "/app/tasks"} for t in follow_tasks[:5]],
             *[{"type": "lead", "id": str(l.id), "title": f"Follow up with {l.name}", "due_at": l.next_follow_up_at.isoformat(), "url": f"/app/leads/{l.id}"} for l in follow_leads[:5]]][:6]},
-        "meetings": {"count": len(meetings), "items": [{"type": "meeting", "id": str(m.id), "title": m.title, "starts_at": m.starts_at.isoformat(), "url": "/app/calendar"} for m in meetings[:5]]},
+        "meetings": {"count": len(meetings), "items": [{"type": m.kind, "id": str(m.id), "title": m.title, "starts_at": m.starts_at.isoformat(), "url": "/app/calendar"} for m in meetings[:5]]},
         "deals_attention": {"count": len(attention), "items": [{"type": "deal", "id": str(d.id), "title": d.name, "value": float(d.value), "currency": d.currency,
                                                                 "reason": "Past expected close date" if d.expected_close_date and d.expected_close_date < now.date() else "No activity in 7+ days",
                                                                 "url": f"/app/deals/{d.id}"} for d in attention[:5]]},

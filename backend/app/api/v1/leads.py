@@ -69,8 +69,11 @@ class LeadResource(CrudResource):
 
     def serialize_many(self, objs):
         out = super().serialize_many(objs)
+        units, projects = inventory.labels_for({o.unit_id for o in objs}, {o.project_id for o in objs})
         for d, o in zip(out, objs):
             d["name"] = o.name
+            d["project_name"] = projects.get(o.project_id)
+            d["unit_label"] = units.get(o.unit_id)
         return out
 
     def extra_filters(self, q):
