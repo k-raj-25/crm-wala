@@ -56,7 +56,7 @@ class OnboardingIn(Schema):
     company_name: str | None = Field(default=None, max_length=160)
     industry: str | None = None
     website: str | None = None
-    sales_model: str | None = Field(default=None, pattern="^(b2b|b2c|agency|saas|consulting|real_estate|services|other)$")
+    sales_model: str | None = Field(default=None, pattern="^(b2b|b2c|agency|saas|consulting|real_estate|services|other|agent|brokerage|channel_partner|developer|property_manager)$")
     company_size: str | None = None
     goals: list[str] = Field(default_factory=list, max_length=6)
     import_choice: str | None = Field(default=None, pattern="^(scratch|csv|google|integrations)$")

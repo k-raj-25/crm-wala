@@ -7,7 +7,9 @@ import * as React from "react";
 import { Avatar, Badge, Button, Card, CardBody, CardHeader, ColorChip, ConfirmDialog, Dialog, DialogContent, DialogFooter, Drawer, DropdownContent, DropdownItem, DropdownMenu, DropdownSeparator, DropdownTrigger, ErrorState, Field, Input, Skeleton, Switch, Tabs, TabsContent, TabsList, TabsTrigger, cn, formatDate, formatMoney, timeAgo, useToast } from "@crm/ui";
 import { api } from "@/lib/api";
 import { celebrate } from "@/lib/confetti";
-import { PRIORITIES, SOURCES, label } from "@/lib/constants";
+import { INTENTS, PRIORITIES, SOURCES, label } from "@/lib/constants";
+import { BHK_OPTIONS } from "@/lib/realestate";
+import { MatchingFlats } from "../projects/matching";
 import { useAccess, useCustomFields, useMe, usePipelines } from "@/lib/queries";
 import type { Company, Contact, Deal, Lead } from "@/lib/types";
 import { AsyncSelect, MemberSelect, TagInput, fromLocalInput, toLocalInput } from "../forms/fields";
@@ -31,24 +33,24 @@ function Section({ title, children, actions }: { title: string; children: React.
 function ConvertDialog({ lead, open, onOpenChange }: { lead: Lead; open: boolean; onOpenChange: (o: boolean) => void }) {
   const router = useRouter(); const qc = useQueryClient(); const toast = useToast(); const { can } = useAccess(); const pipelines = usePipelines();
   const [company, setCompany] = React.useState(true); const [deal, setDeal] = React.useState(false); const [name, setName] = React.useState(""); const [value, setValue] = React.useState(""); const [busy, setBusy] = React.useState(false); const [err, setErr] = React.useState<string | null>(null);
-  React.useEffect(() => { if (open) { setName(`${lead.company_name || lead.name} — New deal`); setValue(""); setErr(null); } }, [open, lead]);
+  React.useEffect(() => { if (open) { setName(`${lead.name} — ${(lead as { unit_label?: string }).unit_label ? "Unit " + (lead as { unit_label?: string }).unit_label!.split(" · ")[0] : "New deal"}`); setValue(""); setErr(null); } }, [open, lead]);
   const go = async () => {
     setBusy(true); setErr(null);
     try {
       const r = await api.post<{ contact_id: string; deal_id: string | null }>(`/api/v1/leads/${lead.id}/convert`, { create_company: company && !!lead.company_name, create_deal: deal, deal_name: name, deal_value: Number(value) || 0 });
-      qc.invalidateQueries(); toast.success("Lead converted", deal ? "Contact and deal created." : "Contact created."); onOpenChange(false); router.push(r.deal_id ? `/app/deals/${r.deal_id}` : `/app/contacts/${r.contact_id}`);
+      qc.invalidateQueries(); toast.success("Lead converted", deal ? "Client and deal created." : "Client created."); onOpenChange(false); router.push(r.deal_id ? `/app/deals/${r.deal_id}` : `/app/contacts/${r.contact_id}`);
     } catch (e) { setErr((e as Error).message); } finally { setBusy(false); }
   };
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="sm" title="Convert lead" description={`${lead.name} becomes a contact. Their history comes with them.`}>
+      <DialogContent size="sm" title="Convert to client" description={`${lead.name} becomes a client. Their history comes with them.`}>
         <div className="space-y-4">
           {lead.company_name && <label className="flex items-center justify-between gap-4 rounded-lg border border-border p-3.5 text-sm"><span><span className="block font-medium">Create company “{lead.company_name}”</span><span className="text-xs text-fg-muted">Reuses an existing company with the same name</span></span><Switch checked={company} onCheckedChange={setCompany} aria-label="Create company" /></label>}
           {can("deals.create") && <label className="flex items-center justify-between gap-4 rounded-lg border border-border p-3.5 text-sm"><span><span className="block font-medium">Create a deal</span><span className="text-xs text-fg-muted">Starts in {pipelines.data?.find((p) => p.is_default)?.stages[0]?.name ?? "the first stage"}</span></span><Switch checked={deal} onCheckedChange={setDeal} aria-label="Create deal" /></label>}
           {deal && <div className="animate-fade-in space-y-3"><Field label="Deal name"><Input value={name} onChange={(e) => setName(e.target.value)} /></Field><Field label="Deal value"><Input type="number" min={0} value={value} onChange={(e) => setValue(e.target.value)} placeholder="0" /></Field></div>}
           {err && <p role="alert" className="text-sm text-danger">{err}</p>}
         </div>
-        <DialogFooter><Button variant="secondary" onClick={() => onOpenChange(false)}>Cancel</Button><Button onClick={go} loading={busy}><UserCheck /> Convert lead</Button></DialogFooter>
+        <DialogFooter><Button variant="secondary" onClick={() => onOpenChange(false)}>Cancel</Button><Button onClick={go} loading={busy}><UserCheck /> Convert to client</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -104,7 +106,7 @@ export function RecordPage({ entity }: { entity: Entity }) {
   const lead = rec as Lead; const deal = rec as Deal; const contact = rec as Contact; const company = rec as Company;
   const custom = rec.custom as Record<string, unknown>;
 
-  const tabs: [string, string][] = [["overview", "Activity"], ["notes", "Notes"], ["tasks", "Tasks"], ["emails", "Emails"], ["calls", "Calls"], ["meetings", "Meetings"], ...(entity === "contact" || entity === "company" ? [["deals", "Deals"] as [string, string]] : []), ...(entity === "company" ? [["contacts", "Contacts"] as [string, string]] : []), ["files", "Files"]];
+  const tabs: [string, string][] = [["overview", "Activity"], ["notes", "Notes"], ["tasks", "Tasks"], ["emails", "Emails"], ["calls", "Calls"], ["meetings", "Site visits"], ...(entity === "contact" || entity === "company" ? [["deals", "Deals"] as [string, string]] : []), ...(entity === "company" ? [["contacts", "Contacts"] as [string, string]] : []), ["files", "Files"]];
 
   return (
     <PageContainer wide>
@@ -124,7 +126,7 @@ export function RecordPage({ entity }: { entity: Entity }) {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {entity === "lead" && lead.status !== "converted" && can("leads.convert") && <Button onClick={() => setConvert(true)}><UserCheck /> Convert lead</Button>}
+          {entity === "lead" && lead.status !== "converted" && can("leads.convert") && <Button onClick={() => setConvert(true)}><UserCheck /> Convert to client</Button>}
           {entity === "lead" && lead.converted_contact_id && <Button variant="secondary" asChild><Link href={`/app/contacts/${lead.converted_contact_id}`}>View contact <ChevronRight /></Link></Button>}
           {entity === "deal" && deal.status === "open" && can("deals.close") && <><Button variant="soft" onClick={() => { const w = pipelines.data?.find((p) => p.id === deal.pipeline_id)?.stages.find((s) => s.kind === "won"); w && move(w.id); }}><Trophy /> Won</Button><Button variant="secondary" onClick={() => setLostOpen(true)}><XCircle /> Lost</Button></>}
           {entity === "deal" && deal.status !== "open" && canEdit && <Button variant="secondary" onClick={() => { const s = pipelines.data?.find((p) => p.id === deal.pipeline_id)?.stages.find((x) => x.kind === "open"); s && move(s.id); }}>Reopen</Button>}
@@ -172,16 +174,21 @@ export function RecordPage({ entity }: { entity: Entity }) {
               </div>
             </Card>
           )}
+          {entity === "lead" && lead.status !== "converted" && lead.status !== "lost" && <MatchingFlats leadId={id} hasRequirement={!!(lead.bhk || lead.budget_max || lead.intent)} />}
           <Section title="Details" actions={canEdit && <Button variant="ghost" size="xs" onClick={() => setEdit(true)}><Pencil /> Edit all</Button>}>
             {entity === "lead" && <>
               <InlineField label="Email" type="email" value={lead.email} onSave={(v) => save({ email: v })} editable={canEdit} />
               <InlineField label="Phone" type="tel" value={lead.phone} onSave={(v) => save({ phone: v })} editable={canEdit} />
-              <InlineField label="Company" value={lead.company_name} onSave={(v) => save({ company_name: v })} editable={canEdit} />
-              <InlineField label="Job title" value={lead.job_title} onSave={(v) => save({ job_title: v })} editable={canEdit} />
+              <InlineField label="Looking to" value={lead.intent} display={lead.intent && INTENTS.find((i) => i[0] === lead.intent)?.[1].replace("Wants to ", "")} options={INTENTS.map(([k, l]) => [k, l.replace("Wants to ", "").replace(/^\w/, (c) => c.toUpperCase())])} onSave={(v) => save({ intent: v })} editable={canEdit} placeholder="Buy, rent, invest…" />
+              <InlineField label="Size" value={lead.bhk} options={BHK_OPTIONS.map((b) => [b, b])} onSave={(v) => save({ bhk: v })} editable={canEdit} placeholder="3 BHK…" />
+              <InlineField label="Budget from" type="number" value={lead.budget_min} display={lead.budget_min ? formatMoney(lead.budget_min) : undefined} onSave={(v) => save({ budget_min: v === null ? null : Number(v) })} editable={canEdit} mono placeholder="Add minimum" />
+              <InlineField label="Budget up to" type="number" value={lead.budget_max} display={lead.budget_max ? formatMoney(lead.budget_max) : undefined} onSave={(v) => save({ budget_max: v === null ? null : Number(v) })} editable={canEdit} mono placeholder="Add maximum" />
+              <Row label="Project"><AsyncSelect endpoint="/api/v1/projects" value={lead.project_id} initialLabel={(lead as Rec).project_name} onChange={(c) => save(c ? { project_id: c } : { project_id: null, unit_id: null })} placeholder="Interested in…" /></Row>
+              <Row label="Flat"><AsyncSelect endpoint="/api/v1/units" labelKey="label" params={lead.project_id ? { project_id: lead.project_id } : undefined} value={lead.unit_id} initialLabel={(lead as Rec).unit_label} onChange={(c) => save({ unit_id: c })} placeholder="A specific flat…" /></Row>
               <InlineField label="Status" value={lead.status} display={<ColorChip color={statuses.find((s) => s.key === lead.status)?.color}>{statuses.find((s) => s.key === lead.status)?.label ?? lead.status}</ColorChip>} options={statuses.filter((s) => s.key !== "converted").map((s) => [s.key, s.label])} onSave={(v) => v && save({ status: v })} editable={canEdit && lead.status !== "converted"} />
               <InlineField label="Source" value={lead.source} display={lead.source && label(lead.source)} options={SOURCES.map((s) => [s, label(s)])} onSave={(v) => save({ source: v })} editable={canEdit} />
               <InlineField label="Follow-up" type="datetime-local" value={toLocalInput(lead.next_follow_up_at)} display={lead.next_follow_up_at && formatDate(lead.next_follow_up_at, "datetime")} onSave={(v) => save({ next_follow_up_at: fromLocalInput(v ?? "") })} editable={canEdit} placeholder="Schedule…" />
-              <InlineField label="Location" value={lead.location} onSave={(v) => save({ location: v })} editable={canEdit} />
+              <InlineField label="Preferred area" value={lead.location} onSave={(v) => save({ location: v })} editable={canEdit} />
               <Row label="Last contacted">{lead.last_contacted_at ? timeAgo(lead.last_contacted_at) : "Never"}</Row>
             </>}
             {entity === "contact" && <>
@@ -208,8 +215,9 @@ export function RecordPage({ entity }: { entity: Entity }) {
               <Row label="Weighted">{formatMoney(deal.weighted_value, deal.currency)}</Row>
               <InlineField label="Expected close" type="date" value={deal.expected_close_date} display={deal.expected_close_date && formatDate(deal.expected_close_date + "T00:00:00", "long")} onSave={(v) => save({ expected_close_date: v })} editable={canEdit} placeholder="Set date…" />
               <InlineField label="Priority" value={deal.priority} display={label(deal.priority)} options={PRIORITIES.map(([k, l]) => [k, l])} onSave={(v) => v && save({ priority: v })} editable={canEdit} />
-              <Row label="Company">{deal.company ? <Link className="text-primary hover:underline" href={`/app/companies/${deal.company.id}`}>{deal.company.name}</Link> : "—"}</Row>
-              <Row label="Contact">{deal.contact ? <Link className="text-primary hover:underline" href={`/app/contacts/${deal.contact.id}`}>{deal.contact.name}</Link> : "—"}</Row>
+              <Row label="Flat">{deal.unit ? <Link className="text-primary hover:underline" href={`/app/projects/${deal.project?.id}?unit=${deal.unit.id}`}>{deal.unit.label}</Link> : "—"}</Row>
+              <Row label="Builder">{deal.company ? <Link className="text-primary hover:underline" href={`/app/companies/${deal.company.id}`}>{deal.company.name}</Link> : "—"}</Row>
+              <Row label="Client">{deal.contact ? <Link className="text-primary hover:underline" href={`/app/contacts/${deal.contact.id}`}>{deal.contact.name}</Link> : "—"}</Row>
               <InlineField label="Source" value={deal.source} display={deal.source && label(deal.source)} options={SOURCES.map((s) => [s, label(s)])} onSave={(v) => save({ source: v })} editable={canEdit} />
               <Row label="In stage">{deal.days_in_stage != null ? `${deal.days_in_stage} day${deal.days_in_stage === 1 ? "" : "s"}` : "—"}</Row>
               {deal.status === "lost" && deal.lost_reason && <Row label="Lost reason">{deal.lost_reason}</Row>}

@@ -4,12 +4,12 @@ import { Pause, Play } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button, Dialog, DialogContent, Progress } from "@crm/ui";
-import { DashboardPreview } from "./dashboard-preview";
+import { BuildingHero } from "./building-preview";
 import { FlowDiagram } from "./sections-b";
 
 const STEPS = [
-  { title: "Start with what matters today", body: "Your dashboard opens with Today's Focus — follow-ups, meetings and deals that need you, so you never wonder what to do next.", node: <DashboardPreview /> },
-  { title: "Automate the busywork", body: "When a lead arrives, assign it, send a welcome email and create the follow-up task — all without lifting a finger.", node: <div className="rounded-2xl border border-border bg-surface p-6"><FlowDiagram /></div> },
+  { title: "See the whole building", body: "Every flat is a window, coloured by its status. Vacant, listed, held, booked, sold or rented — you see it before you read a word.", node: <BuildingHero /> },
+  { title: "Automate the busywork", body: "When an enquiry arrives, assign it, send the brochure and create the call task — all without lifting a finger.", node: <div className="rounded-2xl border border-border bg-surface p-6"><FlowDiagram /></div> },
 ];
 
 /** Auto-playing guided tour (no video asset needed). */

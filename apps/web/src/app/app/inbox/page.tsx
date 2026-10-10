@@ -20,7 +20,7 @@ export default function InboxPage() {
   const reply = (e: EmailMsg) => ui.openCompose({ to: e.direction === "inbound" ? e.from_address ?? "" : e.to_addresses.join(", "), subject: e.subject.startsWith("Re:") ? e.subject : `Re: ${e.subject}`, ...Object.fromEntries(e.related.map((r) => [`${r.type}_id`, r.id])) });
   return (
     <PageContainer wide>
-      <PageHeader title="Inbox" description="Every email linked to your leads, contacts and deals." actions={can("emails.create") ? <Button onClick={() => ui.openCompose()}><Pencil /> Compose</Button> : undefined} />
+      <PageHeader title="Inbox" description="Every email linked to your leads, clients and deals." actions={can("emails.create") ? <Button onClick={() => ui.openCompose()}><Pencil /> Compose</Button> : undefined} />
       <Card className="overflow-hidden">
         <div className="grid min-h-[560px] lg:grid-cols-[380px_1fr]">
           <div className={cn("border-r border-border", cur && sel && "hidden lg:block")}>

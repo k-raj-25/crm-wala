@@ -1,5 +1,5 @@
 "use client";
-import { ArrowDownRight, ArrowUpRight, CalendarClock, CheckCircle2, ChevronRight, Flame, Handshake, Sparkles, Users } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, CalendarClock, CheckCircle2, ChevronRight, Flame, Handshake, Hourglass, Sparkles, Users } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
 import { Avatar, Badge, Card, CardBody, CardHeader, EmptyState, FunnelBars, cn, dayLabel, formatDate, formatMoney, formatMoneyCompact, timeAgo, useLocalStorage } from "@crm/ui";
@@ -11,13 +11,15 @@ export type Focus = {
   meetings: { count: number; items: { id: string; title: string; starts_at: string; url: string }[] };
   deals_attention: { count: number; items: { id: string; title: string; value: number; currency: string; reason: string; url: string }[] };
   overdue_tasks: { count: number; items: { id: string; title: string; due_at: string; url: string }[] };
+  holds_expiring?: { count: number; items: { id: string; title: string; due_at: string; url: string }[] };
 };
 
 export function TodaysFocus({ focus, loading, name }: { focus?: Focus; loading?: boolean; name?: string }) {
   const [open, setOpen] = React.useState<string | null>(null);
   const tiles = focus ? [
     { key: "follow_ups", n: focus.follow_ups.count, label: focus.follow_ups.count === 1 ? "follow-up" : "follow-ups", icon: Users, tone: "text-primary bg-primary-soft", items: focus.follow_ups.items.map((i) => ({ id: i.id, title: i.title, meta: formatDate(i.due_at, "time"), url: i.url })) },
-    { key: "meetings", n: focus.meetings.count, label: focus.meetings.count === 1 ? "meeting" : "meetings", icon: CalendarClock, tone: "text-info bg-info-soft", items: focus.meetings.items.map((i) => ({ id: i.id, title: i.title, meta: formatDate(i.starts_at, "time"), url: i.url })) },
+    { key: "meetings", n: focus.meetings.count, label: focus.meetings.count === 1 ? "site visit or meeting" : "site visits & meetings", icon: CalendarClock, tone: "text-info bg-info-soft", items: focus.meetings.items.map((i) => ({ id: i.id, title: i.title, meta: formatDate(i.starts_at, "time"), url: i.url })) },
+    { key: "holds", n: focus.holds_expiring?.count ?? 0, label: (focus.holds_expiring?.count ?? 0) === 1 ? "hold ending soon" : "holds ending soon", icon: Hourglass, tone: "text-[#7c3aed] bg-[#7c3aed]/10", items: (focus.holds_expiring?.items ?? []).map((i) => ({ id: i.id, title: i.title, meta: `Ends ${formatDate(i.due_at, "datetime")}`, url: i.url })) },
     { key: "deals", n: focus.deals_attention.count, label: focus.deals_attention.count === 1 ? "deal needs attention" : "deals need attention", icon: Handshake, tone: "text-warning bg-warning-soft", items: focus.deals_attention.items.map((i) => ({ id: i.id, title: i.title, meta: i.reason, url: i.url })) },
     { key: "overdue", n: focus.overdue_tasks.count, label: focus.overdue_tasks.count === 1 ? "overdue task" : "overdue tasks", icon: Flame, tone: "text-danger bg-danger-soft", items: focus.overdue_tasks.items.map((i) => ({ id: i.id, title: i.title, meta: `Due ${formatDate(i.due_at)}`, url: i.url })) },
   ] : [];
@@ -28,9 +30,9 @@ export function TodaysFocus({ focus, loading, name }: { focus?: Focus; loading?:
       <div className="p-5 sm:p-6">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div><h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight"><Flame className="size-5 text-primary" /> Today's Focus</h2>
-            <p className="mt-0.5 text-sm text-fg-muted">{loading ? "Checking what needs you…" : total === 0 ? `You're all clear${name ? `, ${name}` : ""}. A great time to prospect for new leads.` : "Start here — these are the things most likely to move revenue today."}</p></div>
+            <p className="mt-0.5 text-sm text-fg-muted">{loading ? "Checking what needs you…" : total === 0 ? `You're all clear${name ? `, ${name}` : ""}. A great time to follow up with past clients.` : "Start here — these are the things most likely to close a sale today."}</p></div>
         </div>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
           {loading ? Array.from({ length: 4 }).map((_, i) => <div key={i} className="skeleton h-[92px] rounded-xl" />) : tiles.map((t) => (
             <button key={t.key} onClick={() => setOpen(open === t.key ? null : t.key)} aria-expanded={open === t.key} disabled={!t.n}
               className={cn("group rounded-xl border bg-surface p-4 text-left shadow-xs transition-all disabled:opacity-60", open === t.key ? "border-primary ring-2 ring-primary/20" : "border-border enabled:hover:-translate-y-0.5 enabled:hover:shadow-md")}>
@@ -112,7 +114,7 @@ export function GettingStarted({ steps }: { steps: { done: boolean; title: strin
   if (done === steps.length || hidden) return null;
   return (
     <Card>
-      <CardHeader title="Get started in 5 minutes" description={`${done} of ${steps.length} done — follow the path from first lead to closed deal`} actions={<button onClick={() => setHidden(true)} className="text-xs font-medium text-fg-subtle hover:text-fg">Hide</button>} />
+      <CardHeader title="Get started in 5 minutes" description={`${done} of ${steps.length} done — from your first project to your first sale`} actions={<button onClick={() => setHidden(true)} className="text-xs font-medium text-fg-subtle hover:text-fg">Hide</button>} />
       <CardBody className="pt-4">
         <div className="mb-4 h-1.5 overflow-hidden rounded-full bg-bg-subtle"><div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${(done / steps.length) * 100}%` }} /></div>
         <ol className="grid gap-2 md:grid-cols-2 xl:grid-cols-5">

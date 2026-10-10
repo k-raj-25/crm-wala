@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Button, Logo, ThemeToggle, cn } from "@crm/ui";
 import { Container } from "./primitives";
 
-const LINKS = [["Features", "#features"], ["AI", "#ai"], ["Automation", "#automation"], ["Pricing", "#pricing"], ["FAQ", "#faq"]];
+const LINKS = [["Building view", "#product"], ["Features", "#features"], ["AI", "#ai"], ["Automation", "#automation"], ["Pricing", "#pricing"], ["FAQ", "#faq"]];
 
 export function Nav() {
   const [scrolled, setScrolled] = useState(false);

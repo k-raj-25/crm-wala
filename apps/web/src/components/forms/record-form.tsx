@@ -4,43 +4,46 @@ import { AlertTriangle, ChevronDown } from "lucide-react";
 import * as React from "react";
 import { ApiError, Button, Field, Input, NativeSelect, Select, Textarea, Checkbox, cn, useToast } from "@crm/ui";
 import { api } from "@/lib/api";
-import { CALL_OUTCOMES, PRIORITIES, SOURCES, label as pretty } from "@/lib/constants";
+import { CALL_OUTCOMES, INTENTS, PRIORITIES, PROPERTY_TYPES, SOURCES, label as pretty } from "@/lib/constants";
+import { BHK_OPTIONS } from "@/lib/realestate";
 import { useCustomFields, usePipelines, useMe } from "@/lib/queries";
 import type { CustomFieldDef } from "@/lib/types";
 import { AsyncSelect, MemberSelect, TagInput, fromLocalInput, toLocalInput } from "./fields";
 
 export type Kind = "lead" | "contact" | "company" | "deal" | "task" | "meeting" | "note" | "call";
-type FType = "text" | "email" | "tel" | "url" | "textarea" | "number" | "date" | "datetime" | "member" | "company" | "contact" | "tags" | "status" | "priority" | "source" | "stage" | "money" | "related" | "select" | "duration" | "checkbox";
+type FType = "text" | "email" | "tel" | "url" | "textarea" | "number" | "date" | "datetime" | "member" | "company" | "contact" | "tags" | "status" | "priority" | "source" | "stage" | "money" | "related" | "select" | "duration" | "checkbox" | "project" | "unit";
 export type FieldDef = { key: string; label: string; type: FType; required?: boolean; span?: 1 | 2; placeholder?: string; hint?: string; options?: [string, string][]; advanced?: boolean };
 
 const F = (key: string, label: string, type: FType, extra: Partial<FieldDef> = {}): FieldDef => ({ key, label, type, ...extra });
 
 export const FORMS: Record<Kind, { title: string; noun: string; endpoint: string; plural: string; fields: FieldDef[]; custom?: boolean }> = {
   lead: { title: "New lead", noun: "lead", plural: "leads", endpoint: "/api/v1/leads", custom: true, fields: [
-    F("first_name", "First name", "text", { required: true }), F("last_name", "Last name", "text"), F("email", "Email", "email"), F("phone", "Phone", "tel"),
-    F("company_name", "Company", "text"), F("job_title", "Job title", "text"), F("source", "Source", "source"), F("status", "Status", "status"), F("owner_id", "Owner", "member"),
-    F("next_follow_up_at", "Next follow-up", "datetime"), F("location", "Location", "text", { advanced: true }), F("tags", "Tags", "tags", { span: 2, advanced: true }), F("description", "Notes", "textarea", { span: 2, advanced: true }),
+    F("first_name", "First name", "text", { required: true }), F("last_name", "Last name", "text"), F("phone", "Phone", "tel"), F("email", "Email", "email"),
+    F("intent", "Looking to", "select", { options: INTENTS.map(([a, b]) => [a, b.replace("Wants to ", "").replace(/^\w/, (c) => c.toUpperCase())] as [string, string]) }), F("bhk", "Size", "select", { options: BHK_OPTIONS.map((b) => [b, b] as [string, string]) }),
+    F("budget_min", "Budget from (₹)", "money"), F("budget_max", "Budget up to (₹)", "money"), F("project_id", "Interested in project", "project"), F("source", "Source", "source"),
+    F("status", "Status", "status"), F("owner_id", "Owner", "member"), F("next_follow_up_at", "Next follow-up", "datetime"), F("property_type", "Property type", "select", { advanced: true, options: PROPERTY_TYPES.map(([a, b]) => [a, b] as [string, string]) }),
+    F("unit_id", "Interested in flat", "unit", { advanced: true }), F("location", "Preferred area", "text", { advanced: true }), F("tags", "Tags", "tags", { span: 2, advanced: true }), F("description", "Notes", "textarea", { span: 2, advanced: true }),
   ] },
-  contact: { title: "New contact", noun: "contact", plural: "contacts", endpoint: "/api/v1/contacts", custom: true, fields: [
+  contact: { title: "New client", noun: "client", plural: "contacts", endpoint: "/api/v1/contacts", custom: true, fields: [
     F("first_name", "First name", "text", { required: true }), F("last_name", "Last name", "text"), F("email", "Email", "email"), F("phone", "Phone", "tel"),
-    F("company_id", "Company", "company"), F("job_title", "Job title", "text"), F("owner_id", "Owner", "member"), F("location", "Location", "text", { advanced: true }),
+    F("owner_id", "Owner", "member"), F("location", "Location", "text", { advanced: true }), F("company_id", "Company", "company", { advanced: true }), F("job_title", "Job title", "text", { advanced: true }),
     F("tags", "Tags", "tags", { span: 2, advanced: true }), F("description", "Notes", "textarea", { span: 2, advanced: true }),
   ] },
-  company: { title: "New company", noun: "company", plural: "companies", endpoint: "/api/v1/companies", custom: true, fields: [
-    F("name", "Company name", "text", { required: true, span: 2 }), F("website", "Website", "url", { placeholder: "https://" }), F("industry", "Industry", "text"), F("size", "Size", "select", { options: [["1-10", "1–10"], ["11-50", "11–50"], ["51-200", "51–200"], ["201-500", "201–500"], ["501-1000", "501–1,000"], ["1001-5000", "1,001–5,000"], ["5000+", "5,000+"]] }),
+  company: { title: "New builder", noun: "builder", plural: "companies", endpoint: "/api/v1/companies", custom: true, fields: [
+    F("name", "Builder / company name", "text", { required: true, span: 2 }), F("website", "Website", "url", { placeholder: "https://" }), F("industry", "Industry", "text", { advanced: true }), F("size", "Size", "select", { options: [["1-10", "1–10"], ["11-50", "11–50"], ["51-200", "51–200"], ["201-500", "201–500"], ["501-1000", "501–1,000"], ["1001-5000", "1,001–5,000"], ["5000+", "5,000+"]] }),
     F("owner_id", "Owner", "member"), F("location", "Location", "text", { advanced: true }), F("annual_revenue", "Annual revenue", "number", { advanced: true }), F("phone", "Phone", "tel", { advanced: true }), F("tags", "Tags", "tags", { span: 2, advanced: true }), F("description", "Notes", "textarea", { span: 2, advanced: true }),
   ] },
   deal: { title: "New deal", noun: "deal", plural: "deals", endpoint: "/api/v1/deals", custom: true, fields: [
-    F("name", "Deal name", "text", { required: true, span: 2 }), F("company_id", "Company", "company"), F("contact_id", "Contact", "contact"), F("value", "Value", "money"), F("stage_id", "Pipeline & stage", "stage"),
-    F("expected_close_date", "Expected close", "date"), F("owner_id", "Owner", "member"), F("priority", "Priority", "priority"), F("source", "Source", "source", { advanced: true }), F("probability", "Probability %", "number", { advanced: true, hint: "Defaults to the stage's probability" }),
+    F("name", "Deal name", "text", { required: true, span: 2, placeholder: "Client name — Unit 801" }), F("contact_id", "Client", "contact"), F("unit_id", "Flat", "unit"), F("value", "Deal value", "money"), F("stage_id", "Pipeline & stage", "stage"),
+    F("expected_close_date", "Expected close", "date"), F("owner_id", "Owner", "member"), F("priority", "Priority", "priority"), F("source", "Source", "source", { advanced: true }), F("company_id", "Builder / company", "company", { advanced: true }), F("probability", "Probability %", "number", { advanced: true, hint: "Defaults to the stage's probability" }),
     F("tags", "Tags", "tags", { span: 2, advanced: true }), F("description", "Notes", "textarea", { span: 2, advanced: true }),
   ] },
   task: { title: "New task", noun: "task", plural: "tasks", endpoint: "/api/v1/tasks", fields: [
     F("title", "Title", "text", { required: true, span: 2 }), F("due_at", "Due", "datetime"), F("priority", "Priority", "priority"), F("assignee_id", "Assignee", "member"),
     F("kind", "Type", "select", { options: [["task", "Task"], ["follow_up", "Follow-up"], ["deadline", "Deadline"]] }), F("related", "Related to", "related", { span: 2 }), F("description", "Description", "textarea", { span: 2, advanced: true }),
   ] },
-  meeting: { title: "Schedule meeting", noun: "meeting", plural: "meetings", endpoint: "/api/v1/meetings", fields: [
-    F("title", "Title", "text", { required: true, span: 2 }), F("starts_at", "Starts", "datetime", { required: true }), F("duration", "Duration", "duration"), F("meeting_url", "Meeting link", "url", { placeholder: "https://meet…" }), F("location", "Location", "text"),
+  meeting: { title: "Schedule meeting", noun: "visit", plural: "meetings", endpoint: "/api/v1/meetings", fields: [
+    F("title", "Title", "text", { required: true, span: 2 }), F("kind", "Type", "select", { options: [["site_visit", "Site visit"], ["meeting", "Meeting"]] }), F("starts_at", "Starts", "datetime", { required: true }), F("duration", "Duration", "duration"), F("unit_id", "Flat to show", "unit"), F("location", "Location", "text"), F("meeting_url", "Meeting link", "url", { placeholder: "https://meet…", advanced: true }),
     F("attendees", "Attendee emails", "text", { span: 2, placeholder: "name@company.com, …", hint: "Separate with commas" }), F("related", "Related to", "related", { span: 2 }), F("description", "Agenda", "textarea", { span: 2, advanced: true }),
   ] },
   note: { title: "Add note", noun: "note", plural: "notes", endpoint: "/api/v1/notes", fields: [F("body", "Note", "textarea", { required: true, span: 2, placeholder: "Write a note…" }), F("related", "Related to", "related", { span: 2 })] },
@@ -85,7 +88,7 @@ export function RecordForm({ kind, initial, defaults, onSaved, onCancel, id, sub
   const stageOptions = (pipelines.data ?? []).flatMap((p) => p.stages.map((s) => ({ value: s.id, label: <span>{pipelines.data!.length > 1 && <span className="text-fg-subtle">{p.name} · </span>}{s.name}</span> })));
   const defaultStage = pipelines.data?.find((p) => p.is_default)?.stages.find((s) => s.kind === "open");
   React.useEffect(() => { if (kind === "deal" && !editing && !values.stage_id && defaultStage) set("stage_id", defaultStage.id); }, [defaultStage?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-  React.useEffect(() => { if (kind === "lead" && !values.status) set("status", "new"); if (kind === "call" && !values.status) { set("status", "completed"); set("direction", "outbound"); } if (kind === "task" && !values.priority) { set("priority", "medium"); set("kind", "task"); } if (kind === "meeting" && !values.duration) set("duration", "30"); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  React.useEffect(() => { if (kind === "lead" && !values.status) set("status", "new"); if (kind === "meeting" && !values.kind) set("kind", "meeting"); if (kind === "call" && !values.status) { set("status", "completed"); set("direction", "outbound"); } if (kind === "task" && !values.priority) { set("priority", "medium"); set("kind", "task"); } if (kind === "meeting" && !values.duration) set("duration", "30"); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const checkDup = async () => {
     if (editing || (kind !== "lead" && kind !== "contact") || !values.email) { setDups([]); return; }
@@ -100,12 +103,15 @@ export function RecordForm({ kind, initial, defaults, onSaved, onCancel, id, sub
       case "member": return <MemberSelect {...common} value={v as string | null} onChange={(x) => set(f.key, x)} />;
       case "company": return <AsyncSelect {...common} endpoint="/api/v1/companies" value={v as string} initialLabel={(initial?.company as { name: string } | null)?.name ?? (defaults?._company_label as string)} onChange={(x) => set(f.key, x)} placeholder="Search companies…" onCreate={async (name) => { const c = await api.post<{ id: string; name: string }>("/api/v1/companies", { name }); qc.invalidateQueries({ queryKey: ["async-select"] }); return { id: c.id, label: c.name }; }} />;
       case "contact": return <AsyncSelect {...common} endpoint="/api/v1/contacts" value={v as string} initialLabel={(initial?.contact as { name: string } | null)?.name ?? (defaults?._contact_label as string)} onChange={(x, item) => { set(f.key, x); if (item?.company_id && !values.company_id && kind === "deal") { set("company_id", item.company_id); } }} placeholder="Search contacts…" />;
+      case "project": return <AsyncSelect {...common} endpoint="/api/v1/projects" value={v as string} initialLabel={(initial?.project_name as string) ?? (defaults?._project_label as string)} onChange={(x) => { set(f.key, x); if (!x) set("unit_id", null); }} placeholder="Search projects…" />;
+      case "unit": return <AsyncSelect {...common} endpoint="/api/v1/units" labelKey="label" params={values.project_id ? { project_id: values.project_id } : undefined} value={v as string} initialLabel={((initial?.unit_label ?? (initial?.unit as { label?: string } | null)?.label) as string) ?? (defaults?._unit_label as string)} onChange={(x, item) => { set(f.key, x); if (item?.project_id && !values.project_id) set("project_id", item.project_id); }} placeholder="Search by flat number…" />;
       case "tags": return <TagInput {...common} value={(v as string[]) ?? []} onChange={(x) => set(f.key, x)} />;
       case "status": return <Select {...common} value={(v as string) ?? "new"} onValueChange={(x) => set(f.key, x)} options={(me?.workspace?.lead_statuses ?? []).filter((s) => s.key !== "converted" || v === "converted").map((s) => ({ value: s.key, label: s.label }))} />;
       case "priority": return <Select {...common} value={(v as string) ?? "medium"} onValueChange={(x) => set(f.key, x)} options={PRIORITIES.map(([a, b]) => ({ value: a, label: b }))} />;
       case "source": return <Select {...common} value={(v as string) ?? undefined} onValueChange={(x) => set(f.key, x)} placeholder="Select source" options={SOURCES.map((s) => ({ value: s, label: pretty(s) }))} />;
       case "stage": return <Select {...common} value={(v as string) ?? undefined} onValueChange={(x) => set(f.key, x)} options={stageOptions} placeholder="Select stage" />;
-      case "money": return <div className="flex gap-2"><Input {...common} type="number" min={0} inputMode="decimal" value={(v as string | number) ?? ""} onChange={(e) => set(f.key, e.target.value)} placeholder="0" /><NativeSelect className="w-24" value={(values.currency as string) ?? me?.workspace?.currency ?? "INR"} onChange={(e) => set("currency", e.target.value)} aria-label="Currency">{["INR", "USD", "EUR", "GBP", "AED", "SGD", "AUD"].map((c) => <option key={c}>{c}</option>)}</NativeSelect></div>;
+      case "money": if (f.key !== "value") return <Input {...common} type="number" min={0} inputMode="decimal" value={(v as string | number) ?? ""} onChange={(e) => set(f.key, e.target.value)} placeholder="e.g. 25000000" />;
+        return <div className="flex gap-2"><Input {...common} type="number" min={0} inputMode="decimal" value={(v as string | number) ?? ""} onChange={(e) => set(f.key, e.target.value)} placeholder="0" /><NativeSelect className="w-24" value={(values.currency as string) ?? me?.workspace?.currency ?? "INR"} onChange={(e) => set("currency", e.target.value)} aria-label="Currency">{["INR", "USD", "EUR", "GBP", "AED", "SGD", "AUD"].map((c) => <option key={c}>{c}</option>)}</NativeSelect></div>;
       case "number": return <Input {...common} type="number" min={0} value={(v as string | number) ?? ""} onChange={(e) => set(f.key, e.target.value)} />;
       case "date": return <Input {...common} type="date" value={(v as string) ?? ""} onChange={(e) => set(f.key, e.target.value)} />;
       case "datetime": return <Input {...common} type="datetime-local" value={toLocalInput(v as string)} onChange={(e) => set(f.key, fromLocalInput(e.target.value))} />;
@@ -130,7 +136,7 @@ export function RecordForm({ kind, initial, defaults, onSaved, onCancel, id, sub
       }
       if (v === "" || v === undefined) v = null;
       if (f.key === "attendees") v = typeof v === "string" ? v.split(",").map((s) => s.trim()).filter(Boolean).map((email) => ({ name: email.split("@")[0], email })) : [];
-      if (["value", "annual_revenue", "probability"].includes(f.key) && v !== null) v = Number(v);
+      if (["value", "annual_revenue", "probability", "budget_min", "budget_max"].includes(f.key) && v !== null) v = Number(v);
       if (f.key === "tags") v = v ?? [];
       p[f.key] = v;
     }

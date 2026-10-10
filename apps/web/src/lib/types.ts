@@ -16,6 +16,7 @@ export type Lead = {
   id: Id; first_name: string; last_name: string | null; name?: string; email: string | null; phone: string | null; company_name: string | null; job_title: string | null; source: string | null; status: string;
   owner_id: Id | null; owner: PersonRef | null; score: number; score_reasons: { label: string; points: number }[]; tags: string[]; location: string | null; description: string | null; custom: Record<string, unknown>;
   last_contacted_at: string | null; next_follow_up_at: string | null; created_at: string; converted_at: string | null; converted_contact_id: Id | null; converted_deal_id: Id | null;
+  intent: string | null; property_type: string | null; bhk: string | null; budget_min: number | null; budget_max: number | null; project_id: Id | null; unit_id: Id | null; project_name?: string | null; unit_label?: string | null;
 };
 export type Contact = {
   id: Id; first_name: string; last_name: string | null; name: string; email: string | null; phone: string | null; job_title: string | null; company_id: Id | null; company: { id: Id; name: string } | null;
@@ -32,6 +33,7 @@ export type Deal = {
   id: Id; name: string; company: { id: Id; name: string } | null; contact: { id: Id; name: string } | null; company_id: Id | null; contact_id: Id | null; pipeline_id: Id; stage_id: Id;
   stage: { id: Id; name: string; kind: "open" | "won" | "lost"; color: string | null; position: number }; value: number; currency: string; probability: number; weighted_value: number; priority: "low" | "medium" | "high" | "urgent";
   expected_close_date: string | null; owner_id: Id | null; owner: PersonRef | null; source: string | null; tags: string[]; description: string | null; custom: Record<string, unknown>; status: "open" | "won" | "lost";
+  unit_id?: Id | null; project_id?: Id | null; unit?: { id: Id; label: string | null } | null; project?: { id: Id; name: string | null } | null;
   lead_score: number; days_in_stage: number | null; created_at: string; closed_at: string | null; last_activity_at: string | null; lost_reason: string | null; position: number;
 };
 export type Task = {
@@ -50,4 +52,4 @@ export type CustomFieldDef = { id: Id; entity_type: "lead" | "contact" | "compan
 export type SavedView = { id: Id; entity_type: string; name: string; filters: Record<string, string>; sort: string | null; columns: string[]; shared: boolean; owner_id: Id };
 export type NotificationItem = { id: Id; type: string; title: string; body: string | null; link: string | null; read_at: string | null; created_at: string };
 export type Plan = { key: string; name: string; tagline: string | null; currency: string; price_monthly: number | null; price_annual: number | null; limits: Record<string, number | null>; features: string[]; highlights: string[]; is_custom: boolean; is_trial: boolean };
-export type CalendarEvent = { id: Id; kind: "meeting" | "call" | "task" | "follow_up" | "deadline"; title: string; start: string; end: string; status: string; location?: string | null; priority?: string; entity: { type: string; id: Id } };
+export type CalendarEvent = { id: Id; kind: "meeting" | "site_visit" | "call" | "task" | "follow_up" | "deadline"; title: string; start: string; end: string; status: string; location?: string | null; priority?: string; entity: { type: string; id: Id } };

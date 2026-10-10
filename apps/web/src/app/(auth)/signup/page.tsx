@@ -49,14 +49,14 @@ export default function SignupPage() {
         <Field label="Your name" error={errors.name?.message} className="sm:col-span-1"><Input autoComplete="name" autoFocus {...register("name")} /></Field>
         <Field label="Work email" error={errors.email?.message}><Input type="email" autoComplete="email" {...register("email")} /></Field>
         <div className="sm:col-span-2"><Field label="Password" error={errors.password?.message}><PasswordInput autoComplete="new-password" {...register("password")} /></Field><StrengthMeter value={pw} /></div>
-        <Field label="Company name" error={errors.company_name?.message}><Input autoComplete="organization" {...register("company_name")} /></Field>
-        <Field label="Company size" error={errors.company_size?.message}><NativeSelect {...register("company_size")}><option value="">Select…</option>{COMPANY_SIZES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</NativeSelect></Field>
-        <Field label="Industry" error={errors.industry?.message}><NativeSelect {...register("industry")}><option value="">Select…</option>{INDUSTRIES.map((i) => <option key={i}>{i}</option>)}</NativeSelect></Field>
+        <Field label="Agency or company name" error={errors.company_name?.message}><Input autoComplete="organization" {...register("company_name")} /></Field>
+        <Field label="Team size" error={errors.company_size?.message}><NativeSelect {...register("company_size")}><option value="">Select…</option>{COMPANY_SIZES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</NativeSelect></Field>
+        <Field label="You are a…" error={errors.industry?.message}><NativeSelect {...register("industry")}><option value="">Select…</option>{INDUSTRIES.map((i) => <option key={i}>{i}</option>)}</NativeSelect></Field>
         <Field label="Your role" error={errors.role?.message}><NativeSelect {...register("role")}><option value="">Select…</option>{ROLES_TITLES.map((i) => <option key={i}>{i}</option>)}</NativeSelect></Field>
         {formError && <p role="alert" className="flex items-center gap-2 text-sm text-danger sm:col-span-2"><AlertCircle className="size-4 shrink-0" />{formError}</p>}
         <div className="sm:col-span-2">
           <Button type="submit" size="lg" className="w-full" loading={isSubmitting} disabled={cfg.data?.signups_enabled === false}>Create workspace & start trial</Button>
-          <ul className="mt-4 grid gap-1.5 text-[13px] text-fg-muted sm:grid-cols-2">{[`${days} days of full access`, "Cancel or upgrade any time", "Import your data in minutes", "Your data is never deleted"].map((t) => <li key={t} className="flex items-center gap-2"><Check className="size-3.5 text-success" />{t}</li>)}</ul>
+          <ul className="mt-4 grid gap-1.5 text-[13px] text-fg-muted sm:grid-cols-2">{[`${days} days of full access`, "Cancel or upgrade any time", "Import your leads in minutes", "Your data is never deleted"].map((t) => <li key={t} className="flex items-center gap-2"><Check className="size-3.5 text-success" />{t}</li>)}</ul>
         </div>
       </form>
     </AuthShell>

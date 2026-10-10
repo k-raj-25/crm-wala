@@ -35,10 +35,11 @@ export function ProjectView() {
 
   const project = useQuery({ queryKey: ["project", id], queryFn: () => api.get<Project>(`/api/v1/projects/${id}`) });
   const towers = project.data?.towers ?? [];
-  const towerId = towers.find((t) => t.id === sp.get("tower"))?.id ?? towers[0]?.id;
+  const towerId = towers.find((t) => t.id === (sp.get("tower") ?? unitProbe.data?.tower_id))?.id ?? towers[0]?.id;
   const view = (["building", "list", "analytics"].includes(sp.get("view") ?? "") ? sp.get("view") : "building") as View;
   const building = useQuery({ queryKey: ["building", id, towerId], enabled: !!towerId, queryFn: () => api.get<Building>(`/api/v1/projects/${id}/towers/${towerId}/building`), refetchInterval: 60_000 });
 
+  const unitProbe = useQuery({ queryKey: ["unit", sp.get("unit")], enabled: !!sp.get("unit") && !sp.get("tower"), queryFn: () => api.get<{ tower_id: string }>(`/api/v1/units/${sp.get("unit")}`) });
   const nav = (patch: Record<string, string | null>) => {
     const q = new URLSearchParams(sp.toString());
     Object.entries(patch).forEach(([k, v]) => (v == null ? q.delete(k) : q.set(k, v)));

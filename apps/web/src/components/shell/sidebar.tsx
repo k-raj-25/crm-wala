@@ -1,11 +1,11 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Bell, Check, ChevronsUpDown, HelpCircle, Keyboard, LifeBuoy, LogOut, Moon, PanelLeftClose, PanelLeftOpen, Plus, Settings2, Sun, User } from "lucide-react";
+import { Bell, Check, ChevronDown, ChevronsUpDown, HelpCircle, Keyboard, LifeBuoy, LogOut, Moon, PanelLeftClose, PanelLeftOpen, Plus, Settings2, Sun, User } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import * as React from "react";
-import { Avatar, Badge, Button, DropdownContent, DropdownItem, DropdownLabel, DropdownMenu, DropdownSeparator, DropdownTrigger, Logo, LogoMark, Tooltip, cn, humanDuration, useTheme } from "@crm/ui";
+import { Avatar, Badge, Button, DropdownContent, DropdownItem, DropdownLabel, DropdownMenu, DropdownSeparator, DropdownTrigger, Logo, LogoMark, Tooltip, cn, humanDuration, useLocalStorage, useTheme } from "@crm/ui";
 import { api } from "@/lib/api";
 import { NAV } from "@/lib/nav";
 import { useAccess, useMe } from "@/lib/queries";
@@ -101,6 +101,26 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
   const tasks = useQuery({ queryKey: ["tasks-summary-badge"], enabled: can("tasks.read"), queryFn: () => api.get<{ today: number; overdue: number }>("/api/v1/tasks/summary", { mine: "true" }), refetchInterval: 60_000 });
   const badge = (href: string) => (href === "/app/tasks" ? (tasks.data?.overdue ?? 0) + (tasks.data?.today ?? 0) : 0);
   const active = (href: string) => (href === "/app" ? pathname === "/app" : pathname.startsWith(href));
+  const renderItem = (n: (typeof items)[number]) => {
+    const a = active(n.href);
+    const b = badge(n.href);
+    const link = (
+      <Link key={n.href} href={n.href} aria-current={a ? "page" : undefined}
+        className={cn("group relative flex h-9 items-center gap-3 rounded-lg px-3 text-[13.5px] font-medium transition-colors", a ? "text-primary" : "text-fg-muted hover:bg-surface-hover hover:text-fg", collapsed && "justify-center px-0")}>
+        {a && <motion.span layoutId="nav-active" className="absolute inset-0 rounded-lg bg-primary-soft" transition={{ type: "spring", stiffness: 500, damping: 40 }} />}
+        <n.icon className="relative size-[18px] shrink-0" />
+        {!collapsed && <span className="relative flex-1 truncate">{n.label}</span>}
+        {!collapsed && b > 0 && <Badge tone="primary" className="relative">{b}</Badge>}
+        {collapsed && b > 0 && <span className="absolute right-2 top-1.5 size-2 rounded-full bg-primary ring-2 ring-surface" />}
+      </Link>
+    );
+    return collapsed ? <Tooltip key={n.href} content={n.label} side="right">{link}</Tooltip> : link;
+  };
+  const main = items.filter((n) => !n.more && n.href !== "/app/settings");
+  const more = items.filter((n) => n.more);
+  const tail = items.filter((n) => n.href === "/app/settings");
+  const [moreOpen, setMoreOpen] = useLocalStorage("nav-more-open", false);
+  const showMore = moreOpen || more.some((n) => active(n.href)); // never hide the page you're on
   const trialLeft = me?.subscription?.status === "trialing" ? me.subscription.access.seconds_left : null;
   return (
     <aside className={cn("sticky top-0 hidden h-dvh shrink-0 flex-col border-r border-border bg-surface transition-[width] duration-200 ease-out md:flex", collapsed ? "w-[68px]" : "w-[248px]")} aria-label="Sidebar">
@@ -109,21 +129,15 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
         {!collapsed && <Tooltip content="Collapse sidebar" shortcut="["><Button variant="ghost" size="icon-sm" onClick={onToggle} aria-label="Collapse sidebar"><PanelLeftClose /></Button></Tooltip>}
       </div>
       <nav className="hide-scrollbar flex-1 space-y-0.5 overflow-y-auto px-3 py-2" aria-label="Main">
-        {items.map((n) => {
-          const a = active(n.href);
-          const b = badge(n.href);
-          const link = (
-            <Link key={n.href} href={n.href} aria-current={a ? "page" : undefined}
-              className={cn("group relative flex h-9 items-center gap-3 rounded-lg px-3 text-[13.5px] font-medium transition-colors", a ? "text-primary" : "text-fg-muted hover:bg-surface-hover hover:text-fg", collapsed && "justify-center px-0")}>
-              {a && <motion.span layoutId="nav-active" className="absolute inset-0 rounded-lg bg-primary-soft" transition={{ type: "spring", stiffness: 500, damping: 40 }} />}
-              <n.icon className="relative size-[18px] shrink-0" />
-              {!collapsed && <span className="relative flex-1 truncate">{n.label}</span>}
-              {!collapsed && b > 0 && <Badge tone="primary" className="relative">{b}</Badge>}
-              {collapsed && b > 0 && <span className="absolute right-2 top-1.5 size-2 rounded-full bg-primary ring-2 ring-surface" />}
-            </Link>
-          );
-          return collapsed ? <Tooltip key={n.href} content={n.label} side="right">{link}</Tooltip> : link;
-        })}
+        {main.map(renderItem)}
+        {more.length > 0 && !collapsed && (
+          <button type="button" onClick={() => setMoreOpen(!showMore)} aria-expanded={showMore} className="mt-2 flex h-8 w-full items-center gap-3 rounded-lg px-3 text-xs font-semibold uppercase tracking-wide text-fg-subtle transition-colors hover:text-fg">
+            <ChevronDown className={cn("size-3.5 transition-transform", !showMore && "-rotate-90")} />More{!showMore && <span className="font-normal normal-case tracking-normal">· {more.length}</span>}
+          </button>
+        )}
+        {more.length > 0 && collapsed && <div className="mx-3 my-2 h-px bg-border" />}
+        {(showMore || collapsed) && more.map(renderItem)}
+        {tail.length > 0 && <div className="!mt-2 border-t border-border pt-2">{tail.map(renderItem)}</div>}
       </nav>
       {!collapsed && trialLeft != null && (
         <Link href="/app/billing" className="mx-3 mb-2 block rounded-lg border border-primary/20 bg-primary-soft/60 p-3 transition-colors hover:bg-primary-soft">

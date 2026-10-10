@@ -1,7 +1,7 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import { addDays, addMonths, endOfMonth, endOfWeek, format, isSameDay, isSameMonth, isToday, startOfDay, startOfMonth, startOfWeek } from "date-fns";
-import { Calendar as CalIcon, CheckSquare, ChevronLeft, ChevronRight, Phone, Repeat, Flag, Video } from "lucide-react";
+import { Calendar as CalIcon, CheckSquare, ChevronLeft, ChevronRight, MapPin, Phone, Repeat, Flag, Video } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
 import { Button, Dialog, DialogContent, ErrorState, Segmented, cn, formatDate } from "@crm/ui";
@@ -12,7 +12,7 @@ import { useUI } from "../shell/ui-context";
 
 export type View = "day" | "week" | "month";
 const KIND: Record<CalendarEvent["kind"], { label: string; color: string; icon: React.ElementType }> = {
-  meeting: { label: "Meeting", color: "var(--series-1)", icon: Video }, call: { label: "Call", color: "var(--series-3)", icon: Phone }, task: { label: "Task", color: "var(--series-7)", icon: CheckSquare },
+  site_visit: { label: "Site visit", color: "var(--series-6)", icon: MapPin }, meeting: { label: "Meeting", color: "var(--series-1)", icon: Video }, call: { label: "Call", color: "var(--series-3)", icon: Phone }, task: { label: "Task", color: "var(--series-7)", icon: CheckSquare },
   follow_up: { label: "Follow-up", color: "var(--series-2)", icon: Repeat }, deadline: { label: "Deadline", color: "var(--series-8)", icon: Flag },
 };
 const HOUR = 56;
@@ -99,7 +99,7 @@ function EventDialog({ e, onClose }: { e: CalendarEvent | null; onClose: () => v
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent size="sm" title={e.title} description={`${k.label} · ${formatDate(e.start, "long")}`}>
         <div className="space-y-3 text-sm">
-          <p className="flex items-center gap-2"><span className="flex size-8 items-center justify-center rounded-lg" style={{ background: `color-mix(in srgb, ${k.color} 15%, transparent)`, color: k.color }}><k.icon className="size-4" /></span>{formatDate(e.start, "time")}{e.kind === "meeting" && ` – ${formatDate(e.end, "time")}`}</p>
+          <p className="flex items-center gap-2"><span className="flex size-8 items-center justify-center rounded-lg" style={{ background: `color-mix(in srgb, ${k.color} 15%, transparent)`, color: k.color }}><k.icon className="size-4" /></span>{formatDate(e.start, "time")}{(e.kind === "meeting" || e.kind === "site_visit") && ` – ${formatDate(e.end, "time")}`}</p>
           {e.location && <p className="text-fg-muted">{/^https?:/.test(e.location) ? <a className="text-primary hover:underline" href={e.location} target="_blank" rel="noreferrer">Join meeting</a> : e.location}</p>}
           <p className="text-fg-muted">Status: <span className="font-medium capitalize text-fg">{e.status.replace("_", " ")}</span></p>
           <div className="flex gap-2 pt-2">
@@ -120,7 +120,7 @@ export function CalendarView({ mine, kinds, defaultView = "month", taskOnly }: {
   const step = (n: number) => setDate((d) => (view === "month" ? addMonths(d, n) : addDays(d, n * (view === "week" ? 7 : 1))));
   const title = view === "month" ? format(date, "MMMM yyyy") : view === "week" ? `${format(from, "d MMM")} – ${format(to, "d MMM yyyy")}` : format(date, "EEEE, d MMMM yyyy");
   const days = view === "day" ? [date] : Array.from({ length: 7 }, (_, i) => addDays(from, i));
-  const create = (d: Date) => ui.openCreate("meeting", { starts_at: d.toISOString() });
+  const create = (d: Date) => ui.openCreate("meeting", { starts_at: d.toISOString(), kind: "site_visit" });
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-xs">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-3">

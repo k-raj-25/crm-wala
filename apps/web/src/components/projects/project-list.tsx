@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Building2, MapPin, Plus, Search } from "lucide-react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import * as React from "react";
 import { Badge, Button, Card, EmptyState, ErrorState, Input, Skeleton, useDebounce } from "@crm/ui";
 import { PageContainer, PageHeader } from "@/components/shell/page";
@@ -42,7 +43,9 @@ function ProjectCard({ p, i }: { p: Project; i: number }) {
 export function ProjectList() {
   const { can } = useAccess();
   const [q, setQ] = React.useState(""); const dq = useDebounce(q);
-  const [open, setOpen] = React.useState(false);
+  const sp = useSearchParams(); const router = useRouter();
+  const [open, setOpen] = React.useState(sp.get("new") === "1" && can("projects.create"));
+  React.useEffect(() => { if (sp.get("new") === "1") router.replace("/app/projects"); }, [sp, router]);
   const list = useQuery({ queryKey: ["projects", dq], queryFn: () => api.page<Project>("/api/v1/projects", { per_page: 50, q: dq }) });
   const items = list.data?.data ?? [];
   const totals = items.reduce((a, p) => ({ units: a.units + p.summary.total, avail: a.avail + p.summary.available, closed: a.closed + p.summary.closed }), { units: 0, avail: 0, closed: 0 });

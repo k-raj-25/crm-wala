@@ -75,7 +75,7 @@ function RestrictedScreen() {
   );
 }
 
-const SHORTCUTS = [["⌘ K", "Command palette / search"], ["C", "Quick create menu"], ["G then H/L/C/D/P/T…", "Go to Home, Leads, Contacts, Deals, Pipeline, Tasks…"], ["[", "Collapse / expand sidebar"], ["?", "Show this help"], ["Esc", "Close dialogs"]];
+const SHORTCUTS = [["⌘ K", "Command palette / search"], ["C", "Quick create menu"], ["G then B/L/C/P/K/T…", "Go to Projects, Leads, Clients, Pipeline, Site visits, Daily plan…"], ["[", "Collapse / expand sidebar"], ["?", "Show this help"], ["Esc", "Close dialogs"]];
 function ShortcutsDialog() {
   const ui = useUI();
   return <Dialog open={ui.shortcuts} onOpenChange={ui.setShortcuts}><DialogContent size="sm" title="Keyboard shortcuts"><ul className="divide-y divide-border">{SHORTCUTS.map(([k, d]) => <li key={k} className="flex items-center justify-between gap-4 py-2.5 text-sm"><span className="text-fg-muted">{d}</span><span className="flex shrink-0 gap-1">{k.split(" ").map((p, i) => <Kbd key={i}>{p}</Kbd>)}</span></li>)}</ul></DialogContent></Dialog>;

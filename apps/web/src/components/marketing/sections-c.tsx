@@ -22,13 +22,13 @@ export function Integrations() {
 }
 
 const QUOTES = [
-  { q: "We replaced three tools and a spreadsheet. My team actually opens the CRM now because it tells them what to do.", n: "Neha Kapoor", r: "Head of Sales, Fieldstone" },
-  { q: "The pipeline is the first thing I check every morning. Setup took an afternoon, not a quarter.", n: "Arjun Mehta", r: "Founder, Brightly" },
-  { q: "Automations handle our lead follow-ups. Response time dropped from hours to minutes.", n: "Sarah Whitfield", r: "Operations Lead, Northwind" },
+  { q: "I used to keep flat availability in a spreadsheet and WhatsApp. Now I open one tower and see everything. My clients think I'm psychic.", n: "Neha Kapoor", r: "Independent agent, Gurugram" },
+  { q: "Holds with a timer changed our team. No more two agents promising the same flat to two clients.", n: "Arjun Mehta", r: "Team lead, brokerage" },
+  { q: "Our juniors were scared of the old CRM. They learned this one in an afternoon.", n: "Sarah Whitfield", r: "Sales head, channel partner" },
 ];
 export function Testimonials() {
   return (
-    <Section eyebrow="Loved by teams" title="Simple enough to adopt in a day">
+    <Section eyebrow="Loved by realtors" title="Simple enough to adopt in a day">
       <div className="grid gap-4 md:grid-cols-3">
         {QUOTES.map((t, i) => (
           <Reveal key={t.n} delay={i * 0.08}>
@@ -45,9 +45,9 @@ export function Testimonials() {
 
 type PublicPlan = { key: string; name: string; tagline: string | null; currency: string; price_monthly: number | null; price_annual: number | null; highlights: string[]; is_custom: boolean };
 const FALLBACK: PublicPlan[] = [
-  { key: "starter", name: "Starter", tagline: "For individuals and small businesses", currency: "INR", price_monthly: 99900, price_annual: 999000, highlights: ["2 team members", "1,000 contacts", "2 pipelines", "5 automations", "100 AI actions / month"], is_custom: false },
-  { key: "growth", name: "Growth", tagline: "For growing sales teams", currency: "INR", price_monthly: 249900, price_annual: 2499000, highlights: ["10 team members", "10,000 contacts", "Unlimited pipelines", "25 automations", "Advanced reports", "500 AI actions / month"], is_custom: false },
-  { key: "business", name: "Business", tagline: "For larger teams that need control", currency: "INR", price_monthly: 599900, price_annual: 5999000, highlights: ["50 team members", "100,000 contacts", "Unlimited automations", "Advanced permissions", "WhatsApp", "Fair-use AI"], is_custom: false },
+  { key: "starter", name: "Starter", tagline: "For solo agents and small desks", currency: "INR", price_monthly: 99900, price_annual: 999000, highlights: ["2 team members", "1,000 clients & leads", "Unlimited projects", "5 automations", "100 AI actions / month"], is_custom: false },
+  { key: "growth", name: "Growth", tagline: "For growing brokerages", currency: "INR", price_monthly: 249900, price_annual: 2499000, highlights: ["10 team members", "10,000 clients & leads", "Unlimited projects", "25 automations", "Advanced reports", "500 AI actions / month"], is_custom: false },
+  { key: "business", name: "Business", tagline: "For large brokerages and developer sales teams", currency: "INR", price_monthly: 599900, price_annual: 5999000, highlights: ["50 team members", "100,000 clients & leads", "Unlimited automations", "Advanced permissions", "WhatsApp", "Fair-use AI"], is_custom: false },
   { key: "enterprise", name: "Enterprise", tagline: "Custom limits, SSO and dedicated support", currency: "INR", price_monthly: null, price_annual: null, highlights: ["Unlimited everything", "Custom contract & invoicing", "Priority support"], is_custom: true },
 ];
 
@@ -90,11 +90,12 @@ export function Pricing() {
 }
 
 const FAQS = [
+  ["Is this a general CRM?", "No. It is built only for real estate: projects, towers, floors and flats, buyers, renters and investors, site visits and bookings. If you sell software, there are better tools for that."],
+  ["How do I add my projects?", "Create a project, then add a tower: tell us the floors and how many flats on each floor, and we draw the building. You can then change any flat's size, price or status in one tap."],
   ["How does the 3-day free trial work?", "Create a workspace and everything is unlocked for 3 days — no credit card needed. We'll remind you before it ends, and you choose a plan when you're ready."],
-  ["What happens to my data if the trial ends?", "Nothing is deleted. Your workspace becomes restricted: you can still sign in, view billing, upgrade and export all of your data. Choose a plan to continue using the CRM."],
-  ["Can I import my existing contacts?", "Yes. Upload a CSV, map columns to CRM fields, fix any validation errors in the preview, then import. Duplicate detection helps you keep things clean."],
-  ["Can I change or cancel my plan anytime?", "Yes. Upgrades apply immediately with prorated credit; downgrades take effect at the end of the billing period; cancel any time and keep access until it ends."],
-  ["Is my company's data isolated from other customers?", "Every workspace is isolated at the API and database level (Postgres row-level security), and the AI assistant can only ever read your own workspace."],
+  ["What happens to my data if the trial ends?", "Nothing is deleted. Your workspace becomes restricted: you can still sign in, view billing, upgrade and export all of your data."],
+  ["Can I import my leads from 99acres, MagicBricks or Housing.com?", "Yes. Export the enquiries as a CSV, map the columns, fix any errors in the preview and import. Duplicate detection helps you keep things clean."],
+  ["Is my brokerage's data isolated from other customers?", "Every workspace is isolated at the API and database level (Postgres row-level security), and the AI assistant can only ever read your own workspace."],
   ["Do you support Indian payments and GST invoices?", "Yes — plans are priced in INR, and billing works with Razorpay as well as Stripe. Invoices include GST."],
 ];
 export function FAQ() {
@@ -120,8 +121,8 @@ export function FinalCTA() {
         <Reveal>
           <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#4f46e5] to-[#7c3aed] px-6 py-16 text-center text-white sm:px-16">
             <div className="pointer-events-none absolute inset-0 opacity-30" style={{ background: "radial-gradient(500px 220px at 20% 0%, white, transparent), radial-gradient(400px 200px at 90% 100%, #c4b5fd, transparent)" }} aria-hidden />
-            <h2 className="relative text-balance text-3xl font-semibold tracking-tight sm:text-5xl">Start your 3-day free trial</h2>
-            <p className="relative mx-auto mt-4 max-w-xl text-lg text-white/80">Set up in minutes. See your whole pipeline on one screen — and know what to do next.</p>
+            <h2 className="relative text-balance text-3xl font-semibold tracking-tight sm:text-5xl">See your first tower in two minutes</h2>
+            <p className="relative mx-auto mt-4 max-w-xl text-lg text-white/80">Add a project, tell us its floors and flats, and watch the building appear. 3-day free trial.</p>
             <div className="relative mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Button asChild size="lg" className="bg-white text-[#4f46e5] hover:bg-white/90"><Link href="/signup">Start Free Trial <ArrowRight /></Link></Button>
             </div>
@@ -134,11 +135,11 @@ export function FinalCTA() {
 }
 
 export function Footer() {
-  const cols: [string, [string, string][]][] = [["Product", [["Features", "#features"], ["AI assistant", "#ai"], ["Automation", "#automation"], ["Pricing", "#pricing"]]], ["Company", [["Sign in", "/login"], ["Start free trial", "/signup"], ["FAQ", "#faq"]]]];
+  const cols: [string, [string, string][]][] = [["Product", [["Building view", "#product"], ["Features", "#features"], ["AI assistant", "#ai"], ["Automation", "#automation"], ["Pricing", "#pricing"]]], ["Company", [["Sign in", "/login"], ["Start free trial", "/signup"], ["FAQ", "#faq"]]]];
   return (
     <footer className="border-t border-border py-12">
       <Container className="grid gap-10 md:grid-cols-[1.5fr_1fr_1fr]">
-        <div><Logo /><p className="mt-3 max-w-xs text-sm text-fg-muted">The simple CRM for small businesses, agencies and growing sales teams.</p></div>
+        <div><Logo /><p className="mt-3 max-w-xs text-sm text-fg-muted">The simple CRM for realtors. See every flat at a glance.</p></div>
         {cols.map(([t, ls]) => <div key={t}><p className="mb-3 text-sm font-semibold">{t}</p><ul className="space-y-2">{ls.map(([l, h]) => <li key={l}><a href={h} className="text-sm text-fg-muted hover:text-fg">{l}</a></li>)}</ul></div>)}
       </Container>
       <Container className="mt-10 text-xs text-fg-subtle">© {new Date().getFullYear()} CRM Wala. All rights reserved.</Container>
