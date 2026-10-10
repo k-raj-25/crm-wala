@@ -13,11 +13,11 @@ from app.core.crud import CrudResource, ensure_ref, users_map
 from app.core.errors import ApiError, conflict, bad_request
 from app.core.responses import ok
 from app.extensions import db
-from app.models import Company, Contact, Deal, Lead, Pipeline, PipelineStage
+from app.models import Company, Contact, Deal, Lead, Pipeline, PipelineStage, Project, Unit
 from app.models.base import utcnow
 from app.schemas.common import Schema, parse
 from app.schemas.crm import LeadIn, LeadPatch
-from app.services import activities, analytics, audit, events, notifications, scoring
+from app.services import activities, analytics, audit, events, inventory, notifications, scoring
 from app.services.tags import ensure_tags
 from app.services.usage import check_limit
 
@@ -43,14 +43,15 @@ class LeadResource(CrudResource):
     sort_fields = {
         "created_at": Lead.created_at, "updated_at": Lead.updated_at, "name": Lead.first_name, "status": Lead.status,
         "score": Lead.score, "company": Lead.company_name, "last_contacted_at": Lead.last_contacted_at,
-        "next_follow_up_at": Lead.next_follow_up_at, "source": Lead.source,
+        "next_follow_up_at": Lead.next_follow_up_at, "source": Lead.source, "budget_max": Lead.budget_max,
     }
     filters = {
         "status": ("in", Lead.status), "source": ("in", Lead.source), "owner_id": ("in", Lead.owner_id), "tags": ("array", Lead.tags),
         "score": ("num", Lead.score), "created_at": ("date", Lead.created_at), "next_follow_up_at": ("date", Lead.next_follow_up_at),
-        "last_contacted_at": ("date", Lead.last_contacted_at),
+        "last_contacted_at": ("date", Lead.last_contacted_at), "intent": ("in", Lead.intent), "bhk": ("in", Lead.bhk),
+        "property_type": ("in", Lead.property_type), "project_id": ("in", Lead.project_id), "budget_max": ("num", Lead.budget_max),
     }
-    refs = {"owner_id": "member"}
+    refs = {"owner_id": "member", "project_id": Project, "unit_id": Unit}
     limit_key = None
     custom_fields = True
     bulk_fields = {"status", "source"}
@@ -100,7 +101,8 @@ class LeadResource(CrudResource):
     def prepare_create(self, data):
         self._validate_status(data["status"])
         data["owner_id"] = data.get("owner_id") or g.user.id
-        return data
+        self._check_budget(data)
+        return inventory.link_project(data)
 
     def after_create(self, lead, data):
         rescore(lead)
@@ -111,7 +113,16 @@ class LeadResource(CrudResource):
                                  f"{g.user.name} assigned you a new lead.", f"/app/leads/{lead.id}", exclude_user_id=g.user.id)
         events.emit("lead.created", {"lead_id": str(lead.id), "owner_id": str(lead.owner_id), "email": lead.email, "name": lead.name})
 
+    def _check_budget(self, d):
+        lo, hi = d.get("budget_min"), d.get("budget_max")
+        if lo is not None and hi is not None and lo > hi:
+            raise ApiError(422, "validation_error", "Minimum budget can't be above the maximum", {"budget_min": "Higher than maximum"})
+
     def prepare_update(self, lead, changes):
+        if {"budget_min", "budget_max"} & set(changes):
+            self._check_budget({"budget_min": changes.get("budget_min", lead.budget_min), "budget_max": changes.get("budget_max", lead.budget_max)})
+        if "unit_id" in changes:
+            inventory.link_project(changes)
         if "status" in changes and changes["status"] != lead.status:
             if lead.status == "converted":
                 raise ApiError(422, "validation_error", "Converted leads can't change status", {"status": "Already converted"})
@@ -135,6 +146,17 @@ class LeadResource(CrudResource):
 
 res = LeadResource()
 res.register(bp)
+
+
+@bp.get("/<uuid:ident>/matches")
+@protect("leads.read")
+def matches(ident):
+    """Available units that fit what this client is looking for."""
+    require("units.read")
+    from app.api.v1.units import unit_res
+
+    lead = res.get_or_404(ident)
+    return ok(unit_res.serialize_many(inventory.matching_units(lead)))
 
 
 class ConvertIn(Schema):
@@ -177,7 +199,10 @@ def convert(ident):
         require("deals.create")
         from app.api.v1.deals import create_deal_record
 
-        deal = create_deal_record(name=data.deal_name or f"{lead.company_name or lead.name} — New deal", value=data.deal_value,
+        unit = db.session.get(Unit, lead.unit_id) if lead.unit_id else None
+        value = data.deal_value or ((unit.monthly_rent if lead.intent == "rent" else unit.sale_price) if unit else None) or 0
+        name = data.deal_name or (f"{lead.name} — {unit.name}" if unit else f"{lead.company_name or lead.name} — New deal")
+        deal = create_deal_record(name=name, value=value, unit_id=lead.unit_id, project_id=lead.project_id,
                                   company_id=company.id if company else None, contact_id=contact.id, pipeline_id=data.pipeline_id,
                                   stage_id=data.stage_id, owner_id=lead.owner_id, source=lead.source, lead_id=lead.id,
                                   expected_close_date=data.expected_close_date, lead_score=lead.score)

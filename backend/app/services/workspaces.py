@@ -19,18 +19,19 @@ from app.services import analytics
 from app.services import settings as platform_settings
 from app.services.email_templates import DEFAULT_TEMPLATES
 
+# Keys stay stable (reports and follow-up filters rely on them); labels speak the realtor's language.
 DEFAULT_LEAD_STATUSES = [
-    {"key": "new", "label": "New", "color": "#6366f1"},
+    {"key": "new", "label": "New enquiry", "color": "#6366f1"},
     {"key": "contacted", "label": "Contacted", "color": "#0ea5e9"},
-    {"key": "qualified", "label": "Qualified", "color": "#10b981"},
-    {"key": "unqualified", "label": "Unqualified", "color": "#94a3b8"},
-    {"key": "converted", "label": "Converted", "color": "#8b5cf6"},
+    {"key": "qualified", "label": "Interested", "color": "#10b981"},
+    {"key": "unqualified", "label": "Not interested", "color": "#94a3b8"},
+    {"key": "converted", "label": "Became a client", "color": "#8b5cf6"},
     {"key": "lost", "label": "Lost", "color": "#ef4444"},
 ]
 
 DEFAULT_STAGES = [
-    ("Lead", 10, "open", "#94a3b8"), ("Qualified", 25, "open", "#6366f1"), ("Discovery", 40, "open", "#0ea5e9"),
-    ("Proposal", 60, "open", "#f59e0b"), ("Negotiation", 80, "open", "#f97316"), ("Won", 100, "won", "#10b981"),
+    ("Enquiry", 10, "open", "#94a3b8"), ("Site Visit", 30, "open", "#6366f1"), ("Shortlisted", 50, "open", "#0ea5e9"),
+    ("Negotiation", 70, "open", "#f59e0b"), ("Token Paid", 90, "open", "#f97316"), ("Closed", 100, "won", "#10b981"),
     ("Lost", 0, "lost", "#ef4444"),
 ]
 
@@ -79,7 +80,7 @@ def unique_slug(name: str) -> str:
     return slug
 
 
-def create_default_pipeline(ws: Workspace, name: str = "Sales Pipeline", default: bool = True) -> Pipeline:
+def create_default_pipeline(ws: Workspace, name: str = "Property Deals", default: bool = True) -> Pipeline:
     p = Pipeline(workspace_id=ws.id, name=name, is_default=default, currency=ws.currency)
     db.session.add(p)
     db.session.flush()

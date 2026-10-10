@@ -3,6 +3,8 @@ from __future__ import annotations
 
 CRUD = ("read", "create", "update", "delete")
 RESOURCES = {
+    "projects": "Projects",
+    "units": "Inventory",
     "leads": "Leads",
     "contacts": "Contacts",
     "companies": "Companies",
@@ -52,7 +54,7 @@ def _rw(*resources: str, delete: bool = True) -> list[str]:
     return out
 
 
-_CORE = ["leads", "contacts", "companies", "deals", "tasks", "notes", "activities", "meetings", "emails", "files"]
+_CORE = ["projects", "units", "leads", "contacts", "companies", "deals", "tasks", "notes", "activities", "meetings", "emails", "files"]
 
 SYSTEM_ROLES: dict[str, dict] = {
     "owner": {

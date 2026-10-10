@@ -24,7 +24,7 @@ def run_jobs():
         raise unauthorized("Invalid token", "invalid_token")
     from app.jobs import tasks
 
-    fns = [tasks.billing_lifecycle, tasks.resume_automations, tasks.send_scheduled_emails, tasks.send_reminders, tasks.send_scheduled_reports]
+    fns = [tasks.billing_lifecycle, tasks.resume_automations, tasks.send_scheduled_emails, tasks.send_reminders, tasks.send_scheduled_reports, tasks.release_expired_holds]
     if utcnow().hour == 3:
         fns.append(tasks.housekeeping)
     results = {}

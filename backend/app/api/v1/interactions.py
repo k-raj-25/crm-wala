@@ -12,13 +12,13 @@ from app.core.crud import CrudResource
 from app.core.errors import ApiError, not_found
 from app.core.responses import created, no_content, ok
 from app.extensions import db
-from app.models import Call, Company, Contact, Deal, Email, EmailTemplate, FileAsset, Lead, Meeting, Note, Task
+from app.models import Call, Company, Contact, Deal, Email, EmailTemplate, FileAsset, Lead, Meeting, Note, Project, Task, Unit
 from app.models.base import utcnow
 from app.schemas.common import parse
 from app.schemas.crm import (
     CallIn, CallPatch, EmailLogIn, EmailSendIn, EmailTemplateIn, MeetingIn, MeetingPatch, NoteIn, NotePatch,
 )
-from app.services import activities, audit, events, mailbox, notifications
+from app.services import activities, audit, events, inventory, mailbox, notifications
 from app.services.related import attach_related
 from app.services.usage import check_limit
 
@@ -141,18 +141,23 @@ class MeetingResource(_Related):
     owner_field = "organizer_id"
     sort_fields = {"created_at": Meeting.created_at, "starts_at": Meeting.starts_at}
     default_sort = "starts_at"
-    filters = {**REL_FILTERS(Meeting), "status": ("in", Meeting.status), "starts_at": ("date", Meeting.starts_at), "organizer_id": ("in", Meeting.organizer_id)}
-    refs = REL_REFS
+    filters = {**REL_FILTERS(Meeting), "status": ("in", Meeting.status), "starts_at": ("date", Meeting.starts_at), "organizer_id": ("in", Meeting.organizer_id),
+               "kind": ("in", Meeting.kind), "project_id": ("in", Meeting.project_id), "unit_id": ("in", Meeting.unit_id)}
+    refs = {**REL_REFS, "project_id": Project, "unit_id": Unit}
 
     def label(self, o):
         return o.title
 
     def prepare_create(self, data):
         data["organizer_id"] = g.user.id
-        return _fill_company(data)
+        return _fill_company(inventory.link_project(data))
 
     def after_create(self, m, data):
-        activities.log_activity("meeting", f"Meeting scheduled: {m.title}", occurred_at=m.starts_at, lead_id=m.lead_id, contact_id=m.contact_id,
+        if m.unit_id and m.kind == "site_visit":
+            unit = db.session.get(Unit, m.unit_id)
+            if unit is not None:
+                inventory.log_event(unit, "visit", note=f"Site visit scheduled for {m.starts_at:%d %b, %H:%M}", lead_id=m.lead_id, contact_id=m.contact_id)
+        activities.log_activity("meeting", f"{'Site visit' if m.kind == 'site_visit' else 'Meeting'} scheduled: {m.title}", occurred_at=m.starts_at, lead_id=m.lead_id, contact_id=m.contact_id,
                                 company_id=m.company_id, deal_id=m.deal_id, data={"meeting_id": str(m.id)}, touch=False)
 
     def after_update(self, m, before, changes):

@@ -131,6 +131,14 @@ class Lead(Base, UUIDPk, Timestamps, Tenant, SoftDelete, Serializable):
     converted_contact_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     converted_deal_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     lost_reason: Mapped[str | None] = mapped_column(String(200))
+    # What the client is looking for (realtor-first): buy | rent | invest | sell | lease
+    intent: Mapped[str | None] = mapped_column(String(10))
+    property_type: Mapped[str | None] = mapped_column(String(20))  # apartment|villa|plot|office|shop|other
+    bhk: Mapped[str | None] = mapped_column(String(20))  # "2 BHK" ...
+    budget_min: Mapped[decimal.Decimal | None] = mapped_column(Numeric(16, 2))
+    budget_max: Mapped[decimal.Decimal | None] = mapped_column(Numeric(16, 2))
+    project_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("projects.id", ondelete="SET NULL"), index=True)
+    unit_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("units.id", ondelete="SET NULL"), index=True)
 
     @property
     def name(self) -> str:
@@ -163,6 +171,8 @@ class Deal(Base, UUIDPk, Timestamps, Tenant, SoftDelete, Serializable):
     position: Mapped[float] = mapped_column(Numeric(20, 6), default=0, server_default="0")  # order within stage
     lead_score: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     last_activity_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    unit_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("units.id", ondelete="SET NULL"), index=True)
+    project_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("projects.id", ondelete="SET NULL"), index=True)
 
     company: Mapped[Company | None] = relationship(lazy="joined")
     contact: Mapped[Contact | None] = relationship(lazy="joined")
@@ -230,6 +240,9 @@ class Meeting(Base, UUIDPk, Timestamps, Tenant, SoftDelete, Related, Serializabl
     summary: Mapped[str | None] = mapped_column(Text)
     external_event_id: Mapped[str | None] = mapped_column(String(200))
     reminder_sent_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    kind: Mapped[str] = mapped_column(String(15), default="meeting", server_default="meeting")  # meeting|site_visit
+    project_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("projects.id", ondelete="SET NULL"), index=True)
+    unit_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("units.id", ondelete="SET NULL"), index=True)
 
 
 class Email(Base, UUIDPk, Timestamps, Tenant, SoftDelete, Related, Serializable):
@@ -338,3 +351,93 @@ class DuplicateDismissal(Base, UUIDPk, Timestamps, Tenant):
     entity_type: Mapped[str] = mapped_column(String(20))
     a_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
     b_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
+
+
+# ---- real estate inventory -------------------------------------------------------------------------------------------
+# Status colours/labels live in app.services.inventory.STATUSES (single source of truth for API + UI).
+
+class Project(Base, UUIDPk, Timestamps, Tenant, SoftDelete, Serializable):
+    __tablename__ = "projects"
+
+    name: Mapped[str] = mapped_column(String(160), nullable=False)
+    developer: Mapped[str | None] = mapped_column(String(160))
+    kind: Mapped[str] = mapped_column(String(15), default="residential", server_default="residential")  # residential|commercial|villa|plotted|mixed
+    stage: Mapped[str] = mapped_column(String(20), default="ready", server_default="ready")  # upcoming|under_construction|ready
+    city: Mapped[str | None] = mapped_column(String(80), index=True)
+    locality: Mapped[str | None] = mapped_column(String(120))
+    sector: Mapped[str | None] = mapped_column(String(120))
+    address: Mapped[str | None] = mapped_column(String(300))
+    rera_id: Mapped[str | None] = mapped_column(String(80))
+    possession_date: Mapped[dt.date | None] = mapped_column(Date)
+    amenities: Mapped[list[str]] = mapped_column(ARRAY(String), default=list, server_default=text("'{}'"))
+    description: Mapped[str | None] = mapped_column(Text)
+    cover_url: Mapped[str | None] = mapped_column(String(500))
+    owner_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
+    tags: Mapped[list[str]] = mapped_column(ARRAY(String), default=list, server_default=text("'{}'"))
+
+    towers: Mapped[list["Tower"]] = relationship(back_populates="project", order_by="Tower.position", cascade="all, delete-orphan")
+
+
+class Tower(Base, UUIDPk, Timestamps, Tenant, Serializable):
+    __tablename__ = "towers"
+    __table_args__ = (UniqueConstraint("project_id", "name", name="uq_tower_project_name"),)
+
+    project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(80), nullable=False)
+    floors: Mapped[int] = mapped_column(Integer, default=1, server_default="1")  # floors above ground floor
+    has_ground: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
+    status: Mapped[str] = mapped_column(String(15), default="active", server_default="active")  # active|upcoming|completed
+    position: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+
+    project: Mapped[Project] = relationship(back_populates="towers")
+
+
+class Unit(Base, UUIDPk, Timestamps, Tenant, SoftDelete, Serializable):
+    """A flat / shop / villa / plot. Floor 0 is the ground floor. `status` drives the colour in the building view."""
+
+    __tablename__ = "units"
+    __table_args__ = (
+        UniqueConstraint("tower_id", "number", name="uq_unit_tower_number"),
+        Index("ix_units_project_status", "project_id", "status"),
+    )
+
+    project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    tower_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("towers.id", ondelete="CASCADE"), index=True)
+    floor: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    position: Mapped[int] = mapped_column(Integer, default=0, server_default="0")  # left→right on the floor
+    number: Mapped[str] = mapped_column(String(20), nullable=False)
+    kind: Mapped[str] = mapped_column(String(15), default="apartment", server_default="apartment")  # apartment|villa|shop|office|plot
+    bhk: Mapped[str | None] = mapped_column(String(20))
+    area_sqft: Mapped[decimal.Decimal | None] = mapped_column(Numeric(10, 2))
+    facing: Mapped[str | None] = mapped_column(String(20))
+    status: Mapped[str] = mapped_column(String(15), default="vacant", server_default="vacant", index=True)
+    sale_price: Mapped[decimal.Decimal | None] = mapped_column(Numeric(16, 2))
+    monthly_rent: Mapped[decimal.Decimal | None] = mapped_column(Numeric(16, 2))
+    owner_contact_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("contacts.id", ondelete="SET NULL"), index=True)  # who owns the flat
+    occupant_contact_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("contacts.id", ondelete="SET NULL"))  # buyer / tenant
+    hold_lead_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("leads.id", ondelete="SET NULL"))
+    hold_until: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    held_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    status_changed_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    notes: Mapped[str | None] = mapped_column(Text)
+    tags: Mapped[list[str]] = mapped_column(ARRAY(String), default=list, server_default=text("'{}'"))
+
+    @property
+    def name(self) -> str:
+        return f"Unit {self.number}"
+
+
+class UnitEvent(Base, UUIDPk, Tenant, Serializable):
+    """Immutable history of a unit: who changed its status, when, and why."""
+
+    __tablename__ = "unit_events"
+
+    unit_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("units.id", ondelete="CASCADE"), index=True)
+    type: Mapped[str] = mapped_column(String(20))  # created|status|note|visit
+    from_status: Mapped[str | None] = mapped_column(String(15))
+    to_status: Mapped[str | None] = mapped_column(String(15))
+    note: Mapped[str | None] = mapped_column(String(500))
+    user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    lead_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("leads.id", ondelete="SET NULL"))
+    contact_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("contacts.id", ondelete="SET NULL"))
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"), index=True)

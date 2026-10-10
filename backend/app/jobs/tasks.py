@@ -165,6 +165,13 @@ def send_scheduled_reports():
     return {"sent": sent}
 
 
+@job("release_expired_holds")
+def release_expired_holds():
+    from app.services import inventory
+
+    return {"released": inventory.release_expired_holds()}
+
+
 @job("housekeeping")
 def housekeeping():
     from app.models import AnalyticsEvent, ApiErrorLog, AuthEvent, EmailLog, ImpersonationGrant, JobLog, UserSession, WebhookEvent
