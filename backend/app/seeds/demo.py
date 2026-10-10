@@ -1,5 +1,5 @@
-"""Realistic demo data. Everything lives in ONE workspace flagged is_demo=true with @demo.crmwala.dev users,
-so it can never mix with production tenants and can be wiped with `flask seed-demo --reset`."""
+"""Realistic demo data for a real-estate brokerage. Everything lives in ONE workspace flagged is_demo=true with @demo.crmwala.dev
+users, so it can never mix with production tenants and can be wiped with `flask seed-demo --reset`."""
 from __future__ import annotations
 
 import datetime as dt
@@ -10,74 +10,72 @@ from app.core.tenant import bypass_scope, tenant_scope
 from app.extensions import db
 from app.models import (
     Activity, Automation, Call, Company, Contact, CustomFieldDef, Deal, Email, Lead, Meeting, Note, Notification, Pipeline, PipelineStage,
-    Role, Tag, Task, User, Workspace, WorkspaceMember,
+    Project, Tag, Task, Tower, Unit, UnitEvent, User, Workspace, WorkspaceMember,
 )
 from app.models.base import utcnow
-from app.services import scoring
-from app.services.workspaces import DEFAULT_LEAD_STATUSES, create_workspace, seed_platform, system_role
+from app.services import inventory, scoring
+from app.services.workspaces import create_workspace, seed_platform, system_role
 
 PASSWORD = "Demo@12345"
-SLUG = "acme-demo"
+SLUG = "sunrise-demo"
+WORKSPACE = "Sunrise Realty"
 
-COMPANIES = [
-    ("Zenith Logistics", "Logistics", "201-500", "Mumbai, IN", "zenithlogistics.in", 48_00_00_000), ("Bluepeak Software", "SaaS", "51-200", "Bengaluru, IN", "bluepeak.io", 12_00_00_000),
-    ("Nimbus Retail", "Retail", "501-1000", "Delhi, IN", "nimbusretail.com", 150_00_00_000), ("Orbit Fintech", "Fintech", "51-200", "Pune, IN", "orbitfin.co", 22_00_00_000),
-    ("GreenLeaf Organics", "Food & Beverage", "11-50", "Kochi, IN", "greenleaforganics.in", 6_00_00_000), ("Kavya Textiles", "Manufacturing", "201-500", "Surat, IN", "kavyatextiles.com", 60_00_00_000),
-    ("Pixel & Pine Studio", "Design Agency", "11-50", "Goa, IN", "pixelpine.studio", 3_00_00_000), ("Atlas Realty", "Real Estate", "51-200", "Hyderabad, IN", "atlasrealty.in", 35_00_00_000),
-    ("Vertex Health", "Healthcare", "201-500", "Chennai, IN", "vertexhealth.org", 80_00_00_000), ("Lumen Education", "Education", "51-200", "Jaipur, IN", "lumenedu.in", 9_00_00_000),
-    ("Harborline Freight", "Logistics", "1001-5000", "Singapore, SG", "harborline.sg", 400_00_00_000), ("Saffron Hospitality", "Hospitality", "201-500", "Udaipur, IN", "saffronhotels.in", 28_00_00_000),
-    ("Quantum Analytics", "Data & AI", "11-50", "Austin, US", "quantum-analytics.ai", 14_00_00_000), ("BrightPath Consulting", "Consulting", "11-50", "London, UK", "brightpath.co.uk", 5_00_00_000),
-    ("Urban Nest Interiors", "Interior Design", "11-50", "Ahmedabad, IN", "urbannest.in", 4_00_00_000),
+BUILDERS = [  # name, website, city
+    ("Ireo", "ireo.com", "Gurugram, IN"), ("Godrej Properties", "godrejproperties.com", "Mumbai, IN"), ("M3M India", "m3mindia.com", "Gurugram, IN"),
+    ("DLF", "dlf.in", "Gurugram, IN"), ("Tata Housing", "tatahousing.com", "Mumbai, IN"), ("Sobha", "sobha.com", "Bengaluru, IN"),
 ]
-CONTACTS = [  # first, last, title, company index
-    ("Rahul", "Khanna", "Head of Operations", 0), ("Ananya", "Iyer", "VP Engineering", 1), ("Karan", "Malhotra", "Procurement Lead", 2), ("Ishita", "Banerjee", "CFO", 3),
-    ("Meera", "Nair", "Founder", 4), ("Suresh", "Patel", "Managing Director", 5), ("Zoya", "Fernandes", "Creative Director", 6), ("Aditya", "Reddy", "Sales Director", 7),
-    ("Dr. Neha", "Gupta", "Chief of Staff", 8), ("Pranav", "Joshi", "Principal", 9), ("Wei", "Tan", "Regional Manager", 10), ("Kabir", "Singh", "General Manager", 11),
-    ("Olivia", "Bennett", "CEO", 12), ("James", "Whitfield", "Partner", 13), ("Tara", "Shah", "Studio Owner", 14), ("Arjun", "Menon", "Product Manager", 1),
-    ("Riya", "Kulkarni", "Finance Controller", 3), ("Dev", "Choudhary", "IT Head", 2), ("Sana", "Qureshi", "Marketing Lead", 7), ("Nikhil", "Verma", "Director of Supply Chain", 0),
+# first, last, kind: owner | client
+PEOPLE = [
+    ("Rahul", "Khanna", "owner"), ("Ananya", "Iyer", "owner"), ("Karan", "Malhotra", "owner"), ("Ishita", "Banerjee", "owner"), ("Meera", "Nair", "owner"),
+    ("Suresh", "Patel", "owner"), ("Zoya", "Fernandes", "owner"), ("Aditya", "Reddy", "owner"), ("Neha", "Gupta", "owner"), ("Pranav", "Joshi", "owner"),
+    ("Wei", "Tan", "client"), ("Kabir", "Singh", "client"), ("Olivia", "Bennett", "client"), ("James", "Whitfield", "client"), ("Tara", "Shah", "client"),
+    ("Arjun", "Menon", "client"), ("Riya", "Kulkarni", "client"), ("Dev", "Choudhary", "client"), ("Sana", "Qureshi", "client"), ("Nikhil", "Verma", "client"),
 ]
-LEADS = [
-    ("Aarti", "Desai", "Founder", "Sparrow Wellness", "referral"), ("Mohit", "Agarwal", "CEO", "Cobalt Cycles", "website"), ("Fatima", "Sheikh", "Marketing Manager", "Rose & Co", "linkedin"),
-    ("Gautam", "Bhatt", "Operations Head", "Indigo Freight", "event"), ("Lakshmi", "Pillai", "Director", "Coastal Ayurveda", "referral"), ("Harsh", "Vora", "Co-founder", "TinyTech Labs", "demo_request"),
-    ("Simran", "Kaur", "Student", None, "ads"), ("Oliver", "Grant", "VP Sales", "Northwind Trading", "website"), ("Pooja", "Hegde", "Procurement Manager", "Metro Mart", "cold_outreach"),
-    ("Yash", "Thakur", "Owner", "Thakur Motors", "website"), ("Isha", "Rastogi", "Head of Growth", "FreshBasket", "pricing_page"), ("Rohan", "Bose", "CTO", "Cloudnine Systems", "linkedin"),
-    ("Tanvi", "Mishra", "Manager", "Bright Smiles Dental", "ads"), ("Farhan", "Ali", "Managing Partner", "Ali & Sons Exports", "referral"), ("Naina", "Saxena", "Founder", "Leaf & Loom", "event"),
-    ("Siddharth", "Rao", "Director", "Rao Constructions", "website"), ("Kritika", "Jain", "Admin", None, "cold_outreach"), ("Victor", "D'Souza", "General Manager", "Goa Beach Resorts", "pricing_page"),
-    ("Anjali", "Mukherjee", "Lead Designer", "Studio Mukherjee", "linkedin"), ("Bharat", "Solanki", "Chairman", "Solanki Group", "referral"), ("Divya", "Krishnan", "VP Product", "Pulse Health", "demo_request"),
-    ("Eshan", "Kapoor", "Partner", "Kapoor Legal", "website"), ("Gita", "Venkat", "Principal", "Venkat Academy", "event"), ("Hrithik", "Sen", "Founder", "Sen Studios", "ads"),
-    ("Jasmine", "Dhillon", "Owner", "Dhillon Dairy", "referral"), ("Kunal", "Tripathi", "Head of IT", "Tripathi Infra", "cold_outreach"), ("Leena", "George", "Director", "George Pharma", "website"),
-    ("Manish", "Pandey", "Sales Manager", "Pandey Auto", "linkedin"), ("Nandini", "Roy", "CEO", "Roy Robotics", "demo_request"), ("Omkar", "Patil", "Consultant", "Patil Advisory", "pricing_page"),
+LEADS = [  # first, last, source, intent, bhk, budget_min, budget_max, location, status
+    ("Aarti", "Desai", "99acres", "buy", "3 BHK", 2.0e7, 2.8e7, "Sector 67, Gurgaon", "new"), ("Mohit", "Agarwal", "magicbricks", "buy", "4 BHK", 3.0e7, 4.0e7, "Golf Course Ext. Road", "new"),
+    ("Fatima", "Sheikh", "housing", "rent", "2 BHK", 4.0e4, 6.0e4, "Sector 67, Gurgaon", "contacted"), ("Gautam", "Bhatt", "referral", "buy", "3 BHK", 2.2e7, 2.6e7, "Sector 79, Gurgaon", "contacted"),
+    ("Lakshmi", "Pillai", "walk_in", "buy", "3 BHK", 2.4e7, 3.0e7, "Sector 67, Gurgaon", "qualified"), ("Harsh", "Vora", "website", "invest", None, 5.0e7, 9.0e7, "Business Park", "new"),
+    ("Simran", "Kaur", "instagram", "rent", "2 BHK", 3.0e4, 4.5e4, "Gurgaon", "unqualified"), ("Oliver", "Grant", "website", "rent", "3 BHK", 6.0e4, 9.0e4, "Golf Course Ext. Road", "qualified"),
+    ("Pooja", "Hegde", "99acres", "buy", "2 BHK", 1.4e7, 1.8e7, "Sector 67, Gurgaon", "contacted"), ("Yash", "Thakur", "facebook_ads", "buy", "3 BHK", 2.0e7, 2.5e7, "Sector 79, Gurgaon", "new"),
+    ("Isha", "Rastogi", "magicbricks", "rent", "3 BHK", 5.5e4, 7.0e4, "Sector 67, Gurgaon", "new"), ("Rohan", "Bose", "referral", "buy", "4 BHK", 3.2e7, 4.5e7, "Golf Course Ext. Road", "qualified"),
+    ("Tanvi", "Mishra", "housing", "buy", "2 BHK", 1.2e7, 1.6e7, "Gurgaon", "contacted"), ("Farhan", "Ali", "referral", "invest", None, 2.0e7, 4.0e7, "Business Park", "contacted"),
+    ("Naina", "Saxena", "instagram", "buy", "3 BHK", 2.5e7, 3.0e7, "Sector 67, Gurgaon", "new"), ("Siddharth", "Rao", "website", "buy", "3 BHK", 2.3e7, 2.8e7, "Sector 79, Gurgaon", "qualified"),
+    ("Kritika", "Jain", "99acres", "rent", "2 BHK", 3.5e4, 5.0e4, "Gurgaon", "lost"), ("Victor", "D'Souza", "walk_in", "buy", "4 BHK", 3.5e7, 5.0e7, "Golf Course Ext. Road", "new"),
+    ("Anjali", "Mukherjee", "facebook_ads", "buy", "2 BHK", 1.3e7, 1.7e7, "Sector 67, Gurgaon", "contacted"), ("Bharat", "Solanki", "referral", "invest", None, 8.0e7, 1.5e8, "Business Park", "new"),
+    ("Divya", "Krishnan", "housing", "rent", "3 BHK", 5.0e4, 7.5e4, "Sector 79, Gurgaon", "new"), ("Eshan", "Kapoor", "website", "buy", "3 BHK", 2.2e7, 2.7e7, "Sector 67, Gurgaon", "contacted"),
+    ("Gita", "Venkat", "magicbricks", "buy", "4 BHK", 3.0e7, 3.8e7, "Golf Course Ext. Road", "new"), ("Hrithik", "Sen", "instagram", "rent", "2 BHK", 3.5e4, 5.5e4, "Gurgaon", "contacted"),
+    ("Jasmine", "Dhillon", "referral", "buy", "3 BHK", 2.4e7, 2.9e7, "Sector 67, Gurgaon", "qualified"), ("Kunal", "Tripathi", "99acres", "buy", "2 BHK", 1.5e7, 1.9e7, "Sector 79, Gurgaon", "unqualified"),
+    ("Leena", "George", "walk_in", "rent", "3 BHK", 6.0e4, 8.0e4, "Sector 67, Gurgaon", "new"), ("Manish", "Pandey", "housing", "buy", "3 BHK", 2.1e7, 2.6e7, "Sector 79, Gurgaon", "contacted"),
+    ("Nandini", "Roy", "website", "buy", "4 BHK", 3.3e7, 4.2e7, "Golf Course Ext. Road", "new"), ("Omkar", "Patil", "99acres", "invest", None, 3.0e7, 6.0e7, "Business Park", "new"),
 ]
-STATUS_BY_IDX = ["new", "new", "contacted", "contacted", "qualified", "new", "unqualified", "qualified", "contacted", "new", "new", "qualified", "contacted", "contacted", "new",
-                 "qualified", "lost", "new", "contacted", "new", "qualified", "new", "contacted", "new", "contacted", "unqualified", "new", "contacted", "qualified", "new"]
-# (name, company idx, contact idx, value, stage name, owner idx, days-until-close, priority, source)
-DEALS = [
-    ("Zenith — Fleet CRM rollout", 0, 0, 18_50_000, "Negotiation", 0, 9, "high", "referral"), ("Bluepeak — Team licenses", 1, 1, 7_20_000, "Proposal", 1, 18, "medium", "website"),
-    ("Nimbus — Store ops platform", 2, 2, 42_00_000, "Discovery", 0, 40, "high", "event"), ("Orbit — Compliance suite", 3, 3, 12_00_000, "Proposal", 2, 12, "high", "linkedin"),
-    ("GreenLeaf — Starter plan", 4, 4, 1_20_000, "Qualified", 2, 25, "low", "website"), ("Kavya — Dealer network CRM", 5, 5, 26_00_000, "Negotiation", 1, 6, "urgent", "referral"),
-    ("Pixel & Pine — Studio pack", 6, 6, 95_000, "Lead", 3, 30, "low", "ads"), ("Atlas — Realty pipeline", 7, 7, 9_80_000, "Discovery", 3, 22, "medium", "website"),
-    ("Vertex — Patient outreach", 8, 8, 31_00_000, "Proposal", 0, 28, "high", "referral"), ("Lumen — Admissions CRM", 9, 9, 4_50_000, "Qualified", 1, 35, "medium", "event"),
-    ("Harborline — APAC rollout", 10, 10, 85_00_000, "Discovery", 0, 75, "urgent", "linkedin"), ("Saffron — Guest CRM", 11, 11, 8_40_000, "Negotiation", 2, 3, "medium", "referral"),
-    ("Quantum — Analytics add-on", 12, 12, 5_60_000, "Lead", 3, 50, "low", "website"), ("BrightPath — Advisory seats", 13, 13, 2_75_000, "Qualified", 1, 20, "medium", "linkedin"),
-    ("Urban Nest — Pilot", 14, 14, 1_80_000, "Proposal", 2, 14, "medium", "referral"),
+# D-13 as drawn in the product brief (floor 10 → ground, four flats a floor). v=vacant s=for sale r=rented o=self occupied
+# h=on hold b=booked d=sold l=for rent
+D13 = {10: "vrvs", 9: "ovrv", 8: "vsvr", 7: "vvov", 6: "rvhv", 5: "vrvo", 4: "bsrv", 3: "vdvo", 2: "rvlr", 1: "vorv", 0: "osdr"}
+CODE = {"v": "vacant", "s": "for_sale", "r": "rented", "o": "self_occupied", "h": "on_hold", "b": "booked", "d": "sold", "l": "for_rent"}
+LAYOUT = [("3 BHK", 1850, "North"), ("2 BHK", 1250, "East"), ("3 BHK", 1750, "South"), ("4 BHK", 2450, "West")]
+STATUS_WEIGHTS = [("vacant", 34), ("for_sale", 16), ("for_rent", 8), ("on_hold", 4), ("booked", 6), ("sold", 14), ("rented", 12), ("self_occupied", 6)]
+
+# (name, builder idx, sector, locality, kind, stage, [(tower, floors, per_floor, has_ground, unit_kind, base price/sqft, layout)])
+PROJECTS = [
+    ("Ireo Victory Valley", 0, "Sector 67", "Golf Course Ext. Road", "residential", "ready",
+     [("Tower D-13", 10, 4, True, "apartment", 13500, LAYOUT), ("Tower D-12", 12, 4, True, "apartment", 13200, LAYOUT)]),
+    ("Godrej Aria", 1, "Sector 79", "New Gurgaon", "residential", "under_construction", [("Tower A", 9, 6, False, "apartment", 11800, LAYOUT + LAYOUT[:2])]),
+    ("M3M Urbana Business Park", 2, "Sector 67A", "Golf Course Ext. Road", "commercial", "ready", [("Block 1", 5, 6, True, "office", 16500, [("Office", 900, "North"), ("Office", 1400, "East")] * 3)]),
 ]
-# historical closed deals: (name, company idx, value, status, days ago closed, owner idx)
-HISTORY = [
-    ("Zenith — Pilot", 0, 6_00_000, "won", 150, 0), ("Nimbus — Pilot", 2, 9_50_000, "won", 128, 1), ("Orbit — Onboarding", 3, 4_20_000, "won", 104, 2), ("Vertex — Phase 1", 8, 14_00_000, "won", 88, 0),
-    ("Kavya — Pilot", 5, 5_50_000, "won", 70, 1), ("Saffron — Pilot", 11, 3_30_000, "won", 55, 2), ("Atlas — Starter", 7, 2_90_000, "won", 41, 3), ("Bluepeak — Pilot", 1, 3_80_000, "won", 29, 1),
-    ("Lumen — Pilot", 9, 2_10_000, "won", 18, 0), ("Harborline — Trial", 10, 11_00_000, "won", 9, 0), ("Pixel & Pine — Retainer", 6, 1_20_000, "lost", 95, 3), ("Quantum — POC", 12, 4_00_000, "lost", 60, 3),
-    ("GreenLeaf — Pilot", 4, 90_000, "lost", 33, 2), ("Urban Nest — Pilot", 14, 1_50_000, "lost", 14, 2),
-]
+STAGE_PLAN = [("Enquiry", 3), ("Site Visit", 3), ("Shortlisted", 2), ("Negotiation", 2), ("Token Paid", 1)]
 
 
 def _wipe() -> None:
     with bypass_scope():
-        ws = db.session.query(Workspace).filter_by(slug=SLUG).first()
-        if ws:
+        for ws in db.session.query(Workspace).filter(Workspace.slug.in_((SLUG, "acme-demo"))).all():  # "acme-demo" = the pre-real-estate demo
             db.session.delete(ws)
         db.session.flush()
         db.session.query(User).filter(User.email.like("%@demo.crmwala.dev")).delete(synchronize_session=False)
         db.session.commit()
+
+
+def _pick_status(rnd: random.Random) -> str:
+    return rnd.choices([s for s, _ in STATUS_WEIGHTS], weights=[w for _, w in STATUS_WEIGHTS])[0]
 
 
 def seed_demo(reset: bool = False, plan: str = "trial") -> dict:
@@ -89,164 +87,222 @@ def seed_demo(reset: bool = False, plan: str = "trial") -> dict:
         _wipe()
     with bypass_scope():
         if db.session.query(Workspace).filter_by(slug=SLUG).first():
-            return {"email": "demo@demo.crmwala.dev", "password": PASSWORD, "workspace": "Acme Demo (already exists — use --reset to recreate)", "counts": "unchanged"}
+            return {"email": "demo@demo.crmwala.dev", "password": PASSWORD, "workspace": f"{WORKSPACE} (already exists — use --reset to recreate)", "counts": "unchanged"}
         pw = hash_password(PASSWORD)
-        people = [("Aarav Mehta", "demo@demo.crmwala.dev", "owner"), ("Priya Sharma", "priya@demo.crmwala.dev", "manager"), ("Rohit Verma", "rohit@demo.crmwala.dev", "sales_rep"),
-                  ("Sneha Kapoor", "sneha@demo.crmwala.dev", "sales_rep"), ("Vikram Rao", "vikram@demo.crmwala.dev", "viewer")]
+        team = [("Aarav Mehta", "demo@demo.crmwala.dev", "owner"), ("Priya Sharma", "priya@demo.crmwala.dev", "manager"), ("Rohit Verma", "rohit@demo.crmwala.dev", "sales_rep"),
+                ("Sneha Kapoor", "sneha@demo.crmwala.dev", "sales_rep"), ("Vikram Rao", "vikram@demo.crmwala.dev", "viewer")]
         users: list[User] = []
-        for name, email, _ in people:
+        for name, email, _ in team:
             u = User(name=name, email=email, password_hash=pw, email_verified_at=now, last_login_at=now - dt.timedelta(hours=rnd.randint(1, 48)))
             db.session.add(u)
             users.append(u)
         db.session.flush()
-        ws = create_workspace(users[0], "Acme Demo Co", company_size="11-50", industry="SaaS", is_demo=True)
-        ws.slug, ws.sales_model, ws.goals = SLUG, "b2b", ["manage_leads", "track_deals", "analyze_revenue"]
+        ws = create_workspace(users[0], WORKSPACE, company_size="11-50", industry="Real estate", is_demo=True)
+        ws.slug, ws.sales_model, ws.goals = SLUG, "b2c", ["manage_leads", "track_deals", "analyze_revenue"]
         ws.onboarding_completed_at = now
         ws.trial_ends_at, ws.trial_started_at = now + dt.timedelta(days=2, hours=3), now - dt.timedelta(hours=21)
         if plan != "trial":
             ws.plan_key, ws.subscription_status, ws.billing_interval = plan, "active", "monthly"
             ws.current_period_end = now + dt.timedelta(days=21)
-        for u, (_, _, role) in list(zip(users, people))[1:]:
+        for u, (_, _, role) in list(zip(users, team))[1:]:
             db.session.add(WorkspaceMember(workspace_id=ws.id, user_id=u.id, role_id=system_role(role).id))
         db.session.flush()
         with tenant_scope(ws.id):
             pipeline = db.session.query(Pipeline).filter_by(workspace_id=ws.id).one()
             stages = {s.name: s for s in db.session.query(PipelineStage).filter_by(pipeline_id=pipeline.id)}
-            for t, c in (("enterprise", "#6366f1"), ("hot", "#ef4444"), ("renewal", "#10b981"), ("partner", "#f59e0b"), ("web-form", "#0ea5e9")):
+            for t, c in (("hot", "#ef4444"), ("nri", "#6366f1"), ("investor", "#f59e0b"), ("first-time-buyer", "#10b981"), ("ready-to-move", "#0ea5e9")):
                 db.session.add(Tag(workspace_id=ws.id, name=t, color=c))
-            db.session.add(CustomFieldDef(workspace_id=ws.id, entity_type="contact", key="preferred_language", label="Preferred language", field_type="dropdown", options=["English", "Hindi", "Tamil", "Marathi"], position=0))
-            db.session.add(CustomFieldDef(workspace_id=ws.id, entity_type="deal", key="contract_length_months", label="Contract length (months)", field_type="number", position=0))
-            companies: list[Company] = []
-            for name, ind, size, loc, site, rev in COMPANIES:
-                c = Company(workspace_id=ws.id, name=name, industry=ind, size=size, location=loc, website=f"https://{site}", domain=site, annual_revenue=rev, owner_id=users[rnd.randint(0, 3)].id,
-                            created_at=now - dt.timedelta(days=rnd.randint(30, 200)), tags=rnd.sample(["enterprise", "partner", "renewal"], k=rnd.randint(0, 1)))
+            db.session.add(CustomFieldDef(workspace_id=ws.id, entity_type="contact", key="preferred_language", label="Preferred language", field_type="dropdown", options=["English", "Hindi", "Punjabi"], position=0))
+            db.session.add(CustomFieldDef(workspace_id=ws.id, entity_type="deal", key="payment_plan", label="Payment plan", field_type="dropdown", options=["Down payment", "Construction linked", "Possession linked"], position=0))
+
+            builders = []
+            for name, site, loc in BUILDERS:
+                c = Company(workspace_id=ws.id, name=name, industry="Real estate developer", location=loc, website=f"https://{site}", domain=site, owner_id=users[0].id,
+                            created_at=now - dt.timedelta(days=rnd.randint(60, 300)))
                 db.session.add(c)
-                companies.append(c)
+                builders.append(c)
             db.session.flush()
             contacts: list[Contact] = []
-            for first, last, title, ci in CONTACTS:
-                email = f"{first.lower().replace('dr. ', '')}.{last.lower()}@{COMPANIES[ci][4]}"
-                c = Contact(workspace_id=ws.id, first_name=first, last_name=last, email=email, phone=f"+91 9{rnd.randint(100000000, 999999999)}", job_title=title, company_id=companies[ci].id,
-                            owner_id=users[rnd.randint(0, 3)].id, location=COMPANIES[ci][3], created_at=now - dt.timedelta(days=rnd.randint(5, 150)),
-                            custom={"preferred_language": rnd.choice(["English", "Hindi"])}, socials={"linkedin": f"https://linkedin.com/in/{first.lower()}-{last.lower()}"},
-                            last_contacted_at=now - dt.timedelta(days=rnd.randint(0, 30)))
+            for first, last, kind in PEOPLE:
+                c = Contact(workspace_id=ws.id, first_name=first, last_name=last, email=f"{first.lower()}.{last.lower()}@gmail.com", phone=f"+91 9{rnd.randint(100000000, 999999999)}",
+                            job_title="Flat owner" if kind == "owner" else "Client", owner_id=users[rnd.randint(0, 3)].id, location="Gurgaon",
+                            created_at=now - dt.timedelta(days=rnd.randint(5, 150)), custom={"preferred_language": rnd.choice(["English", "Hindi"])},
+                            tags=["nri"] if rnd.random() < 0.12 else [], last_contacted_at=now - dt.timedelta(days=rnd.randint(0, 30)))
                 db.session.add(c)
                 contacts.append(c)
             db.session.flush()
-            for i, (first, last, title, comp, source) in enumerate(LEADS):
-                status = STATUS_BY_IDX[i]
+            owners, clients = contacts[:10], contacts[10:]
+
+            # ---- projects, towers, units ---------------------------------------------------------------------------
+            all_units: list[Unit] = []
+            projects: list[Project] = []
+            for pname, bi, sector, locality, pkind, pstage, towers in PROJECTS:
+                p = Project(workspace_id=ws.id, name=pname, developer=BUILDERS[bi][0], kind=pkind, stage=pstage, city="Gurgaon", locality=locality, sector=sector,
+                            rera_id=f"RC/REP/HARERA/GGM/{rnd.randint(100, 999)}/{rnd.randint(10, 99)}/2023", owner_id=users[0].id,
+                            amenities=["Clubhouse", "Swimming pool", "Gym", "Kids play area", "24x7 security", "Power backup"],
+                            possession_date=(now + dt.timedelta(days=500)).date() if pstage != "ready" else None,
+                            description=f"{pname} by {BUILDERS[bi][0]} in {sector}, Gurgaon.", created_at=now - dt.timedelta(days=rnd.randint(100, 400)))
+                db.session.add(p)
+                db.session.flush()
+                projects.append(p)
+                for ti, (tname, floors, per, ground, ukind, psf, layout) in enumerate(towers):
+                    t = Tower(workspace_id=ws.id, project_id=p.id, name=tname, floors=floors, has_ground=ground, position=ti, status="active")
+                    db.session.add(t)
+                    db.session.flush()
+                    for f in ([0] if ground else []) + list(range(1, floors + 1)):
+                        for pos in range(1, per + 1):
+                            bhk, area, facing = layout[(pos - 1) % len(layout)]
+                            code = D13.get(f, "")[pos - 1] if tname == "Tower D-13" and pname == "Ireo Victory Valley" else None
+                            status = CODE[code] if code else _pick_status(rnd)
+                            price = round(area * (psf + f * 45) / 1e5) * 1e5  # a little more for higher floors
+                            rent = round(area * (psf / 250) / 500) * 500
+                            u = Unit(workspace_id=ws.id, project_id=p.id, tower_id=t.id, floor=f, position=pos, number=inventory.unit_number(f, pos), kind=ukind,
+                                     bhk=bhk if ukind == "apartment" else None, area_sqft=area, facing=facing, status=status,
+                                     sale_price=price if status in ("vacant", "for_sale", "on_hold", "booked", "sold") else None,
+                                     monthly_rent=rent if status in ("for_rent", "rented") or (status == "vacant" and rnd.random() < 0.3) else None,
+                                     status_changed_at=now - dt.timedelta(days=rnd.randint(1, 150), hours=rnd.randint(0, 20)),
+                                     owner_contact_id=rnd.choice(owners).id if status != "vacant" or rnd.random() < 0.4 else None)
+                            if status in ("sold", "rented", "booked"):
+                                u.occupant_contact_id = rnd.choice(clients).id
+                            if status == "on_hold":
+                                u.hold_until = now + dt.timedelta(hours=rnd.choice([6, 20, 30, 70]))
+                                u.held_by = users[rnd.randint(1, 3)].id
+                            db.session.add(u)
+                            all_units.append(u)
+            db.session.flush()
+            for u in all_units:
+                if u.status != "vacant":
+                    db.session.add(UnitEvent(workspace_id=ws.id, unit_id=u.id, type="status", from_status="vacant", to_status=u.status, user_id=users[rnd.randint(0, 3)].id,
+                                             created_at=u.status_changed_at, note="Hold placed for a client" if u.status == "on_hold" else None))
+            db.session.flush()
+
+            # ---- leads -----------------------------------------------------------------------------------------------
+            available = [u for u in all_units if u.status in ("for_sale", "vacant") and u.sale_price]
+            leads: list[Lead] = []
+            for i, (first, last, source, intent, bhk, lo, hi, loc, status) in enumerate(LEADS):
                 contacted = None if status == "new" else now - dt.timedelta(days=rnd.choice([1, 2, 3, 5, 9, 12, 20]))
-                lead = Lead(workspace_id=ws.id, first_name=first, last_name=last, email=f"{first.lower()}.{last.lower().replace(chr(39), '')}@{(comp or 'gmail').lower().replace(' ', '').replace('&', 'and')}{'.com' if comp else '.com'}",
-                            phone=f"+91 8{rnd.randint(100000000, 999999999)}", company_name=comp, job_title=title, source=source, status=status, owner_id=users[i % 4].id,
-                            created_at=now - dt.timedelta(days=rnd.randint(0, 45), hours=rnd.randint(0, 20)), last_contacted_at=contacted, location=rnd.choice(["Mumbai", "Delhi", "Bengaluru", "Pune", "Chennai", "Kolkata"]),
-                            tags=(["hot"] if i % 7 == 0 else []) + (["web-form"] if source in ("website", "pricing_page", "demo_request") else []))
+                interest = rnd.choice(available) if i % 3 == 0 else None
+                lead = Lead(workspace_id=ws.id, first_name=first, last_name=last, email=f"{first.lower()}.{last.lower().replace(chr(39), '')}@gmail.com",
+                            phone=f"+91 8{rnd.randint(100000000, 999999999)}", source=source, status=status, owner_id=users[i % 4].id, intent=intent,
+                            property_type="office" if intent == "invest" else "apartment", bhk=bhk, budget_min=lo, budget_max=hi, location=loc,
+                            project_id=interest.project_id if interest else None, unit_id=interest.id if interest else None,
+                            created_at=now - dt.timedelta(days=rnd.randint(0, 45), hours=rnd.randint(0, 20)), last_contacted_at=contacted,
+                            tags=(["hot"] if i % 7 == 0 else []) + (["investor"] if intent == "invest" else []) + (["first-time-buyer"] if i % 9 == 4 else []))
                 if status in ("new", "contacted", "qualified"):
                     offset = rnd.choice([-3, -1, 0, 0, 1, 2, 5, None])
                     lead.next_follow_up_at = (now.replace(hour=11, minute=0) + dt.timedelta(days=offset)) if offset is not None else None
                 lead.score, lead.score_reasons = scoring.score_lead(lead, rnd.randint(0, 3))
                 db.session.add(lead)
                 db.session.flush()
-                db.session.add(Activity(workspace_id=ws.id, type="created", title="Lead created", lead_id=lead.id, user_id=lead.owner_id, occurred_at=lead.created_at, is_demo=True))
+                leads.append(lead)
+                db.session.add(Activity(workspace_id=ws.id, type="created", title="Enquiry received", lead_id=lead.id, user_id=lead.owner_id, occurred_at=lead.created_at, is_demo=True))
                 if contacted:
-                    db.session.add(Activity(workspace_id=ws.id, type="email", title="Email sent: Intro & next steps", lead_id=lead.id, user_id=lead.owner_id, occurred_at=contacted, is_demo=True))
+                    db.session.add(Activity(workspace_id=ws.id, type="call", title="Call logged — connected", lead_id=lead.id, user_id=lead.owner_id, occurred_at=contacted, is_demo=True))
                     lead.last_activity_at = contacted
             db.session.flush()
 
-            def make_deal(name, ci, contact_i, value, stage, owner, status, created, closed=None, close_in=None, prio="medium", source="website"):
+            # ---- deals (property bookings) ---------------------------------------------------------------------------
+            def make_deal(name, unit, contact, stage, owner, status, created, closed=None, close_in=None, prio="medium", source="referral", value=None):
                 st = stages[stage]
-                d = Deal(workspace_id=ws.id, name=name, company_id=companies[ci].id, contact_id=contacts[contact_i].id if contact_i is not None else None, pipeline_id=pipeline.id, stage_id=st.id,
-                         value=value, currency="INR", probability=100 if status == "won" else 0 if status == "lost" else st.probability, priority=prio, owner_id=users[owner].id, source=source,
-                         status=status, created_at=created, closed_at=closed, stage_entered_at=closed or created + dt.timedelta(days=rnd.randint(1, 10)),
+                price = value if value is not None else float(unit.sale_price or unit.monthly_rent or 0)
+                d = Deal(workspace_id=ws.id, name=name, contact_id=contact.id if contact else None, pipeline_id=pipeline.id, stage_id=st.id, value=price, currency="INR",
+                         probability=100 if status == "won" else 0 if status == "lost" else st.probability, priority=prio, owner_id=users[owner].id, source=source, status=status,
+                         created_at=created, closed_at=closed, stage_entered_at=closed or created + dt.timedelta(days=rnd.randint(1, 8)),
                          expected_close_date=(now + dt.timedelta(days=close_in)).date() if close_in is not None else None, position=rnd.randint(1, 9) * 1000.0,
-                         lead_score=rnd.randint(40, 95), custom={"contract_length_months": rnd.choice([6, 12, 24])})
+                         lead_score=rnd.randint(40, 95), unit_id=unit.id if unit else None, project_id=unit.project_id if unit else None,
+                         custom={"payment_plan": rnd.choice(["Down payment", "Construction linked", "Possession linked"])})
                 db.session.add(d)
                 db.session.flush()
-                db.session.add(Activity(workspace_id=ws.id, type="created", title=f"Deal created in Lead", deal_id=d.id, company_id=d.company_id, contact_id=d.contact_id, user_id=d.owner_id, occurred_at=created, is_demo=True))
-                if status == "open" and stage != "Lead":
-                    db.session.add(Activity(workspace_id=ws.id, type="stage_changed", title=f"Moved from Qualified to {stage}", deal_id=d.id, company_id=d.company_id, contact_id=d.contact_id, user_id=d.owner_id,
+                db.session.add(Activity(workspace_id=ws.id, type="created", title="Deal created in Enquiry", deal_id=d.id, contact_id=d.contact_id, user_id=d.owner_id, occurred_at=created, is_demo=True))
+                if status == "open" and stage != "Enquiry":
+                    db.session.add(Activity(workspace_id=ws.id, type="stage_changed", title=f"Moved to {stage}", deal_id=d.id, contact_id=d.contact_id, user_id=d.owner_id,
                                             occurred_at=now - dt.timedelta(days=rnd.randint(0, 12)), is_demo=True, data={"to": stage}))
                 if status in ("won", "lost"):
-                    db.session.add(Activity(workspace_id=ws.id, type=status, title="Deal won 🎉" if status == "won" else "Deal lost", deal_id=d.id, company_id=d.company_id, contact_id=d.contact_id, user_id=d.owner_id,
-                                            occurred_at=closed, is_demo=True))
+                    db.session.add(Activity(workspace_id=ws.id, type=status, title="Deal closed 🎉" if status == "won" else "Deal lost", deal_id=d.id, contact_id=d.contact_id, user_id=d.owner_id, occurred_at=closed, is_demo=True))
                 d.last_activity_at = closed or now - dt.timedelta(days=rnd.choice([0, 1, 2, 3, 5, 8, 12, 17]))
                 return d
 
-            open_deals = []
-            for name, ci, contact_i, value, stage, owner, close_in, prio, source in DEALS:
-                open_deals.append(make_deal(name, ci, contact_i, value, stage, owner, "open", now - dt.timedelta(days=rnd.randint(8, 60)), close_in=close_in, prio=prio, source=source))
-            for name, ci, value, status, days_ago, owner in HISTORY:
-                closed = now - dt.timedelta(days=days_ago)
-                make_deal(name, ci, None, value, "Won" if status == "won" else "Lost", owner, status, closed - dt.timedelta(days=rnd.randint(14, 60)), closed=closed, source=rnd.choice(["referral", "website", "event"]))
-            # a deal that has gone cold + one past its close date (they drive "needs attention")
-            open_deals[6].last_activity_at = now - dt.timedelta(days=16)
-            open_deals[12].last_activity_at = now - dt.timedelta(days=21)
-            open_deals[4].expected_close_date = (now - dt.timedelta(days=4)).date()
+            open_deals: list[Deal] = []
+            targets = [u for u in all_units if u.status in ("booked", "on_hold", "for_sale")]
+            rnd.shuffle(targets)
+            slot = 0
+            for stage, n in STAGE_PLAN:
+                for _ in range(n):
+                    u = targets[slot]
+                    cl = rnd.choice(clients)
+                    open_deals.append(make_deal(f"{cl.name} — {u.name}, {next(p.name for p in projects if p.id == u.project_id)}", u, cl, stage, 1 + slot % 3, "open",
+                                                now - dt.timedelta(days=rnd.randint(6, 50)), close_in=rnd.randint(3, 60), prio=rnd.choice(["medium", "high", "urgent"])))
+                    slot += 1
+            for u in [x for x in all_units if x.status == "sold"][:14]:
+                closed = u.status_changed_at
+                make_deal(f"{rnd.choice(clients).name} — {u.name}", u, u.occupant_contact_id and next(c for c in clients if c.id == u.occupant_contact_id), "Closed", rnd.randint(0, 3), "won",
+                          closed - dt.timedelta(days=rnd.randint(14, 45)), closed=closed, source=rnd.choice(["referral", "99acres", "walk_in"]))
+            for i in range(5):
+                closed = now - dt.timedelta(days=rnd.randint(5, 120))
+                make_deal(f"{rnd.choice(clients).name} — rental", None, rnd.choice(clients), "Closed" if i < 2 else "Lost", rnd.randint(0, 3), "won" if i < 2 else "lost",
+                          closed - dt.timedelta(days=rnd.randint(7, 30)), closed=closed, value=rnd.choice([55000, 62000, 48000, 75000, 41000]), source="housing")
+            open_deals[4].last_activity_at = now - dt.timedelta(days=16)
+            open_deals[7].expected_close_date = (now - dt.timedelta(days=4)).date()
             db.session.flush()
 
             def day(offset_days, hour):
                 return (now + dt.timedelta(days=offset_days)).replace(hour=hour, minute=0, second=0, microsecond=0)
 
-            task_rows = [
-                ("Send revised proposal to Zenith", 0, 0, day(0, 15), "high", "todo", "follow_up", "deal", 0), ("Call Kabir about Saffron contract", 3, 11, day(0, 12), "urgent", "todo", "follow_up", "deal", 11),
-                ("Prepare Vertex demo deck", 0, 8, day(1, 10), "medium", "in_progress", "task", "deal", 8), ("Follow up with Orbit CFO", 0, 3, day(-2, 16), "high", "todo", "follow_up", "deal", 3),
-                ("Update Kavya pricing sheet", 1, 5, day(-1, 11), "medium", "todo", "task", "deal", 5), ("Intro call with Harborline", 0, 10, day(3, 14), "high", "todo", "follow_up", "deal", 10),
-                ("Collect GreenLeaf requirements", 2, 4, day(4, 11), "low", "todo", "task", "deal", 4), ("Share case study with Nimbus", 0, 2, day(2, 17), "medium", "todo", "task", "deal", 2),
-                ("Renewal check-in: Bluepeak", 1, 1, day(6, 10), "medium", "todo", "follow_up", "deal", 1), ("Sign NDA — Atlas", 3, 7, day(-5, 12), "low", "completed", "task", "deal", 7),
-                ("Book onboarding call: Lumen", 0, 9, day(-3, 15), "medium", "completed", "task", "deal", 9), ("Quarterly pipeline review", 1, None, day(5, 11), "medium", "todo", "deadline", None, None),
-                ("Clean up stale leads", 1, None, day(0, 18), "low", "todo", "task", None, None), ("Reply to Aarti Desai", 2, None, day(0, 10), "high", "todo", "follow_up", "lead", 0),
-                ("Qualify Harsh Vora", 3, None, day(1, 12), "medium", "todo", "follow_up", "lead", 5), ("Send pricing to Isha Rastogi", 0, None, day(-1, 14), "high", "todo", "follow_up", "lead", 10),
-            ]
-            leads_q = db.session.query(Lead).filter_by(workspace_id=ws.id).order_by(Lead.created_at).all()
-            for title, assignee, di, due, prio, status, kind, rel, idx in task_rows:
-                t = Task(workspace_id=ws.id, title=title, assignee_id=users[assignee].id, created_by=users[0].id, due_at=due, priority=prio, status=status, kind=kind,
-                         completed_at=due if status == "completed" else None)
-                if rel == "deal":
-                    t.deal_id, t.company_id, t.contact_id = open_deals[idx].id, open_deals[idx].company_id, open_deals[idx].contact_id
-                elif rel == "lead":
-                    t.lead_id = leads_q[idx].id
-                db.session.add(t)
-            for i, (title, h, d_off, ci) in enumerate([("Discovery call — Nimbus", min(now.hour + 2, 23), 0, 2), ("Proposal walkthrough — Vertex", 15, 0, 8), ("Contract review — Kavya", 12, 1, 5), ("Demo — Harborline APAC", 16, 2, 10),
-                                                       ("QBR — Bluepeak", 10, -3, 1), ("Kickoff — Saffron", 14, -6, 11)]):
+            # ---- site visits, tasks, calls, emails, notes -----------------------------------------------------------
+            visit_units = rnd.sample([u for u in all_units if u.status in ("for_sale", "vacant", "for_rent")], 8)
+            for i, (d_off, hour) in enumerate([(0, min(now.hour + 2, 20)), (0, 17), (1, 11), (1, 16), (2, 10), (3, 12), (-2, 11), (-4, 15)]):
+                u, ld = visit_units[i], leads[i * 3 % len(leads)]
                 past = d_off < 0
-                m = Meeting(workspace_id=ws.id, title=title, starts_at=day(d_off, h), ends_at=day(d_off, h) + dt.timedelta(minutes=45), status="completed" if past else "scheduled", organizer_id=users[i % 3].id,
-                            company_id=companies[ci].id, meeting_url="https://meet.example.com/" + title.split()[0].lower(), attendees=[{"name": "Prospect", "email": f"contact@{COMPANIES[ci][4]}"}],
-                            summary="Walked through requirements. Agreed to send a revised proposal. Will schedule a follow up next week. Need to share security documentation." if past else None)
+                pname = next(p.name for p in projects if p.id == u.project_id)
+                m = Meeting(workspace_id=ws.id, title=f"Site visit — {ld.name}, {u.name}", kind="site_visit", starts_at=day(d_off, hour), ends_at=day(d_off, hour) + dt.timedelta(minutes=45),
+                            status="completed" if past else "scheduled", organizer_id=users[i % 3].id, lead_id=ld.id, unit_id=u.id, project_id=u.project_id, location=f"{pname}, Gurgaon",
+                            summary="Liked the layout and the view. Wants to discuss the payment plan with family." if past else None)
                 db.session.add(m)
-                db.session.add(Activity(workspace_id=ws.id, type="meeting", title=f"Meeting {'completed' if past else 'scheduled'}: {title}", company_id=companies[ci].id, user_id=m.organizer_id, occurred_at=m.starts_at, is_demo=True))
-            for i, (outcome, ci) in enumerate([("connected", 0), ("no_answer", 3), ("interested", 5), ("follow_up_required", 8), ("not_interested", 12), ("connected", 11)]):
+                db.session.add(Activity(workspace_id=ws.id, type="meeting", title=f"Site visit {'completed' if past else 'scheduled'}: {u.name}", lead_id=ld.id, user_id=m.organizer_id, occurred_at=m.starts_at, is_demo=True))
+            task_rows = [
+                ("Call back {0} about the floor plan", 0, 0, 0, "high", "todo", "follow_up"), ("Send brochure and price sheet to {0}", 0, 2, 0, "medium", "todo", "follow_up"),
+                ("Confirm site visit with {0}", 3, 4, 0, "urgent", "todo", "follow_up"), ("Collect token cheque from {0}", 0, 6, 1, "high", "todo", "follow_up"),
+                ("Share loan eligibility checklist with {0}", 1, 8, -1, "medium", "todo", "task"), ("Negotiation call with {0}", 0, 10, -2, "high", "todo", "follow_up"),
+                ("Send agreement draft to {0}", 2, 12, 2, "medium", "todo", "task"), ("Follow up on hold expiry for {0}", 3, 14, 0, "high", "todo", "follow_up"),
+                ("Update floor prices for Tower D-12", 1, None, 5, "medium", "todo", "deadline"), ("Collect owner feedback for 2 BHK listings", 1, None, 0, "low", "todo", "task"),
+                ("Re-list vacant flats on 99acres", 0, None, -3, "low", "completed", "task"),
+            ]
+            for title, assignee, li, off, prio, status, kind in task_rows:
+                t = Task(workspace_id=ws.id, title=title.format(leads[li].first_name if li is not None else ""), assignee_id=users[assignee].id, created_by=users[0].id, due_at=day(off, 12 + (assignee % 4)),
+                         priority=prio, status=status, kind=kind, completed_at=day(off, 12) if status == "completed" else None, lead_id=leads[li].id if li is not None else None)
+                db.session.add(t)
+            for i, outcome in enumerate(["connected", "no_answer", "interested", "follow_up_required", "not_interested", "connected"]):
                 when = now - dt.timedelta(days=rnd.randint(0, 9), hours=rnd.randint(1, 6))
-                call = Call(workspace_id=ws.id, direction="outbound", status="completed", outcome=outcome, occurred_at=when, duration_seconds=rnd.randint(60, 900), user_id=users[i % 4].id, contact_id=contacts[[0, 3, 5, 8, 12, 11][i]].id,
-                            company_id=companies[ci].id, notes="Discussed rollout timeline and budget.")
+                call = Call(workspace_id=ws.id, direction="outbound", status="completed", outcome=outcome, occurred_at=when, duration_seconds=rnd.randint(60, 900), user_id=users[i % 4].id,
+                            lead_id=leads[i + 2].id, notes="Discussed budget, preferred floor and possession timeline.")
                 db.session.add(call)
-                db.session.add(Activity(workspace_id=ws.id, type="call", title=f"Call logged — {outcome.replace('_', ' ')}", contact_id=call.contact_id, company_id=companies[ci].id, user_id=call.user_id, occurred_at=when, is_demo=True))
-            for i, (subject, ci) in enumerate([("Proposal: Fleet CRM rollout", 0), ("Re: Pricing questions", 2), ("Intro — CRM Wala x Orbit", 3), ("Next steps after demo", 8), ("Contract draft attached", 5), ("Quick question on integrations", 7)]):
+                db.session.add(Activity(workspace_id=ws.id, type="call", title=f"Call logged — {outcome.replace('_', ' ')}", lead_id=call.lead_id, user_id=call.user_id, occurred_at=when, is_demo=True))
+            for i, subject in enumerate(["Brochure & price sheet — Ireo Victory Valley", "Re: Is the 3 BHK on the 8th floor still available?", "Site visit confirmation for Saturday", "Payment plan options"]):
                 when = now - dt.timedelta(days=rnd.randint(0, 14), hours=rnd.randint(0, 8))
-                c = contacts[[0, 2, 3, 8, 5, 7][i]]
-                inbound = i in (1, 5)
-                e = Email(workspace_id=ws.id, direction="inbound" if inbound else "outbound", status="received" if inbound else "sent", subject=subject, body="Hi,\n\nThanks for the update. Looping in the team — will revert shortly.\n\nRegards",
-                          from_address=c.email if inbound else "aarav@acme.demo", to_addresses=["aarav@acme.demo"] if inbound else [c.email], user_id=users[0].id, sent_at=when, contact_id=c.id, company_id=c.company_id,
-                          opens=0 if inbound else rnd.randint(0, 4), tracking_id=None if inbound else f"demo{i}{rnd.randint(1000, 9999)}")
-                db.session.add(e)
-                db.session.add(Activity(workspace_id=ws.id, type="email", title=f"Email {'received' if inbound else 'sent'}: {subject}", contact_id=c.id, company_id=c.company_id, user_id=users[0].id, occurred_at=when, is_demo=True))
-            for i, body in enumerate(["Budget approved for Q4. Decision maker is the CFO — needs security review first.", "Prefers WhatsApp for quick updates. Timezone: IST evenings work best.",
-                                       "Competitor in play: HubSpot. Differentiator is speed of setup and pricing in INR.", "Asked for a 12-month contract with quarterly billing.",
-                                       "Champion is the Head of Ops. Wants a pilot with 10 users first."]):
-                d = open_deals[[0, 3, 5, 8, 11][i]]
-                db.session.add(Note(workspace_id=ws.id, body=body, author_id=users[i % 3].id, deal_id=d.id, company_id=d.company_id, contact_id=d.contact_id, pinned=i == 0, created_at=now - dt.timedelta(days=rnd.randint(0, 10))))
-                db.session.add(Activity(workspace_id=ws.id, type="note", title="Note added", body=body, deal_id=d.id, company_id=d.company_id, contact_id=d.contact_id, user_id=users[i % 3].id, occurred_at=now - dt.timedelta(days=rnd.randint(0, 10)), is_demo=True))
-            db.session.add(Automation(workspace_id=ws.id, name="Welcome & follow-up for new leads", description="Assign, tag, create a follow-up task, wait 2 days, then notify.", trigger_type="lead.created", is_active=True,
-                                      created_by=users[0].id, run_count=18, last_run_at=now - dt.timedelta(hours=5), graph={
+                c = clients[i]
+                inbound = i == 1
+                db.session.add(Email(workspace_id=ws.id, direction="inbound" if inbound else "outbound", status="received" if inbound else "sent", subject=subject,
+                                     body="Hi,\n\nThanks for the details. We would like to visit this weekend.\n\nRegards", from_address=c.email if inbound else "aarav@sunrise.demo",
+                                     to_addresses=["aarav@sunrise.demo"] if inbound else [c.email], user_id=users[0].id, sent_at=when, contact_id=c.id,
+                                     opens=0 if inbound else rnd.randint(0, 4), tracking_id=None if inbound else f"demo{i}{rnd.randint(1000, 9999)}"))
+                db.session.add(Activity(workspace_id=ws.id, type="email", title=f"Email {'received' if inbound else 'sent'}: {subject}", contact_id=c.id, user_id=users[0].id, occurred_at=when, is_demo=True))
+            for i, body in enumerate(["Wants a vastu-compliant east-facing flat above the 6th floor.", "Pre-approved home loan up to ₹2.5 Cr. Decision in two weeks.",
+                                      "NRI client — prefers WhatsApp. Family visits in December.", "Comparing with Godrej Aria. Our edge: ready to move in."]):
+                ld = leads[[0, 4, 11, 15][i]]
+                db.session.add(Note(workspace_id=ws.id, body=body, author_id=users[i % 3].id, lead_id=ld.id, pinned=i == 0, created_at=now - dt.timedelta(days=rnd.randint(0, 10))))
+            db.session.add(Automation(workspace_id=ws.id, name="New enquiry: assign, call task, send brochure", description="Assign the enquiry, create a call task, email the brochure, wait 2 days and remind.",
+                                      trigger_type="lead.created", is_active=True, created_by=users[0].id, run_count=18, last_run_at=now - dt.timedelta(hours=5), graph={
                 "nodes": [{"id": "t", "type": "trigger", "position": {"x": 0, "y": 0}, "data": {"trigger_type": "lead.created"}},
                           {"id": "a1", "type": "action", "position": {"x": 0, "y": 140}, "data": {"action_type": "assign_user", "config": {"strategy": "round_robin"}}},
-                          {"id": "a2", "type": "action", "position": {"x": 0, "y": 280}, "data": {"action_type": "create_task", "config": {"title": "Call {{first_name}}", "due_in_days": 1, "priority": "high"}}},
-                          {"id": "a3", "type": "action", "position": {"x": 0, "y": 420}, "data": {"action_type": "send_email", "config": {"to": "record", "subject": "Thanks for your interest, {{first_name}}", "body": "Hi {{first_name}},\n\nThanks for reaching out — we'll be in touch shortly.\n\nTeam Acme"}}},
+                          {"id": "a2", "type": "action", "position": {"x": 0, "y": 280}, "data": {"action_type": "create_task", "config": {"title": "Call {{first_name}} within the hour", "due_in_days": 1, "priority": "high"}}},
+                          {"id": "a3", "type": "action", "position": {"x": 0, "y": 420}, "data": {"action_type": "send_email", "config": {"to": "record", "subject": "Thanks for your enquiry, {{first_name}}", "body": "Hi {{first_name}},\n\nThank you for your interest. I'll call you shortly to understand what you're looking for and arrange a visit.\n\nSunrise Realty"}}},
                           {"id": "a4", "type": "action", "position": {"x": 0, "y": 560}, "data": {"action_type": "delay", "config": {"amount": 2, "unit": "days"}}},
-                          {"id": "a5", "type": "action", "position": {"x": 0, "y": 700}, "data": {"action_type": "send_notification", "config": {"title": "Reminder: follow up with {{name}}", "body": "It's been 2 days.", "to": "owner"}}}],
+                          {"id": "a5", "type": "action", "position": {"x": 0, "y": 700}, "data": {"action_type": "send_notification", "config": {"title": "Follow up with {{name}}", "body": "It's been 2 days since the enquiry.", "to": "owner"}}}],
                 "edges": [{"id": "e1", "source": "t", "target": "a1"}, {"id": "e2", "source": "a1", "target": "a2"}, {"id": "e3", "source": "a2", "target": "a3"}, {"id": "e4", "source": "a3", "target": "a4"}, {"id": "e5", "source": "a4", "target": "a5"}]}))
-            for title, body, ntype, link in [("New lead: Aarti Desai", "Referral · score 72", "new_lead", "/app/leads"), ("Kavya — Dealer network CRM moved to Negotiation", "Priya Sharma moved the deal", "deal_update", "/app/pipeline"),
-                                             ("Task due today: Send revised proposal to Zenith", None, "task_assigned", "/app/tasks"), ("Your trial ends in 2 days", "Choose a plan to keep access", "trial_ending", "/app/billing")]:
+            for title, body, ntype, link in [("New enquiry: Aarti Desai", "99acres · 3 BHK · ₹2–2.8 Cr", "new_lead", "/app/leads"), ("A hold expires today", "Unit 604, Tower D-13", "deal_update", "/app/projects"),
+                                             ("Site visit today: Gautam Bhatt", None, "task_assigned", "/app/calendar"), ("Your trial ends in 2 days", "Choose a plan to keep access", "trial_ending", "/app/billing")]:
                 db.session.add(Notification(workspace_id=ws.id, user_id=users[0].id, type=ntype, title=title, body=body, link=link, created_at=now - dt.timedelta(hours=rnd.randint(1, 30))))
             ws.last_activity_at = now
             db.session.commit()
-            counts = {"companies": len(companies), "contacts": len(contacts), "leads": len(LEADS), "deals": len(DEALS) + len(HISTORY), "tasks": len(task_rows)}
-    return {"email": "demo@demo.crmwala.dev", "password": PASSWORD, "workspace": "Acme Demo Co", "counts": counts}
+            counts = {"projects": len(projects), "units": len(all_units), "leads": len(leads), "contacts": len(contacts), "deals": db.session.query(Deal).count()}
+    return {"email": "demo@demo.crmwala.dev", "password": PASSWORD, "workspace": WORKSPACE, "counts": counts}

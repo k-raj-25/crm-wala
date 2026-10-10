@@ -6,8 +6,8 @@ from flask import Flask, jsonify
 
 # Customer API modules (each exposes one or more Blueprints named `bp` / `*_bp`).
 CUSTOMER_MODULES = [
-    "auth", "workspace", "settings", "team", "leads", "contacts", "companies", "deals", "pipelines", "tasks",
-    "interactions", "activity", "analytics", "billing", "data", "automations", "integrations", "ai", "public",
+    "auth", "workspace", "settings", "team", "projects", "units", "leads", "contacts", "companies", "deals", "pipelines", "tasks",
+    "interactions", "activity", "analytics", "billing", "data", "automations", "integrations", "ai", "public", "internal",
 ]
 
 

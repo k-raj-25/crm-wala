@@ -217,6 +217,17 @@ def search():
     can = lambda p: "*" in g.permissions or p in g.permissions  # noqa: E731
     limit = min(int(request.args.get("limit", 5)), 10)
     out: dict[str, list] = {}
+    if can("projects.read"):
+        from sqlalchemy import literal_column as _lc
+
+        from app.models import Project, Tower, Unit
+
+        rows = db.session.query(Project).filter(Project.workspace_id == ws, Project.deleted_at.is_(None), _lc("(coalesce(projects.name,'') || ' ' || coalesce(projects.developer,'') || ' ' || coalesce(projects.sector,'') || ' ' || coalesce(projects.locality,''))").ilike(like)).order_by(Project.name).limit(limit).all()
+        out["projects"] = [{"id": str(r.id), "title": r.name, "subtitle": " · ".join(x for x in (r.developer, r.sector, r.city) if x), "url": f"/app/projects/{r.id}"} for r in rows]
+        if can("units.read"):
+            rows = db.session.query(Unit, Tower.name, Project.name).join(Tower, Tower.id == Unit.tower_id).join(Project, Project.id == Unit.project_id).filter(
+                Unit.workspace_id == ws, Unit.deleted_at.is_(None), Unit.number.ilike(f"{term[:20]}%")).order_by(Unit.number).limit(limit).all()
+            out["units"] = [{"id": str(u.id), "title": f"Unit {u.number} · {tn}", "subtitle": f"{pn} · {u.status.replace('_', ' ')}", "url": f"/app/projects/{u.project_id}?tower={u.tower_id}&unit={u.id}"} for u, tn, pn in rows]
     if can("contacts.read"):
         rows = db.session.query(Contact).filter(Contact.workspace_id == ws, Contact.deleted_at.is_(None), search_expr.CONTACTS.ilike(like)).order_by(Contact.updated_at.desc()).limit(limit).all()
         out["contacts"] = [{"id": str(r.id), "title": r.name, "subtitle": " · ".join(x for x in (r.job_title, r.company.name if r.company else None, r.email) if x), "url": f"/app/contacts/{r.id}"} for r in rows]
@@ -270,7 +281,7 @@ def calendar_feed():
     if mine:
         q = q.filter(Meeting.organizer_id == g.user.id)
     for m in q.limit(300):
-        events.append({"id": str(m.id), "kind": "meeting", "title": m.title, "start": m.starts_at.isoformat(), "end": m.ends_at.isoformat(), "status": m.status,
+        events.append({"id": str(m.id), "kind": m.kind if m.kind == "site_visit" else "meeting", "title": m.title, "start": m.starts_at.isoformat(), "end": m.ends_at.isoformat(), "status": m.status,
                        "location": m.meeting_url or m.location, "entity": {"type": "meeting", "id": str(m.id)}})
     if "tasks.read" in g.permissions or "*" in g.permissions:
         q = db.session.query(Task).filter(Task.workspace_id == ws, Task.deleted_at.is_(None), Task.due_at >= start, Task.due_at <= end)

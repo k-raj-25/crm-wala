@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, ArrowUp, Brain, History, MessageSquare, Plus, Sparkles, Trash2, TrendingDown, Wand2 } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
-import { Avatar, Badge, Button, Card, CardBody, CardHeader, EmptyState, ErrorState, Progress, Segmented, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger, cn, formatMoneyCompact, useToast } from "@crm/ui";
+import { Avatar, Badge, Button, Card, CardBody, CardHeader, ErrorState, Progress, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger, cn, formatMoneyCompact, useToast } from "@crm/ui";
 import { Markdown } from "@/components/markdown";
 import { PageContainer, PageHeader } from "@/components/shell/page";
 import { api } from "@/lib/api";
@@ -90,4 +90,3 @@ export default function AIPage() {
     </PageContainer>
   );
 }
-export { Segmented, EmptyState };

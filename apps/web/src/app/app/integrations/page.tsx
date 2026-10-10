@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Check, Clipboard, Plug, RefreshCw, Search, Webhook as WebhookIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import * as React from "react";
-import { Badge, Button, Card, ConfirmDialog, Dialog, DialogContent, DialogFooter, EmptyState, ErrorState, Field, Input, Skeleton, Switch, cn, timeAgo, useToast } from "@crm/ui";
+import { Badge, Button, Card, ConfirmDialog, Dialog, DialogContent, DialogFooter, EmptyState, ErrorState, Field, Input, Skeleton, cn, timeAgo, useToast } from "@crm/ui";
 import { PageContainer, PageHeader } from "@/components/shell/page";
 import { api } from "@/lib/api";
 import { useAccess } from "@/lib/queries";
@@ -90,4 +90,3 @@ export default function IntegrationsPage() {
     </PageContainer>
   );
 }
-export { Switch };

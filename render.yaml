@@ -1,0 +1,118 @@
+# FREE-TIER Blueprint: New > Blueprint > pick this repo. Walkthrough: docs/DEPLOY_RENDER.md
+#
+# Free-tier limits you should know about (details in the guide):
+#  - free web services sleep after 15 min idle; the first request afterwards takes ~30-60 s to wake them
+#  - free Postgres is DELETED after 30 days (fine for a demo; upgrade or move to another free Postgres to keep data)
+#  - no background workers/cron/shell on free, so the periodic jobs are triggered by a free GitHub Actions schedule
+#    (.github/workflows/jobs.yml) and Celery runs tasks inline (CELERY_ALWAYS_EAGER)
+#
+#   browser -> crmwala-web / crmwala-admin (Next.js) --/api, /admin-api proxied over HTTPS--> crmwala-api (Flask) -> crmwala-db
+
+databases:
+  - name: crmwala-db
+    plan: free
+    postgresMajorVersion: "16"
+
+services:
+  - type: keyvalue
+    name: crmwala-redis
+    plan: free
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []
+
+  - type: web
+    name: crmwala-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    # Idempotent on every wake-up: migrations, missing platform defaults, first admin (if ADMIN_BOOTSTRAP_* set), optional demo data.
+    startCommand: flask db upgrade && flask seed-platform && (flask admin bootstrap || true) && ( [ "$SEED_DEMO" != "true" ] || flask seed-demo || true ) && gunicorn -c gunicorn.conf.py wsgi:app
+    healthCheckPath: /healthz
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: FLASK_APP
+        value: wsgi.py
+      - key: APP_ENV
+        value: staging               # "production" refuses to boot with mock billing / local storage - see the guide's "Going to production"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ADMIN_JWT_SECRET
+        generateValue: true
+      - key: ENCRYPTION_KEY
+        generateValue: true          # any random secret works; the app derives a valid Fernet key from it
+      - key: JOBS_TOKEN              # shared secret for the GitHub Actions scheduler (copy this value into a GitHub secret)
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase: { name: crmwala-db, property: connectionString }
+      - key: REDIS_URL
+        fromService: { type: keyvalue, name: crmwala-redis, property: connectionString }
+      - key: RATELIMIT_STORAGE_URI   # single instance: in-memory limits (no dependency on Redis availability)
+        value: memory://
+      - key: CELERY_ALWAYS_EAGER     # no worker on the free tier: run background tasks inline
+        value: "true"
+      - key: WEB_ORIGIN              # public URLs, e.g. https://crmwala-web.onrender.com
+        sync: false
+      - key: ADMIN_ORIGIN
+        sync: false
+      - key: ADMIN_BOOTSTRAP_EMAIL   # creates your first Super Admin on boot (only if no admin exists). Remove the password afterwards.
+        sync: false
+      - key: ADMIN_BOOTSTRAP_PASSWORD
+        sync: false
+      - key: SEED_DEMO               # "true" loads the demo workspace (demo@demo.crmwala.dev / Demo@12345). Staging only.
+        value: "false"
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: ADMIN_REQUIRE_2FA
+        value: "true"
+      - key: TRUSTED_PROXY_HOPS
+        value: "1"
+      - key: LOG_FORMAT
+        value: json
+      - key: WEB_CONCURRENCY         # free instances have 512 MB RAM
+        value: "1"
+      - key: GUNICORN_THREADS
+        value: "4"
+      - key: BILLING_PROVIDER        # mock = test checkout, no real charges
+        value: mock
+      - key: EMAIL_PROVIDER          # console = emails are printed to the log, not sent
+        value: console
+      - key: STORAGE_BACKEND         # local disk is wiped on every deploy/wake - use s3 for real uploads
+        value: local
+
+  - type: web
+    name: crmwala-web
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build -w @crm/web
+    startCommand: npm run start -w @crm/web
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_OPTIONS            # explicit (overrides an older 400 MB cap that Render keeps on existing services)
+        value: --max-old-space-size=1536
+      - key: SKIP_TYPECHECK          # the type-check step is the memory hog; types are verified before pushing
+        value: "1"
+      - key: API_URL                 # PUBLIC https URL of crmwala-api, e.g. https://crmwala-api.onrender.com (baked in at build time)
+        sync: false
+
+  - type: web
+    name: crmwala-admin
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build -w @crm/admin
+    startCommand: npm run start -w @crm/admin
+    healthCheckPath: /login
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_OPTIONS            # explicit (overrides an older 400 MB cap that Render keeps on existing services)
+        value: --max-old-space-size=1536
+      - key: SKIP_TYPECHECK          # the type-check step is the memory hog; types are verified before pushing
+        value: "1"
+      - key: API_URL
+        sync: false

@@ -13,11 +13,11 @@ from app.core.crud import CrudResource, users_map
 from app.core.errors import ApiError, bad_request
 from app.core.responses import ok
 from app.extensions import db
-from app.models import Company, Contact, Deal, Lead, Pipeline, PipelineStage
+from app.models import Company, Contact, Deal, Lead, Pipeline, PipelineStage, Project, Unit
 from app.models.base import utcnow
 from app.schemas.common import Schema, parse
 from app.schemas.crm import DealIn, DealPatch
-from app.services import activities, analytics, audit, events, notifications, scoring
+from app.services import activities, analytics, audit, events, inventory, notifications, scoring
 from app.services.tags import ensure_tags
 
 bp = Blueprint("deals", __name__, url_prefix="/api/v1/deals")
@@ -94,8 +94,9 @@ class DealResource(CrudResource):
         "priority": ("in", Deal.priority), "tags": ("array", Deal.tags), "value": ("num", Deal.value),
         "expected_close_date": ("date", Deal.expected_close_date), "created_at": ("date", Deal.created_at),
         "closed_at": ("date", Deal.closed_at), "source": ("in", Deal.source),
+        "project_id": ("in", Deal.project_id), "unit_id": ("in", Deal.unit_id),
     }
-    refs = {"owner_id": "member", "company_id": Company, "contact_id": Contact}
+    refs = {"owner_id": "member", "company_id": Company, "contact_id": Contact, "project_id": Project, "unit_id": Unit}
     custom_fields = True
     bulk_fields = {"priority"}
     export_columns = [
@@ -118,7 +119,10 @@ class DealResource(CrudResource):
 
     def serialize_many(self, objs):
         out = super().serialize_many(objs)
+        units, projects = inventory.labels_for({o.unit_id for o in objs}, {o.project_id for o in objs})
         for d, o in zip(out, objs):
+            d["unit"] = {"id": str(o.unit_id), "label": units.get(o.unit_id)} if o.unit_id else None
+            d["project"] = {"id": str(o.project_id), "name": projects.get(o.project_id)} if o.project_id else None
             d["company"] = {"id": str(o.company.id), "name": o.company.name} if o.company else None
             d["contact"] = {"id": str(o.contact.id), "name": o.contact.name} if o.contact else None
             d["stage"] = {"id": str(o.stage.id), "name": o.stage.name, "kind": o.stage.kind, "color": o.stage.color, "position": o.stage.position}
@@ -134,6 +138,7 @@ class DealResource(CrudResource):
 
         custom = cf.validate(g.workspace.id, "deal", d.pop("custom"))
         prob = d.pop("probability", None)
+        inventory.link_project(d)
         deal = create_deal_record(custom=custom, **{k: v for k, v in d.items()})
         if prob is not None:
             deal.probability = prob
@@ -145,6 +150,8 @@ class DealResource(CrudResource):
         return created(self.serialize(deal))
 
     def prepare_update(self, deal, changes):
+        if "unit_id" in changes:
+            inventory.link_project(changes)
         stage_id, pipeline_id = changes.pop("stage_id", None), changes.pop("pipeline_id", None)
         if stage_id or pipeline_id:
             pid = pipeline_id or deal.pipeline_id
@@ -165,6 +172,7 @@ class DealResource(CrudResource):
         old_stage = db.session.get(PipelineStage, before["stage_id"]) if isinstance(before["stage_id"], (str, uuid.UUID)) else deal.stage
         apply_stage(deal, stage)
         deal.position = position if position is not None else _next_position(stage.id)
+        inventory.sync_deal_to_unit(deal, stage.kind)
         kind = {"won": "won", "lost": "lost"}.get(stage.kind, "stage_changed")
         title = {"won": "Deal won 🎉", "lost": "Deal lost"}.get(stage.kind, f"Moved from {old_stage.name if old_stage else '—'} to {stage.name}")
         activities.log_activity(kind, title, deal_id=deal.id, contact_id=deal.contact_id, company_id=deal.company_id,

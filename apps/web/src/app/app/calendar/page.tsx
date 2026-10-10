@@ -15,8 +15,8 @@ export default function CalendarPage() {
   const toggle = (k: string) => setKinds((s) => { const n = new Set(s); n.has(k) ? n.delete(k) : n.add(k); return n; });
   return (
     <PageContainer wide>
-      <PageHeader title="Calendar" description="Meetings, calls, follow-ups, tasks and deadlines in one place."
-        actions={<>{can("meetings.create") && <Button onClick={() => ui.openCreate("meeting")}><CalendarPlus /> Schedule meeting</Button>}</>} />
+      <PageHeader title="Site Visits" description="Property visits, meetings, calls and follow-ups in one calendar."
+        actions={<>{can("meetings.create") && <Button onClick={() => ui.openCreate("meeting", { kind: "site_visit" })}><CalendarPlus /> Schedule site visit</Button>}</>} />
       <div className="mb-4 flex flex-wrap items-center gap-x-5 gap-y-3">
         <div className="flex flex-wrap gap-2">{Object.entries(KINDS).map(([k, v]) => <button key={k} aria-pressed={kinds.has(k)} onClick={() => toggle(k)} className={cn("flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium transition-colors", kinds.has(k) ? "border-transparent" : "border-border text-fg-subtle")} style={kinds.has(k) ? { background: `color-mix(in srgb, ${v.color} 14%, transparent)`, color: `color-mix(in srgb, ${v.color} 70%, var(--fg))` } : undefined}><span className="size-2 rounded-full" style={{ background: v.color }} />{v.label}</button>)}</div>
         <label className="ml-auto flex items-center gap-2 text-sm text-fg-muted"><Switch checked={mine} onCheckedChange={setMine} aria-label="Only my events" />Only mine</label>

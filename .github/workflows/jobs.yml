@@ -1,0 +1,22 @@
+# Runs the periodic jobs (billing lifecycle, reminders, automation resumes, scheduled emails/reports) on hosts with no
+# background worker, e.g. Render's free tier. Needs two repository secrets (Settings > Secrets and variables > Actions):
+#   API_URL     e.g. https://crmwala-api.onrender.com
+#   JOBS_TOKEN  copy of the JOBS_TOKEN env var from the crmwala-api service
+# GitHub only runs schedules from the default branch, and pauses them after 60 days without repo activity.
+name: periodic-jobs
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    env:
+      API_URL: ${{ secrets.API_URL }}
+      JOBS_TOKEN: ${{ secrets.JOBS_TOKEN }}
+    steps:
+      - name: Trigger jobs (retries cover the free instance waking up)
+        run: |
+          if [ -z "$API_URL" ] || [ -z "$JOBS_TOKEN" ]; then echo "API_URL / JOBS_TOKEN secrets not set; skipping."; exit 0; fi
+          curl -fsS --retry 5 --retry-delay 20 --retry-all-errors --max-time 120 \
+            -X POST "$API_URL/api/v1/internal/run-jobs" -H "X-Jobs-Token: $JOBS_TOKEN"

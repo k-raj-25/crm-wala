@@ -31,7 +31,7 @@ def _meta(provider: str) -> dict:
 @bp.get("")
 @protect()
 def list_():
-    rows = {i.provider: i for i in db.session.query(Integration).filter_by(workspace_id=g.workspace.id)}
+    rows = {i.provider: i for i in db.session.query(Integration).filter_by(workspace_id=g.workspace.id) if i.provider not in svc.PER_USER or i.connected_by == g.user.id}
     return ok({"categories": svc.CATEGORIES, "integrations": [svc.public_view(p, rows.get(p)) for p in svc.CATALOG], "webhook_events": svc.WEBHOOK_EVENTS,
                "lead_form": {"token": (g.workspace.settings or {}).get("public_form_token"), "endpoint": f"{current_app.config['WEB_ORIGIN']}/api/v1/public/forms/{(g.workspace.settings or {}).get('public_form_token')}"}})
 
@@ -46,7 +46,7 @@ class ConnectIn(Schema):
 def connect(provider):
     meta = _meta(provider)
     body = parse(ConnectIn, request.get_json(silent=True) or {})
-    i = svc.upsert(g.workspace.id, provider)
+    i = svc.upsert(g.workspace.id, provider, g.user.id)
     kind = meta["kind"]
     if kind == "google" and current_app.config["GOOGLE_CLIENT_ID"]:
         state = accounts.signed_token("integ_oauth", f"{g.workspace.id}:{provider}:{g.user.id}", 15)
@@ -95,7 +95,7 @@ def google_callback():
     from app.core.tenant import set_tenant
 
     set_tenant(uuid.UUID(wid))
-    i = svc.upsert(uuid.UUID(wid), provider)
+    i = svc.upsert(uuid.UUID(wid), provider, g.user.id)
     import time
 
     svc.set_creds(i, {"access_token": tok["access_token"], "refresh_token": tok.get("refresh_token"), "expires_at": time.time() + tok.get("expires_in", 3600)})
@@ -109,7 +109,7 @@ def google_callback():
 @protect("integrations.manage")
 def disconnect(provider):
     _meta(provider)
-    i = svc.get(g.workspace.id, provider)
+    i = svc.get(g.workspace.id, provider, g.user.id)
     if i is None:
         return ok(svc.public_view(provider, None))
     i.status, i.credentials_enc, i.last_error, i.account_label, i.config = "not_connected", None, None, None, {}
@@ -122,7 +122,7 @@ def disconnect(provider):
 @protect("integrations.manage")
 def sync(provider):
     _meta(provider)
-    i = svc.get(g.workspace.id, provider)
+    i = svc.get(g.workspace.id, provider, g.user.id)
     if i is None or i.status != "connected":
         raise ApiError(409, "not_connected", "Connect this integration first.")
     imported = 0
@@ -149,7 +149,7 @@ def simulate_error(provider):
     if current_app.config["ENV"] == "production":
         raise not_found("Endpoint")
     _meta(provider)
-    i = svc.get(g.workspace.id, provider)
+    i = svc.get(g.workspace.id, provider, g.user.id)
     if i is None or i.status == "not_connected":
         raise ApiError(409, "not_connected", "Connect this integration first.")
     state = request.get_json(silent=True, force=True) or {}

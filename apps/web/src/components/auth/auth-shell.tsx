@@ -4,7 +4,7 @@ import { Check, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
 import { Button, Input, Logo, ThemeToggle, cn } from "@crm/ui";
-import { DashboardPreview } from "../marketing/dashboard-preview";
+import { BuildingHero } from "../marketing/building-preview";
 
 export function AuthShell({ title, subtitle, children, footer, wide }: { title: string; subtitle?: React.ReactNode; children: React.ReactNode; footer?: React.ReactNode; wide?: boolean }) {
   return (
@@ -24,9 +24,9 @@ export function AuthShell({ title, subtitle, children, footer, wide }: { title: 
       <aside className="relative hidden overflow-hidden bg-gradient-to-br from-[#312e81] via-[#4338ca] to-[#6d28d9] p-12 lg:flex lg:flex-col lg:justify-center" aria-hidden>
         <div className="pointer-events-none absolute inset-0 opacity-40" style={{ background: "radial-gradient(600px 300px at 10% 0%, rgba(255,255,255,.35), transparent), radial-gradient(500px 300px at 100% 100%, rgba(167,139,250,.5), transparent)" }} />
         <div className="relative">
-          <h2 className="max-w-md text-balance text-3xl font-semibold tracking-tight text-white">Know exactly what's happening in your business — and what to do next.</h2>
-          <ul className="mt-5 space-y-2 text-white/80">{["Today's Focus tells you who to contact", "Drag-and-drop pipeline with live totals", "3-day free trial, no card required"].map((t) => <li key={t} className="flex items-center gap-2"><Check className="size-4 text-emerald-300" />{t}</li>)}</ul>
-          <div className="pointer-events-none mt-10 w-[135%] origin-top-left scale-[0.78] opacity-95"><DashboardPreview /></div>
+          <h2 className="max-w-md text-balance text-3xl font-semibold tracking-tight text-white">See every flat you sell — and know exactly what to do next.</h2>
+          <ul className="mt-5 space-y-2 text-white/80">{["Every tower, floor and flat in one picture", "Hold flats for clients with a countdown", "3-day free trial, no card required"].map((t) => <li key={t} className="flex items-center gap-2"><Check className="size-4 text-emerald-300" />{t}</li>)}</ul>
+          <div className="pointer-events-none mt-10 w-[135%] origin-top-left scale-[0.78] opacity-95"><BuildingHero /></div>
         </div>
       </aside>
     </div>

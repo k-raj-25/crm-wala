@@ -6,8 +6,8 @@ import { AreaTrend, BarsChart, Card, FunnelBars, Avatar, cn, formatMoneyCompact 
 import { Container, Reveal, Section, Window } from "./primitives";
 
 const CHAT = [
-  { q: "Which deals are most likely to close this month?", a: "**3 deals** could close this month, worth **₹58.5L**:\n• Kavya — Dealer network CRM · ₹26L · 80%\n• Zenith — Fleet CRM rollout · ₹18.5L · 80%\n• Saffron — Guest CRM · ₹8.4L · 80%" },
-  { q: "Which leads haven't been contacted in 7 days?", a: "**9 open leads** are going cold. Highest scoring: Harsh Vora (84), Rohan Bose (79), Divya Krishnan (76). Want me to draft follow-ups?" },
+  { q: "Which 3 BHK flats under ₹2.5 Cr are free in Victory Valley?", a: "**4 flats** match:\n• Tower D-13 · 804 · 3 BHK · ₹2.41Cr · for sale\n• Tower D-13 · 403 · 3 BHK · ₹2.38Cr · vacant\n• Tower D-12 · 1102 · 3 BHK · ₹2.45Cr · for sale\nWant me to find clients who would like them?" },
+  { q: "Which leads haven't been contacted in 7 days?", a: "**9 open leads** are going cold. Highest scoring: Rohan Bose (84, buying a 4 BHK), Lakshmi Pillai (79), Gautam Bhatt (76). Want me to draft follow-ups?" },
 ];
 function Typed({ text, run }: { text: string; run: boolean }) {
   const [n, setN] = useState(0);
@@ -20,9 +20,9 @@ export function AISection() {
   const inView = useInView(ref, { once: true, margin: "-120px" });
   const [i, setI] = useState(0);
   useEffect(() => { if (!inView) return; const t = setInterval(() => setI((v) => (v + 1) % CHAT.length), 7000); return () => clearInterval(t); }, [inView]);
-  const items = [[Brain, "Lead scoring & deal probability", "Explainable scores that tell you why a lead is hot."], [Mail, "Emails in your voice", "Draft a follow-up for any lead in one click."], [Sparkles, "Next-best-action", "A daily short-list of exactly what to do next."], [TrendingDown, "Churn-risk detection", "Spot quiet customers before they leave."], [Copy, "Duplicate & cleanup suggestions", "Keep your data tidy automatically."]] as const;
+  const items = [[Brain, "Lead scoring & deal probability", "Explainable scores that tell you why a lead is hot."], [Mail, "Messages in your voice", "Draft a follow-up or a brochure email for any lead in one click."], [Sparkles, "Next-best-action", "A daily short-list of exactly what to do next."], [TrendingDown, "Cold-lead alerts", "Spot enquiries and clients going quiet before they go elsewhere."], [Copy, "Duplicate & cleanup suggestions", "Keep your data tidy automatically."]] as const;
   return (
-    <Section id="ai" eyebrow="AI assistant" title="Ask your CRM anything" subtitle="The assistant answers from your own pipeline — respecting your permissions and never touching another company's data.">
+    <Section id="ai" eyebrow="AI assistant" title="Ask your CRM anything" subtitle="The assistant answers from your own inventory and pipeline — respecting your permissions and never touching another brokerage's data.">
       <div ref={ref} className="grid items-center gap-10 lg:grid-cols-2">
         <Reveal><ul className="space-y-5">{items.map(([I, t, b]) => <li key={t} className="flex gap-4"><span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary"><I className="size-5" /></span><div><p className="font-semibold">{t}</p><p className="text-[15px] text-fg-muted">{b}</p></div></li>)}</ul></Reveal>
         <Reveal delay={0.1}>
@@ -35,7 +35,7 @@ export function AISection() {
                   <div className="max-w-[88%] rounded-2xl rounded-tl-md border border-border bg-surface px-4 py-3 text-sm leading-relaxed"><Typed text={CHAT[i].a} run={inView} /></div>
                 </motion.div>
               </div>
-              <div className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-sm text-fg-subtle"><span className="flex-1">Ask about deals, leads, tasks…</span><Send className="size-4" /></div>
+              <div className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-sm text-fg-subtle"><span className="flex-1">Ask about flats, leads, visits…</span><Send className="size-4" /></div>
             </div>
           </Window>
         </Reveal>
@@ -45,12 +45,12 @@ export function AISection() {
 }
 
 const FLOW = [
-  { icon: Zap, label: "When", title: "Lead is created", tone: "var(--series-1)" },
-  { icon: UserPlus, label: "Then", title: "Assign to salesperson", tone: "var(--series-3)" },
-  { icon: Mail, label: "Then", title: "Send welcome email", tone: "var(--series-2)" },
-  { icon: CheckSquare, label: "Then", title: "Create follow-up task", tone: "var(--series-7)" },
+  { icon: Zap, label: "When", title: "New enquiry arrives", tone: "var(--series-1)" },
+  { icon: UserPlus, label: "Then", title: "Assign to an agent", tone: "var(--series-3)" },
+  { icon: Mail, label: "Then", title: "Send the brochure", tone: "var(--series-2)" },
+  { icon: CheckSquare, label: "Then", title: "Create a call task", tone: "var(--series-7)" },
   { icon: Clock, label: "Then", title: "Wait 2 days", tone: "var(--series-4)" },
-  { icon: Bell, label: "Then", title: "Send reminder", tone: "var(--series-5)" },
+  { icon: Bell, label: "Then", title: "Remind the agent", tone: "var(--series-5)" },
 ];
 export function FlowDiagram() {
   const [active, setActive] = useState(0);
@@ -76,10 +76,10 @@ export function FlowDiagram() {
 
 export function AutomationSection() {
   return (
-    <Section id="automation" tone="subtle" eyebrow="Automation" title="Set it once. Let it run." subtitle="Build workflows visually. When a lead is created → assign a salesperson → send an email → create a follow-up task → wait → remind.">
+    <Section id="automation" tone="subtle" eyebrow="Automation" title="Set it once. Let it run." subtitle="Build workflows visually. When an enquiry arrives → assign an agent → send the brochure → create a call task → wait → remind.">
       <Reveal><Card className="mx-auto max-w-5xl overflow-hidden p-6 sm:p-8"><FlowDiagram />
         <div className="mt-8 grid gap-3 border-t border-border pt-6 text-sm sm:grid-cols-3">
-          {[["Triggers", "Lead created · Deal stage changed · Task completed · Form submitted · Trial ending · Payment failed"], ["Actions", "Send email · Create task · Assign user · Add tag · Change status · Webhook"], ["Safe by design", "Dry-run test mode, run history and loop protection built in"]].map(([t, b]) => <div key={t}><p className="font-semibold">{t}</p><p className="mt-1 text-fg-muted">{b}</p></div>)}
+          {[["Triggers", "Enquiry created · Deal stage changed · Task completed · Form submitted"], ["Actions", "Send email · Create task · Assign user · Add tag · Change status · Webhook"], ["Safe by design", "Dry-run test mode, run history and loop protection built in"]].map(([t, b]) => <div key={t}><p className="font-semibold">{t}</p><p className="mt-1 text-fg-muted">{b}</p></div>)}
         </div>
       </Card></Reveal>
     </Section>
@@ -89,11 +89,11 @@ export function AutomationSection() {
 const REV = Array.from({ length: 12 }, (_, i) => ({ m: ["Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct"][i], revenue: [4, 6, 5.2, 8, 7.4, 10, 9.6, 12.5, 12, 15, 14.2, 18.5][i] * 100000 }));
 export function AnalyticsSection() {
   return (
-    <Section id="analytics" eyebrow="Analytics" title="Know exactly what revenue is coming" subtitle="Live dashboards and a forecast you can trust — hover any chart for exact values.">
+    <Section id="analytics" eyebrow="Analytics" title="Know exactly what sales are coming" subtitle="Live dashboards and a forecast you can trust — hover any chart for exact values.">
       <div className="grid gap-4 lg:grid-cols-3">
-        <Reveal className="lg:col-span-2"><Card className="p-5"><p className="font-semibold">Revenue over time</p><p className="mb-3 text-sm text-fg-muted">Closed-won deals, last 12 months</p><AreaTrend data={REV} xKey="m" series={[{ key: "revenue", label: "Revenue" }]} format={(v) => formatMoneyCompact(v)} height={250} /></Card></Reveal>
-        <Reveal delay={0.08}><Card className="h-full p-5"><p className="font-semibold">Sales funnel</p><p className="mb-4 text-sm text-fg-muted">Deals reaching each stage</p><FunnelBars steps={[{ label: "Qualified", value: 64 }, { label: "Discovery", value: 41 }, { label: "Proposal", value: 27 }, { label: "Negotiation", value: 15 }, { label: "Won", value: 9 }]} /></Card></Reveal>
-        <Reveal delay={0.12} className="lg:col-span-3"><Card className="p-5"><p className="font-semibold">Revenue forecast</p><p className="mb-3 text-sm text-fg-muted">Commit vs weighted vs best case</p>
+        <Reveal className="lg:col-span-2"><Card className="p-5"><p className="font-semibold">Sales over time</p><p className="mb-3 text-sm text-fg-muted">Deals closed, last 12 months</p><AreaTrend data={REV} xKey="m" series={[{ key: "revenue", label: "Sales" }]} format={(v) => formatMoneyCompact(v)} height={250} /></Card></Reveal>
+        <Reveal delay={0.08}><Card className="h-full p-5"><p className="font-semibold">Deal funnel</p><p className="mb-4 text-sm text-fg-muted">Deals reaching each stage</p><FunnelBars steps={[{ label: "Enquiry", value: 64 }, { label: "Site visit", value: 41 }, { label: "Shortlisted", value: 27 }, { label: "Negotiation", value: 15 }, { label: "Closed", value: 9 }]} /></Card></Reveal>
+        <Reveal delay={0.12} className="lg:col-span-3"><Card className="p-5"><p className="font-semibold">Sales forecast</p><p className="mb-3 text-sm text-fg-muted">Commit vs weighted vs best case</p>
           <BarsChart data={[{ m: "Nov", commit: 52, weighted: 60, best: 88 }, { m: "Dec", commit: 0, weighted: 37, best: 84 }, { m: "Jan", commit: 0, weighted: 22, best: 61 }, { m: "Feb", commit: 0, weighted: 12, best: 40 }].map((r) => ({ m: r.m, commit: r.commit * 1e5, weighted: r.weighted * 1e5, best: r.best * 1e5 }))} xKey="m" series={[{ key: "commit", label: "Commit" }, { key: "weighted", label: "Weighted" }, { key: "best", label: "Best case" }]} format={(v) => formatMoneyCompact(v)} height={220} /></Card></Reveal>
       </div>
     </Section>

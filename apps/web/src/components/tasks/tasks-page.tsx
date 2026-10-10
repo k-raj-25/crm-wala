@@ -58,7 +58,7 @@ export function TasksPage() {
   const total = lists.data ? Object.values(lists.data).reduce((a, l) => a + l.length, 0) : 0;
   return (
     <PageContainer wide>
-      <PageHeader title="Tasks" description="Follow-ups and to-dos, sorted by what's due."
+      <PageHeader title="Daily Plan" description="Today's follow-ups and to-dos, sorted by what's due."
         actions={<>
           <Segmented size="sm" value={who} onChange={setWho} options={[{ value: "mine", label: "Mine" }, { value: "all", label: "Everyone" }]} />
           {who === "all" && <div className="w-44"><MemberSelect value={assignee} onChange={setAssignee} noneLabel="All assignees" size="sm" /></div>}

@@ -10,11 +10,11 @@ import { INDUSTRIES } from "@/lib/constants";
 import { keys, useMe } from "@/lib/queries";
 import type { Me } from "@/lib/types";
 
-const MODELS = [["b2b", "B2B", Building], ["b2c", "B2C", User], ["agency", "Agency", Layers], ["saas", "SaaS", Zap], ["consulting", "Consulting", Briefcase], ["real_estate", "Real Estate", Home], ["services", "Services", Wrench], ["other", "Other", Sparkles]] as const;
+const MODELS = [["agent", "Independent agent", User], ["brokerage", "Brokerage / agency", Building], ["channel_partner", "Channel partner", Handshake], ["developer", "Developer sales team", Layers], ["property_manager", "Rentals & property management", Home], ["real_estate", "Something else in real estate", Sparkles]] as const;
 const SIZES = [["1", "Just me"], ["2-5", "2–5"], ["6-10", "6–10"], ["11-25", "11–25"], ["26-50", "26–50"], ["51-200", "51–200"], ["201+", "200+"]] as const;
-const GOALS = [["manage_leads", "Manage leads", "Capture, score and follow up with every lead", Users], ["manage_sales", "Manage sales", "See your whole sales process in one place", Handshake], ["manage_customers", "Manage customers", "Keep every customer relationship organised", UsersRound], ["track_deals", "Track deals", "A visual pipeline from first call to closed-won", Target], ["automate_followups", "Automate follow-ups", "Never forget to follow up again", Repeat], ["analyze_revenue", "Analyze revenue", "Dashboards and forecasts you can trust", BarChart3]] as const;
-const IMPORTS = [["scratch", "Start from scratch", "Begin with a clean workspace", Rocket], ["csv", "Import CSV", "Bring contacts and leads from a spreadsheet", FileSpreadsheet], ["google", "Connect Google Contacts", "Import the people you already know", Mail], ["integrations", "Connect other integrations", "Gmail, Slack, Calendar and more", PlugZap]] as const;
-const STEPS = ["Business", "How you sell", "Team size", "Goals", "Import"];
+const GOALS = [["manage_leads", "Keep track of enquiries", "Every buyer and renter, with their budget and follow-ups", Users], ["track_inventory", "Know what's available", "See every flat — vacant, held, sold or rented — at a glance", Home], ["track_deals", "Track deals", "A visual pipeline from enquiry to closed", Target], ["automate_followups", "Never miss a follow-up", "Reminders and auto-assignment for new enquiries", Repeat], ["analyze_revenue", "See what's selling", "Sales, pipeline and team reports", BarChart3]] as const;
+const IMPORTS = [["project", "Add my first project", "Draw a tower and see its flats straight away", Building], ["csv", "Import leads from a CSV", "From 99acres, MagicBricks, Housing.com or a spreadsheet", FileSpreadsheet], ["scratch", "Start from scratch", "Begin with a clean workspace", Rocket], ["integrations", "Connect Gmail & calendar", "Send email and sync visits", PlugZap]] as const;
+const STEPS = ["Business", "What you do", "Team size", "Goals", "First step"];
 
 function Choice({ selected, onClick, icon: Icon, title, description, multi }: { selected: boolean; onClick: () => void; icon: React.ElementType; title: string; description?: string; multi?: boolean }) {
   return (
@@ -49,23 +49,23 @@ export default function Onboarding() {
     try {
       const w = await api.post<Me["workspace"]>("/api/v1/workspace/onboarding", { ...f, complete: true, website: f.website || undefined, industry: f.industry || undefined });
       qc.setQueryData<Me>(keys.me, (m) => (m ? { ...m, workspace: w } : m));
-      const dest = { scratch: "/app", csv: "/app/settings/data?import=contacts", google: "/app/integrations?connect=google_contacts", integrations: "/app/integrations" }[f.import_choice] ?? "/app";
-      toast.success("Your workspace is ready", "Let's make your first sale.");
+      const dest = { project: "/app/projects?new=1", scratch: "/app", csv: "/app/settings/data?import=leads", integrations: "/app/integrations" }[f.import_choice] ?? "/app";
+      toast.success("Your workspace is ready", "Let's fill your first building.");
       router.replace(dest);
     } catch (e) { toast.error("Couldn't save", (e as Error).message); setBusy(false); }
   };
   if (isLoading || !me) return <div className="flex min-h-dvh items-center justify-center"><div className="skeleton h-8 w-48" /></div>;
 
   const panels = [
-    <div key="0" className="space-y-5"><Field label="Company name" required><Input value={f.company_name} onChange={(e) => setF({ ...f, company_name: e.target.value })} autoFocus /></Field>
-      <Field label="Website" hint="Optional"><Input icon={<Globe />} value={f.website} onChange={(e) => setF({ ...f, website: e.target.value })} placeholder="https://yourcompany.com" /></Field>
-      <Field label="Industry"><NativeSelect value={f.industry} onChange={(e) => setF({ ...f, industry: e.target.value })}><option value="">Select…</option>{INDUSTRIES.map((i) => <option key={i}>{i}</option>)}</NativeSelect></Field></div>,
+    <div key="0" className="space-y-5"><Field label="Agency or company name" required><Input value={f.company_name} onChange={(e) => setF({ ...f, company_name: e.target.value })} autoFocus /></Field>
+      <Field label="Website" hint="Optional"><Input icon={<Globe />} value={f.website} onChange={(e) => setF({ ...f, website: e.target.value })} placeholder="https://youragency.com" /></Field>
+      <Field label="You are a…"><NativeSelect value={f.industry} onChange={(e) => setF({ ...f, industry: e.target.value })}><option value="">Select…</option>{INDUSTRIES.map((i) => <option key={i}>{i}</option>)}</NativeSelect></Field></div>,
     <div key="1" className="grid gap-3 sm:grid-cols-2">{MODELS.map(([k, l, I]) => <Choice key={k} selected={f.sales_model === k} onClick={() => setF({ ...f, sales_model: k })} icon={I} title={l} />)}</div>,
     <div key="2" className="grid grid-cols-2 gap-3 sm:grid-cols-3">{SIZES.map(([k, l]) => <Choice key={k} selected={f.company_size === k} onClick={() => setF({ ...f, company_size: k })} icon={k === "1" ? User : UsersRound} title={l} description={k === "1" ? "Solo" : "people"} />)}</div>,
     <div key="3" className="grid gap-3 sm:grid-cols-2">{GOALS.map(([k, l, d, I]) => <Choice multi key={k} selected={f.goals.includes(k)} onClick={() => setF({ ...f, goals: f.goals.includes(k) ? f.goals.filter((x) => x !== k) : [...f.goals, k] })} icon={I} title={l} description={d} />)}</div>,
     <div key="4" className="grid gap-3 sm:grid-cols-2">{IMPORTS.map(([k, l, d, I]) => <Choice key={k} selected={f.import_choice === k} onClick={() => setF({ ...f, import_choice: k })} icon={I} title={l} description={d} />)}</div>,
   ];
-  const titles = [["Tell us about your business", "This helps us tailor your workspace."], ["How do you sell?", "Pick the model that fits best."], ["How large is your team?", "We'll set sensible defaults."], ["What do you want to accomplish?", "Choose all that apply."], ["Import your data", "You can always do this later."]];
+  const titles = [["Tell us about your agency", "This helps us tailor your workspace."], ["What do you do?", "Pick the one that fits best."], ["How large is your team?", "We'll set sensible defaults."], ["What do you want to accomplish?", "Choose all that apply."], ["Where would you like to start?", "You can always do the others later."]];
 
   return (
     <div className="flex min-h-dvh flex-col">

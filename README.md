@@ -1,6 +1,8 @@
 # CRM Wala
 
-A multi-tenant CRM SaaS for small businesses, agencies and sales teams — customer app, a completely separate Super Admin console, and a Flask API with database-enforced tenant isolation.
+A multi-tenant **real estate CRM** for realtors who are tired of complicated CRMs — customer app, a completely separate Super Admin console, and a Flask API with database-enforced tenant isolation.
+
+The centrepiece is the **building view**: pick a project and a tower and see every floor and flat drawn like the building itself, each flat coloured by status (vacant, for sale, for rent, on hold, booked, sold, rented, self-occupied). Click a colour to light up just those flats; click a flat to change its status, hold it for a client with a countdown, schedule a site visit or start a deal. Leads carry budget, size and purpose, so the app can show *flats that fit a client* and *clients who fit a flat*.
 
 | App | Path | Port | Stack |
 |---|---|---|---|
@@ -24,7 +26,7 @@ make web                              # http://localhost:3000   (second terminal
 make admin                            # http://localhost:3001   (third terminal)
 ```
 
-**Demo login (customer app):** `demo@demo.crmwala.dev` / `Demo@12345` (owner of "Acme Demo Co", in its 3-day trial).
+**Demo login (customer app):** `demo@demo.crmwala.dev` / `Demo@12345` (owner of "Sunrise Realty", in its 3-day trial — 3 projects, 186 flats, 30 enquiries).
 Teammates: `priya@`, `rohit@`, `sneha@`, `vikram@demo.crmwala.dev` (manager / sales reps / viewer) with the same password.
 
 **Super Admin:** create an account, then sign in at :3001. 2FA is mandatory; you scan a QR code on first sign-in.
@@ -33,6 +35,19 @@ cd backend && . .venv/bin/activate && FLASK_APP=wsgi.py flask admin create --ema
 ```
 
 Run tests: `make test` (needs the `crm_test` database from `init.sql`). Typecheck: `make typecheck`. Production builds: `make build`.
+
+## Real estate model
+
+| Concept | Where |
+|---|---|
+| Project → Tower → Unit (flat/shop/office/villa/plot), floor 0 = ground | `backend/app/models/crm.py`, migration `0005`, API `/api/v1/projects`, `/api/v1/units` |
+| Unit status + holds (auto-release when the timer ends) + history | `backend/app/services/inventory.py` |
+| Lead requirement (intent, size, budget, project/flat) and matching | `Lead` columns, `GET /units/<id>/matches`, `GET /leads/<id>/matches` |
+| Deal won on a flat → flat becomes sold/rented; deal lost → hold released | `inventory.sync_deal_to_unit` |
+| Site visits | `Meeting.kind = "site_visit"` linked to a flat |
+| Building view, tower art, unit drawer, project wizard | `apps/web/src/components/projects/` |
+
+Hold expiry runs lazily on every read and also from the scheduler (`jobs.release_expired_holds`, included in `/api/v1/internal/run-jobs`).
 
 ## What's in the box
 
@@ -77,5 +92,7 @@ Verified in development (real PostgreSQL + Redis, headless Chromium):
 **Not exercised against live third parties** (code paths exist, but I had no credentials): Stripe and Razorpay checkout/webhooks/refunds, Google OAuth, Gmail/Outlook sync, WhatsApp/Slack/Zapier integrations, real SMTP/Resend delivery, S3 uploads, Anthropic/OpenAI models (the `mock` AI provider answers from real CRM data using the same tool layer). Integrations that need OAuth apps show as "sandbox" until credentials are configured.
 
 **Placeholders to replace before launch:** landing-page testimonials and "trusted by" logos are illustrative copy, not real customers; legal pages, support email and pricing copy; the dev `ENCRYPTION_KEY` in `docker-compose.yml`. Load/performance testing, a third-party penetration test and full WCAG audit have not been done.
+
+Deploying to Render: see [docs/DEPLOY_RENDER.md](docs/DEPLOY_RENDER.md) (`render.yaml` = free tier, `render.paid.yaml` = production layout).
 
 See [docs/OPERATIONS.md](docs/OPERATIONS.md) for deployment, backups/DR, observability and runbooks.

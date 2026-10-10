@@ -46,6 +46,13 @@ class LeadIn(_Tagged):
     custom: dict[str, Any] = Field(default_factory=dict)
     next_follow_up_at: dt.datetime | None = None
     last_contacted_at: dt.datetime | None = None
+    intent: Literal["buy", "rent", "invest", "sell", "lease"] | None = None
+    property_type: Literal["apartment", "villa", "plot", "office", "shop", "other"] | None = None
+    bhk: str | None = Field(default=None, max_length=20)
+    budget_min: decimal.Decimal | None = Field(default=None, ge=0)
+    budget_max: decimal.Decimal | None = Field(default=None, ge=0)
+    project_id: uuid.UUID | None = None
+    unit_id: uuid.UUID | None = None
 
 
 LeadPatch = patchify(LeadIn, "LeadPatch")
@@ -107,6 +114,8 @@ class DealIn(_Tagged):
     source: str | None = Field(default=None, max_length=60)
     description: str | None = Field(default=None, max_length=10000)
     custom: dict[str, Any] = Field(default_factory=dict)
+    unit_id: uuid.UUID | None = None
+    project_id: uuid.UUID | None = None
 
 
 DealPatch = patchify(DealIn, "DealPatch")
@@ -173,6 +182,9 @@ class MeetingIn(Schema):
     contact_id: uuid.UUID | None = None
     company_id: uuid.UUID | None = None
     deal_id: uuid.UUID | None = None
+    kind: Literal["meeting", "site_visit"] = "meeting"
+    project_id: uuid.UUID | None = None
+    unit_id: uuid.UUID | None = None
 
     @field_validator("ends_at")
     @classmethod

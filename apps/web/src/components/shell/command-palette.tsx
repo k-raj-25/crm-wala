@@ -1,7 +1,7 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import { Command } from "cmdk";
-import { Activity, ArrowRight, Building2, CalendarPlus, CheckSquare, FileUp, Handshake, Mail, Moon, Plus, Search, Settings, StickyNote, Sun, UserRound, Users } from "lucide-react";
+import { Activity, ArrowRight, Building2, CalendarPlus, Home, Landmark, MapPin, CheckSquare, FileUp, Handshake, Mail, Moon, Plus, Search, Settings, StickyNote, Sun, UserRound, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { Dialog as D } from "radix-ui";
@@ -12,7 +12,7 @@ import { useNavItems } from "./sidebar";
 import { useUI } from "./ui-context";
 
 type Result = { id: string; title: string; subtitle?: string; url: string };
-const GROUPS: [string, string, React.ElementType][] = [["contacts", "Contacts", UserRound], ["leads", "Leads", Users], ["companies", "Companies", Building2], ["deals", "Deals", Handshake], ["tasks", "Tasks", CheckSquare], ["notes", "Notes", StickyNote], ["activities", "Activities", Activity]];
+const GROUPS: [string, string, React.ElementType][] = [["projects", "Projects", Building2], ["units", "Flats", Home], ["leads", "Leads", Users], ["contacts", "Clients", UserRound], ["companies", "Builders", Landmark], ["deals", "Deals", Handshake], ["tasks", "Tasks", CheckSquare], ["notes", "Notes", StickyNote], ["activities", "Activities", Activity]];
 
 export function CommandPalette() {
   const ui = useUI(); const router = useRouter(); const { can } = useAccess(); const nav = useNavItems(); const { resolved, setPref } = useTheme();
@@ -24,11 +24,13 @@ export function CommandPalette() {
   const run = (fn: () => void) => () => { close(); setTimeout(fn, 60); };
   const create = (kind: Parameters<typeof ui.openCreate>[0]) => run(() => ui.openCreate(kind));
   const cmds = [
-    { label: "Create lead", icon: Plus, perm: "leads.create", on: create("lead"), kw: "new add" }, { label: "Create contact", icon: Plus, perm: "contacts.create", on: create("contact"), kw: "new add person" },
-    { label: "Create deal", icon: Plus, perm: "deals.create", on: create("deal"), kw: "new add opportunity" }, { label: "Create task", icon: CheckSquare, perm: "tasks.create", on: create("task"), kw: "new add todo" },
-    { label: "Create company", icon: Building2, perm: "companies.create", on: create("company"), kw: "new add account" },
+    { label: "Add lead", icon: Plus, perm: "leads.create", on: create("lead"), kw: "new enquiry buyer renter" }, { label: "New project", icon: Building2, perm: "projects.create", on: run(() => router.push("/app/projects?new=1")), kw: "add tower building society" },
+    { label: "Schedule site visit", icon: MapPin, perm: "meetings.create", on: run(() => ui.openCreate("meeting", { kind: "site_visit" })), kw: "visit calendar book show" },
+    { label: "Add client", icon: Plus, perm: "contacts.create", on: create("contact"), kw: "new add person owner buyer tenant" },
+    { label: "Create deal", icon: Plus, perm: "deals.create", on: create("deal"), kw: "new add booking" }, { label: "Add to-do", icon: CheckSquare, perm: "tasks.create", on: create("task"), kw: "new add task reminder" },
+    { label: "Add builder", icon: Landmark, perm: "companies.create", on: create("company"), kw: "new developer company" },
     { label: "Schedule meeting", icon: CalendarPlus, perm: "meetings.create", on: create("meeting"), kw: "calendar book" }, { label: "Send email", icon: Mail, perm: "emails.create", on: run(() => ui.openCompose()), kw: "compose write" },
-    { label: "Import contacts", icon: FileUp, perm: "data.import", on: run(() => router.push("/app/settings/data?import=contacts")), kw: "csv upload" },
+    { label: "Import clients", icon: FileUp, perm: "data.import", on: run(() => router.push("/app/settings/data?import=contacts")), kw: "csv upload" },
     { label: "Open settings", icon: Settings, perm: "", on: run(() => router.push("/app/settings")), kw: "preferences" },
     { label: resolved === "dark" ? "Switch to light mode" : "Switch to dark mode", icon: resolved === "dark" ? Sun : Moon, perm: "", on: run(() => setPref(resolved === "dark" ? "light" : "dark")), kw: "theme" },
   ].filter((c) => !c.perm || can(c.perm));
@@ -43,7 +45,7 @@ export function CommandPalette() {
           <Command shouldFilter={false} loop>
             <div className="flex items-center gap-3 border-b border-border px-4">
               <Search className="size-4 text-fg-subtle" />
-              <Command.Input autoFocus value={q} onValueChange={setQ} placeholder="Search contacts, deals, tasks… or type a command" className="h-14 flex-1 bg-transparent text-[15px] outline-none placeholder:text-fg-subtle" />
+              <Command.Input autoFocus value={q} onValueChange={setQ} placeholder="Search flats, projects, clients, deals… or type a command" className="h-14 flex-1 bg-transparent text-[15px] outline-none placeholder:text-fg-subtle" />
               {search.isFetching ? <Spinner className="text-fg-subtle" /> : <Kbd>esc</Kbd>}
             </div>
             <Command.List className="max-h-[min(60vh,440px)] overflow-y-auto p-2">

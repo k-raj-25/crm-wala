@@ -44,15 +44,27 @@ def match_records(addresses: list[str]) -> dict:
     return out
 
 
-def _mailbox_integration(workspace_id) -> Integration | None:
+def _mailbox_integration(workspace_id, user_id) -> Integration | None:
+    """The sender's OWN connected mailbox. Never another teammate's: mail must only leave through the account of the person sending it."""
     return db.session.query(Integration).filter(
-        Integration.workspace_id == workspace_id, Integration.provider.in_(("gmail", "outlook")), Integration.status == "connected"
+        Integration.workspace_id == workspace_id, Integration.connected_by == user_id,
+        Integration.provider.in_(("gmail", "outlook")), Integration.status == "connected",
     ).order_by(Integration.updated_at.desc()).first()
+
+
+def sender_info(user: User) -> dict:
+    """How this user's emails will go out - shown in the compose dialog."""
+    integ = _mailbox_integration(g.workspace.id, user.id)
+    verified = bool(user.email_verified_at)
+    if integ is not None and integ.mode == "live":
+        return {"mode": integ.provider, "address": integ.account_label or user.email, "verified": verified}
+    return {"mode": "platform", "address": user.email, "verified": verified,
+            "platform_from": current_app.config["EMAIL_FROM"]}
 
 
 def deliver(email: Email, sender: User) -> None:
     """Actually send an Email row. Marks it sent/failed; never raises."""
-    integ = _mailbox_integration(email.workspace_id)
+    integ = _mailbox_integration(email.workspace_id, sender.id)
     body_html = text_to_html(email.body)
     if email.tracking_id:
         body_html += f"<img src='{current_app.config['WEB_ORIGIN']}/api/v1/public/t/{email.tracking_id}.gif' width='1' height='1' alt='' style='display:none'>"
@@ -66,7 +78,7 @@ def deliver(email: Email, sender: User) -> None:
             else:
                 # Sandbox/platform path: send as platform address with the rep as Reply-To.
                 email.provider = f"{integ.provider}:sandbox" if integ else "platform"
-                email_service.send_raw(to, email.subject, body_html, workspace_id=email.workspace_id, reply_to=sender.email, template_key="crm_email")
+                email_service.send_raw(to, email.subject, body_html, workspace_id=email.workspace_id, reply_to=sender.email, template_key="crm_email", from_name=sender.name)
         email.status, email.sent_at, email.error = "sent", utcnow(), None
     except Exception as e:
         log.exception("crm email failed")
