@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, CheckCheck, Download, FileText, MessageCircle, Send, Trash2, UploadCloud, XCircle } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
-import { ApiError, Badge, Button, ConfirmDialog, EmptyState, Field, Input, NativeSelect, Skeleton, Textarea, cn, formatDate, timeAgo, useToast } from "@crm/ui";
+import { ApiError, Badge, Button, ConfirmDialog, EmptyState, ErrorState, Field, Input, NativeSelect, Skeleton, Textarea, cn, formatDate, timeAgo, useToast } from "@crm/ui";
 import { AsyncSelect } from "@/components/forms/fields";
 import { api } from "@/lib/api";
 import { useAccess } from "@/lib/queries";
@@ -53,7 +53,7 @@ function TemplateComposer({ templates, defaults, onSend, busy }: { templates: Wa
 /** WhatsApp conversation with a lead or contact: history, 24-hour window state, templates and free text. */
 export function WhatsAppTab({ entity, id, firstName }: { entity: "lead" | "contact"; id: string; firstName: string }) {
   const qc = useQueryClient(); const toast = useToast(); const { can } = useAccess();
-  const conv = useQuery({ queryKey: ["wa-conversation", entity, id], refetchInterval: 20_000, queryFn: () => api.get<Conversation>("/api/v1/whatsapp/conversation", { [`${entity}_id`]: id }) });
+  const conv = useQuery({ queryKey: ["wa-conversation", entity, id], refetchInterval: (q) => (q.state.status === "error" ? false : 20_000), retry: 1, queryFn: () => api.get<Conversation>("/api/v1/whatsapp/conversation", { [`${entity}_id`]: id }) });
   const c = conv.data;
   const templates = useWaTemplates(!!c?.connected);
   const [text, setText] = React.useState(""); const [busy, setBusy] = React.useState(false); const [mode, setMode] = React.useState<"text" | "template">("text");
@@ -65,6 +65,8 @@ export function WhatsAppTab({ entity, id, firstName }: { entity: "lead" | "conta
     catch (e) { toast.error("Couldn't send", errText(e)); } finally { setBusy(false); }
   };
   if (conv.isLoading) return <Skeleton className="h-60 w-full" />;
+  // A failed request is not the same as "not connected": say what went wrong (a 404 here means the API is older than this screen).
+  if (conv.isError) return <ErrorState compact title="Couldn't load WhatsApp" description={(conv.error as ApiError)?.status === 404 ? "The server doesn't have WhatsApp messaging yet. Restart the API and run database migrations, then try again." : errText(conv.error)} onRetry={() => conv.refetch()} />;
   if (!c?.connected) return <EmptyState compact icon={<MessageCircle />} title="WhatsApp isn't connected" description="Connect your WhatsApp Business number to message clients from here." action={can("integrations.manage") ? <Button variant="secondary" size="sm" asChild><Link href="/app/integrations?connect=whatsapp">Connect WhatsApp</Link></Button> : undefined} />;
   if (!c.phone) return <EmptyState compact icon={<MessageCircle />} title="No mobile number" description="Add a mobile number to this record to message them on WhatsApp." />;
   const windowOpen = c.window_open; const tab = windowOpen ? mode : "template";
