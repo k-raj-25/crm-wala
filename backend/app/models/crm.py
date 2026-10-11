@@ -289,6 +289,9 @@ class FileAsset(Base, UUIDPk, Timestamps, Tenant, SoftDelete, Related, Serializa
     size_bytes: Mapped[int] = mapped_column(BigInteger)
     uploaded_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     status: Mapped[str] = mapped_column(String(15), default="ready", server_default="ready")  # pending|ready
+    project_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    unit_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("units.id", ondelete="CASCADE"), index=True)
+    doc_kind: Mapped[str | None] = mapped_column(String(20))  # brochure|floor_plan|price_list|other (project / unit documents)
 
 
 class Activity(Base, UUIDPk, Tenant, Related, Serializable):
@@ -441,3 +444,23 @@ class UnitEvent(Base, UUIDPk, Tenant, Serializable):
     lead_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("leads.id", ondelete="SET NULL"))
     contact_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("contacts.id", ondelete="SET NULL"))
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"), index=True)
+
+
+class WhatsAppMessage(Base, UUIDPk, Timestamps, Tenant, Related, Serializable):
+    """Every WhatsApp message sent from or received into the workspace (Meta Cloud API). Status follows Meta's delivery webhooks."""
+
+    __tablename__ = "whatsapp_messages"
+
+    direction: Mapped[str] = mapped_column(String(10))  # outbound|inbound
+    status: Mapped[str] = mapped_column(String(15))  # sent|delivered|read|failed|received
+    kind: Mapped[str] = mapped_column(String(15))  # text|template|document|image|other
+    phone: Mapped[str] = mapped_column(String(20))  # E.164 digits without "+"
+    body: Mapped[str | None] = mapped_column(Text)
+    template_name: Mapped[str | None] = mapped_column(String(120))
+    template_language: Mapped[str | None] = mapped_column(String(15))
+    file_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("files.id", ondelete="SET NULL"))
+    unit_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("units.id", ondelete="SET NULL"))
+    user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    wa_message_id: Mapped[str | None] = mapped_column(String(200))
+    error: Mapped[str | None] = mapped_column(String(400))
+    data: Mapped[dict] = mapped_column(JSONB, default=dict, server_default=text("'{}'::jsonb"))

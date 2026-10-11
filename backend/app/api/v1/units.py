@@ -152,6 +152,16 @@ def matches(ident):
     return ok(inventory.matching_leads(u))
 
 
+@bp.get("/<uuid:ident>/documents")
+@protect("units.read")
+def documents(ident):
+    """Brochures, floor plans and price lists for this unit, plus the ones shared by its whole project."""
+    from app.services import whatsapp
+
+    u = unit_res.get_or_404(ident)
+    return ok([{**f.to_dict(), "scope": "unit" if f.unit_id else "project"} for f in whatsapp.unit_documents(u)])
+
+
 @bp.get("/meta")
 @protect("units.read")
 def meta():

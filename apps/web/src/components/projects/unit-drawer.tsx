@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import * as React from "react";
 import { ApiError, Button, Drawer, Field, Input, NativeSelect, Skeleton, Textarea, cn, formatDate, timeAgo, useTheme, useToast } from "@crm/ui";
 import { AsyncSelect, toLocalInput } from "@/components/forms/fields";
+import { UnitDocuments } from "@/components/whatsapp/whatsapp";
 import { api } from "@/lib/api";
 import { celebrate } from "@/lib/confetti";
 import { BHK_OPTIONS, FACINGS, STATUS, STATUS_ORDER, UNIT_KINDS, holdLeft, money, priceLine } from "@/lib/realestate";
@@ -43,7 +44,7 @@ export function UnitDrawer({ unitId, onClose, canEdit }: { unitId: string | null
   const sellable = !!u && ["vacant", "for_sale", "for_rent", "on_hold"].includes(u.status);
   const matches = useQuery({ queryKey: ["unit-matches", unitId, u?.status, u?.sale_price, u?.bhk], enabled: !!unitId && sellable, queryFn: () => api.get<MatchLead[]>(`/api/v1/units/${unitId}/matches`) });
 
-  const refresh = () => { ["unit", "unit-history", "unit-matches", "building", "project", "projects", "units"].forEach((k) => qc.invalidateQueries({ queryKey: [k] })); };
+  const refresh = () => { ["unit", "unit-history", "unit-docs", "unit-matches", "building", "project", "projects", "units"].forEach((k) => qc.invalidateQueries({ queryKey: [k] })); };
   const fail = (e: unknown) => toast.error(e instanceof ApiError ? e.message : "Something went wrong. Please try again.");
 
   const setStatus = async (status: UnitStatus, extra: Record<string, unknown> = {}) => {
@@ -173,6 +174,8 @@ export function UnitDrawer({ unitId, onClose, canEdit }: { unitId: string | null
               <div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={() => setVisit(null)}>Cancel</Button><Button size="sm" loading={busy} onClick={scheduleVisit} disabled={!visit.at}>Schedule</Button></div>
             </div>
           )}
+
+          <UnitDocuments unit={u} canEdit={canEdit} defaultLead={u.hold_lead ?? (matches.data?.[0] ? { id: matches.data[0].id, name: matches.data[0].name } : null)} />
 
           {sellable && (matches.data?.length ?? 0) > 0 && (
             <section aria-label="Clients who may want this">

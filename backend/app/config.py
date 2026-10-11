@@ -52,6 +52,10 @@ class Config:
     ADMIN_ORIGIN = os.environ.get("ADMIN_ORIGIN", "http://localhost:3001")
     API_ORIGIN = os.environ.get("API_ORIGIN", "http://localhost:5000")
 
+    # WhatsApp (Meta Cloud API). Credentials are per workspace and stored encrypted on the integration, not here.
+    WHATSAPP_GRAPH_VERSION = os.environ.get("WHATSAPP_GRAPH_VERSION", "v21.0")
+    WHATSAPP_DEFAULT_COUNTRY_CODE = os.environ.get("WHATSAPP_DEFAULT_COUNTRY_CODE", "91")  # for 10-digit numbers saved without one
+
     # Auth
     ACCESS_TOKEN_MINUTES = _int("ACCESS_TOKEN_MINUTES", 15)
     REFRESH_TOKEN_DAYS = _int("REFRESH_TOKEN_DAYS", 30)

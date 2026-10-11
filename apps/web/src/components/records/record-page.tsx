@@ -1,6 +1,6 @@
 "use client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Building2, Calendar, CheckSquare, ChevronRight, Copy, Handshake, Link2, Mail, MoreHorizontal, Pencil, Phone, Sparkles, StickyNote, Trash2, Trophy, UserCheck, XCircle } from "lucide-react";
+import { ArrowLeft, Building2, Calendar, CheckSquare, ChevronRight, Copy, Handshake, Link2, Mail, MessageCircle, MoreHorizontal, Pencil, Phone, Sparkles, StickyNote, Trash2, Trophy, UserCheck, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import * as React from "react";
@@ -20,6 +20,7 @@ import { useUI } from "../shell/ui-context";
 import { InlineField } from "./inline-field";
 import { CallsTab, ContactsTab, DealsTab, EmailsTab, FilesTab, MeetingsTab, NotesTab, TasksTab, type Scope } from "./related";
 import { Timeline } from "./timeline";
+import { WA_GREEN, WhatsAppTab } from "../whatsapp/whatsapp";
 import { ScorePill } from "../list/cells";
 
 type Entity = "lead" | "contact" | "company" | "deal";
@@ -106,7 +107,8 @@ export function RecordPage({ entity }: { entity: Entity }) {
   const lead = rec as Lead; const deal = rec as Deal; const contact = rec as Contact; const company = rec as Company;
   const custom = rec.custom as Record<string, unknown>;
 
-  const tabs: [string, string][] = [["overview", "Activity"], ["notes", "Notes"], ["tasks", "Tasks"], ["emails", "Emails"], ["calls", "Calls"], ["meetings", "Site visits"], ...(entity === "contact" || entity === "company" ? [["deals", "Deals"] as [string, string]] : []), ...(entity === "company" ? [["contacts", "Contacts"] as [string, string]] : []), ["files", "Files"]];
+  const wa = (entity === "lead" || entity === "contact") && has("whatsapp_integration");
+  const tabs: [string, string][] = [["overview", "Activity"], ["notes", "Notes"], ["tasks", "Tasks"], ["emails", "Emails"], ["calls", "Calls"], ["meetings", "Site visits"], ...(wa ? [["whatsapp", "WhatsApp"] as [string, string]] : []), ...(entity === "contact" || entity === "company" ? [["deals", "Deals"] as [string, string]] : []), ...(entity === "company" ? [["contacts", "Contacts"] as [string, string]] : []), ["files", "Files"]];
 
   return (
     <PageContainer wide>
@@ -131,6 +133,7 @@ export function RecordPage({ entity }: { entity: Entity }) {
           {entity === "deal" && deal.status === "open" && can("deals.close") && <><Button variant="soft" onClick={() => { const w = pipelines.data?.find((p) => p.id === deal.pipeline_id)?.stages.find((s) => s.kind === "won"); w && move(w.id); }}><Trophy /> Won</Button><Button variant="secondary" onClick={() => setLostOpen(true)}><XCircle /> Lost</Button></>}
           {entity === "deal" && deal.status !== "open" && canEdit && <Button variant="secondary" onClick={() => { const s = pipelines.data?.find((p) => p.id === deal.pipeline_id)?.stages.find((x) => x.kind === "open"); s && move(s.id); }}>Reopen</Button>}
           {e && can("emails.create") && <Button variant="secondary" onClick={() => ui.openCompose(composeDefaults)}><Mail /> Email</Button>}
+          {wa && (rec.phone as string | null) && can("emails.create") && <Button variant="secondary" onClick={() => setTab("whatsapp")}><MessageCircle style={{ color: WA_GREEN }} /> <span className="hidden sm:inline">WhatsApp</span></Button>}
           {can("meetings.create") && <Button variant="secondary" onClick={() => ui.openCreate("call", { [`${entity}_id`]: id })}><Phone /> <span className="hidden sm:inline">Call</span></Button>}
           <DropdownMenu><DropdownTrigger asChild><Button variant="secondary" size="icon" aria-label="More actions"><MoreHorizontal /></Button></DropdownTrigger>
             <DropdownContent>
@@ -156,6 +159,7 @@ export function RecordPage({ entity }: { entity: Entity }) {
               <TabsContent value="emails"><EmailsTab scope={scope} defaults={composeDefaults} /></TabsContent>
               <TabsContent value="calls"><CallsTab scope={scope} /></TabsContent>
               <TabsContent value="meetings"><MeetingsTab scope={scope} /></TabsContent>
+              {wa && <TabsContent value="whatsapp"><WhatsAppTab entity={entity as "lead" | "contact"} id={id} firstName={rec.first_name as string} /></TabsContent>}
               {(entity === "contact" || entity === "company") && <TabsContent value="deals"><DealsTab scope={scope} /></TabsContent>}
               {entity === "company" && <TabsContent value="contacts"><ContactsTab companyId={id} companyName={name} /></TabsContent>}
               <TabsContent value="files"><FilesTab scope={scope} /></TabsContent>
