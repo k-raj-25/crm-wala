@@ -4,7 +4,7 @@ import * as React from "react";
 import { useTheme } from "@crm/ui";
 import { STATUS, STATUS_ORDER } from "@/lib/realestate";
 import type { Building, CountMap, TowerLite, UnitStatus } from "@/lib/realestate";
-import { Sky, fitsSpot, isSpotting } from "./building";
+import { Sky, fitsSpot, isSpotting, useSkyNow } from "./building";
 import type { Spot } from "./building";
 
 const fill = (s: UnitStatus, dark: boolean) => (dark ? STATUS[s].bgDark : STATUS[s].bg);
@@ -12,7 +12,8 @@ const fill = (s: UnitStatus, dark: boolean) => (dark ? STATUS[s].bgDark : STATUS
 /** A little drawing of the tower with every flat as a lit window. Doubles as a map: tap a floor to jump to it. */
 export function TowerArt({ data, spot, onPickFloor, className }: { data: Building; spot: Spot; onPickFloor?: (floor: number) => void; className?: string }) {
   const { resolved } = useTheme();
-  const dark = resolved === "dark";
+  const night = useSkyNow() === "night";
+  const dark = resolved === "dark" || night;
   const [hot, setHot] = React.useState<number | null>(null);
   const rows = data.floors.length;
   const cols = Math.max(data.summary.units_per_floor ?? 4, 1);
@@ -26,10 +27,10 @@ export function TowerArt({ data, spot, onPickFloor, className }: { data: Buildin
   const gap = cols > 8 ? 1 : 2.5;
   const ww = (bw - 14 - gap * (cols - 1)) / cols;
   return (
-    <Sky className={className}>
+    <Sky className={className} tilt={false}>
       <svg viewBox="0 0 240 330" className="block w-full" role="img" aria-label={`${data.tower.name} overview. Tap a floor to jump to it.`}>
         <rect x="0" y={ground} width="240" height="30" fill="var(--ground)" />
-        <g fill="#16a34a"><circle cx="24" cy={ground - 6} r="13" /><circle cx="40" cy={ground - 2} r="10" /><circle cx="214" cy={ground - 6} r="13" /><circle cx="198" cy={ground - 2} r="10" /></g>
+        <g fill="#16a34a"><g className="sway"><circle cx="24" cy={ground - 6} r="13" /><circle cx="40" cy={ground - 2} r="10" /></g><g className="sway" style={{ animationDelay: "-2s" }}><circle cx="214" cy={ground - 6} r="13" /><circle cx="198" cy={ground - 2} r="10" /></g></g>
         <g fill="#7c4a24"><rect x="22" y={ground} width="4" height="9" /><rect x="212" y={ground} width="4" height="9" /></g>
         <rect x={x0 - 3} y={top - 8} width={bw + 6} height={bodyH + 8} rx="4" fill="var(--frame)" stroke="var(--frame-edge)" />
         <rect x={x0 + bw * 0.18} y={top - 20} width={bw * 0.22} height="12" rx="2" fill="var(--slab)" />
@@ -40,7 +41,7 @@ export function TowerArt({ data, spot, onPickFloor, className }: { data: Buildin
           return (
             <motion.g key={f.floor} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min((rows - ri) * 0.025, 0.9) }}>
               {f.units.map((u, ci) => (
-                <rect key={u.id} x={x0 + 7 + ci * (ww + gap)} y={y + 0.9} width={ww} height={Math.max(rowH - 1.8, 2)} rx="1.2" fill={fill(u.status, dark)} opacity={spotting && !fitsSpot(u, spot) ? 0.16 : 1} />
+                <rect key={u.id} className={!spotting && u.status !== "vacant" && (ri * 7 + ci * 3) % 5 === 0 ? "twinkle" : undefined} style={{ animationDelay: `${((ri + ci) % 7) * 0.45}s` }} x={x0 + 7 + ci * (ww + gap)} y={y + 0.9} width={ww} height={Math.max(rowH - 1.8, 2)} rx="1.2" fill={fill(u.status, dark)} opacity={spotting && !fitsSpot(u, spot) ? 0.16 : 1} />
               ))}
               <rect x={x0 - 3} y={y} width={bw + 6} height={rowH} fill={hot === f.floor ? "rgba(250,204,21,.28)" : "transparent"} stroke={hot === f.floor ? "rgba(250,204,21,.9)" : "none"} strokeWidth="1"
                 className={onPickFloor ? "cursor-pointer" : undefined} onPointerEnter={() => setHot(f.floor)} onPointerLeave={() => setHot(null)} onClick={() => onPickFloor?.(f.floor)}>
@@ -75,7 +76,7 @@ export function ProjectSkyline({ towers, counts, className }: { towers: TowerLit
   const total = list.length * bw + (list.length - 1) * 12;
   const x0 = (320 - total) / 2;
   return (
-    <Sky className={className}>
+    <Sky className={className} tilt={false}>
       <svg viewBox="0 0 320 150" className="block w-full" aria-hidden>
         <rect x="0" y="128" width="320" height="22" fill="var(--ground)" />
         {list.length === 0 && <text x="160" y="96" textAnchor="middle" fontSize="12" fill="var(--fg-subtle)">No towers yet</text>}

@@ -1,10 +1,12 @@
 "use client";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion, useMotionValue, useReducedMotion, useSpring, useTransform } from "framer-motion";
+import { Clock, Moon, Sun, Sunset } from "lucide-react";
 import * as React from "react";
-import { cn, useTheme } from "@crm/ui";
+import { cn, useLocalStorage, useTheme } from "@crm/ui";
 import { STATUS, STATUS_ORDER, floorLabel, holdLeft, money, priceLine } from "@/lib/realestate";
 import type { Building, UnitMini, UnitStatus } from "@/lib/realestate";
 
+/* ---- spotlight filter ------------------------------------------------------------------------------------------------ */
 export type Spot = { statuses: UnitStatus[]; bhk: string | null; q: string };
 export const NO_SPOT: Spot = { statuses: [], bhk: null, q: "" };
 export const isSpotting = (s: Spot) => s.statuses.length > 0 || !!s.bhk || !!s.q.trim();
@@ -15,15 +17,110 @@ export const fitsSpot = (u: UnitMini, s: Spot) => {
   return !q || u.number.toLowerCase().includes(q) || (u.bhk ?? "").toLowerCase().includes(q) || (u.facing ?? "").toLowerCase().includes(q);
 };
 
+/* ---- time of day ------------------------------------------------------------------------------------------------------ */
+export type SkyMode = "auto" | "day" | "dusk" | "night";
+type Sky3 = "day" | "dusk" | "night";
+const byHour = (h: number): Sky3 => (h >= 19 || h < 5 ? "night" : h >= 17 || h < 7 ? "dusk" : "day");
+
+function useAutoSky(mode: SkyMode): Sky3 {
+  const { resolved } = useTheme();
+  const [hour, setHour] = React.useState<number | null>(null); // unknown on the server, so first paint matches the HTML
+  React.useEffect(() => { setHour(new Date().getHours()); const t = setInterval(() => setHour(new Date().getHours()), 5 * 60_000); return () => clearInterval(t); }, []);
+  if (mode !== "auto") return mode;
+  if (resolved === "dark") return "night";
+  return hour == null ? "day" : byHour(hour);
+}
+
+/** The sky currently showing (explicit choice, else the clock / dark mode). Works with or without a provider. */
+export function useSkyNow(): Sky3 {
+  const ctx = React.useContext(SkyCtx);
+  const own = useAutoSky("auto");
+  return ctx?.sky ?? own;
+}
+
+const SkyCtx = React.createContext<{ mode: SkyMode; setMode: (m: SkyMode) => void; sky: Sky3 } | null>(null);
+export function SkyProvider({ children }: { children: React.ReactNode }) {
+  const [mode, setMode] = useLocalStorage<SkyMode>("sky-mode", "auto");
+  const sky = useAutoSky(mode);
+  return <SkyCtx.Provider value={{ mode, setMode, sky }}>{children}</SkyCtx.Provider>;
+}
+
+/** Little switch for the time of day. "Auto" follows your clock (and dark mode). */
+export function SkyToggle({ className }: { className?: string }) {
+  const ctx = React.useContext(SkyCtx);
+  if (!ctx) return null;
+  const opts: [SkyMode, string, React.ElementType][] = [["auto", "Follow the clock", Clock], ["day", "Day", Sun], ["dusk", "Sunset", Sunset], ["night", "Night", Moon]];
+  return (
+    <div role="group" aria-label="Time of day" className={cn("inline-flex gap-0.5 rounded-full border border-white/40 bg-black/25 p-0.5 text-white shadow-sm backdrop-blur-md", className)}>
+      {opts.map(([m, label, I]) => (
+        <button key={m} type="button" title={label} aria-label={label} aria-pressed={ctx.mode === m} onClick={() => ctx.setMode(m)}
+          className={cn("grid size-7 place-items-center rounded-full transition-colors", ctx.mode === m ? "bg-white text-slate-900" : "hover:bg-white/20")}><I className="size-3.5" /></button>
+      ))}
+    </div>
+  );
+}
+
+const STARS = Array.from({ length: 22 }, (_, i) => { const r = (n: number) => { const x = Math.sin(i * 91.7 + n * 12.3) * 10000; return x - Math.floor(x); }; return { x: r(1) * 100, y: r(2) * 60, s: 0.8 + r(3) * 1.4, d: r(4) * 3 }; });
+
+function Cloud({ top, size, delay, opacity }: { top: string; size: number; delay: number; opacity: number }) {
+  return (
+    <svg aria-hidden className="cloud pointer-events-none" style={{ top, width: size, animationDelay: `${delay}s`, opacity }} viewBox="0 0 120 50">
+      <ellipse cx="38" cy="34" rx="30" ry="14" /><ellipse cx="66" cy="26" rx="28" ry="18" /><ellipse cx="92" cy="35" rx="24" ry="12" />
+    </svg>
+  );
+}
+function Bird({ top, delay, scale = 1 }: { top: string; delay: number; scale?: number }) {
+  return (
+    <svg aria-hidden className="bird pointer-events-none absolute left-0" style={{ top, animationDelay: `${delay}s`, width: 22 * scale }} viewBox="0 0 22 10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+      <g className="bird-wing" style={{ animationDelay: `${delay % 0.4}s` }}><path d="M1 7 Q6 0 11 6" /><path d="M11 6 Q16 0 21 7" /></g>
+    </svg>
+  );
+}
+
+/** Sky, sun/moon, clouds, birds and stars behind whatever you put in it. The content leans toward the pointer a little. */
+export function Sky({ children, className, tilt = true }: { children: React.ReactNode; className?: string; tilt?: boolean }) {
+  const ctx = React.useContext(SkyCtx);
+  const own = useAutoSky("auto");
+  const sky = ctx?.sky ?? own;
+  const reduce = useReducedMotion();
+  const px = useMotionValue(0), py = useMotionValue(0);
+  const sx = useSpring(px, { stiffness: 60, damping: 16 }), sy = useSpring(py, { stiffness: 60, damping: 16 });
+  const rotY = useTransform(sx, (v) => v * 4.5), rotX = useTransform(sy, (v) => v * -3);
+  const far = useTransform(sx, (v) => v * -22), farY = useTransform(sy, (v) => v * -8);
+  const on = tilt && !reduce;
+  return (
+    <div data-sky={sky} className={cn("facade-sky relative", className)}
+      onPointerMove={on ? (e) => { if (e.pointerType !== "mouse") return; const r = e.currentTarget.getBoundingClientRect(); px.set((e.clientX - r.left) / r.width - 0.5); py.set((e.clientY - r.top) / r.height - 0.5); } : undefined}
+      onPointerLeave={on ? () => { px.set(0); py.set(0); } : undefined}>
+      <motion.div aria-hidden style={{ x: far, y: farY }} className="pointer-events-none absolute -inset-6">
+        <div className="sky-stars absolute inset-6">{STARS.map((s, i) => <span key={i} className="twinkle absolute rounded-full bg-white" style={{ left: `${s.x}%`, top: `${s.y}%`, width: s.s, height: s.s, animationDelay: `${s.d}s` }} />)}</div>
+        <Cloud top="14%" size={150} delay={0} opacity={0.9} /><Cloud top="30%" size={100} delay={-35} opacity={0.7} /><Cloud top="20%" size={120} delay={-62} opacity={0.8} />
+        <div className="sky-body absolute inset-6 text-slate-700/70" style={{ opacity: sky === "night" ? 0 : 1 }}><Bird top="16%" delay={0} /><Bird top="22%" delay={-0.6} scale={0.75} /><Bird top="12%" delay={-1.3} scale={0.6} /></div>
+        <motion.svg viewBox="0 0 64 64" className="absolute size-16" animate={{ left: sky === "dusk" ? "78%" : "84%", top: sky === "dusk" ? "58%" : "12%", opacity: sky === "night" ? 0 : 1, scale: sky === "dusk" ? 1.35 : 1 }} transition={{ type: "spring", stiffness: 50, damping: 15 }}>
+          <defs><radialGradient id="sg"><stop offset="0" stopColor="var(--sun)" stopOpacity="0.9" /><stop offset="1" stopColor="var(--sun)" stopOpacity="0" /></radialGradient></defs>
+          <circle cx="32" cy="32" r="31" fill="url(#sg)" style={{ animation: "sun-breathe 6s ease-in-out infinite" }} /><circle cx="32" cy="32" r="12" fill="var(--sun)" />
+        </motion.svg>
+        <motion.svg viewBox="0 0 64 64" className="absolute size-14" animate={{ left: "84%", top: sky === "night" ? "12%" : "30%", opacity: sky === "night" ? 1 : 0 }} transition={{ type: "spring", stiffness: 50, damping: 15 }}>
+          <circle cx="32" cy="32" r="22" fill="#cdd6ff" opacity="0.15" /><circle cx="32" cy="32" r="11" fill="#eef1ff" /><circle cx="37" cy="29" r="9" fill="var(--sky-bot)" opacity="0.8" /><circle cx="28" cy="35" r="2" fill="#c3cbee" /><circle cx="33" cy="26" r="1.4" fill="#c3cbee" />
+        </motion.svg>
+      </motion.div>
+      <div className="haze pointer-events-none absolute inset-0" aria-hidden />
+      <motion.div className="relative" style={on ? { rotateY: rotY, rotateX: rotX, transformPerspective: 1200 } : undefined}>{children}</motion.div>
+    </div>
+  );
+}
+
+/* ---- the tower ------------------------------------------------------------------------------------------------------ */
 function tileStyle(status: UnitStatus, dark: boolean): React.CSSProperties {
   const s = STATUS[status];
   const bg = dark ? s.bgDark : s.bg;
+  const lamp = status === "rented" || status === "self_occupied" ? ", radial-gradient(circle at 82% 88%, rgba(255,226,140,.55), transparent 52%)" : "";
   return {
     color: s.ink,
     backgroundColor: bg,
-    // glass: a light-to-dark wash, one window mullion, and a darker balcony ledge along the bottom
-    backgroundImage: `linear-gradient(to right, transparent calc(50% - .5px), rgba(255,255,255,.28) calc(50% - .5px) calc(50% + .5px), transparent calc(50% + .5px)), linear-gradient(160deg, rgba(255,255,255,${status === "vacant" ? 0.45 : 0.22}) 0%, rgba(255,255,255,0) 48%, rgba(0,0,0,.14) 100%)`,
-    boxShadow: "inset 0 -5px 0 rgba(0,0,0,.18)",
+    // glass: a window mullion, a light-to-dark wash, and (for lived-in flats) a lamp glowing in the corner
+    backgroundImage: `linear-gradient(to right, transparent calc(50% - .5px), rgba(255,255,255,.28) calc(50% - .5px) calc(50% + .5px), transparent calc(50% + .5px)), linear-gradient(160deg, rgba(255,255,255,${status === "vacant" ? 0.45 : 0.22}) 0%, rgba(255,255,255,0) 48%, rgba(0,0,0,.14) 100%)${lamp}`,
+    ["--st" as string]: bg,
   };
 }
 
@@ -36,11 +133,11 @@ const UnitTile = React.memo(function UnitTile({ u, dark, dim, hit, compact, dela
   return (
     <motion.button
       type="button"
-      initial={animate ? { opacity: 0, y: 14, scale: 0.9 } : false}
-      animate={{ opacity: dim ? 0.2 : 1, y: 0, scale: hit ? 1.04 : 1, filter: dim ? "saturate(.2)" : "saturate(1)" }}
-      transition={{ delay: animate ? delay : 0, type: "spring", stiffness: 420, damping: 30 }}
-      whileHover={dim ? undefined : { y: -3, scale: 1.06 }}
-      whileTap={{ scale: 0.97 }}
+      initial={animate ? { opacity: 0, y: 18, scale: 0.85 } : false}
+      animate={{ opacity: dim ? 0.18 : 1, y: 0, scale: hit ? 1.04 : 1, filter: dim ? "saturate(.15)" : "saturate(1)" }}
+      transition={{ delay: animate ? delay : 0, type: "spring", stiffness: 380, damping: 24 }}
+      whileHover={dim ? undefined : { y: -4 }}
+      whileTap={{ scale: 0.96 }}
       onClick={() => onOpen(u.id)}
       onPointerEnter={(e) => e.pointerType === "mouse" && !dim && onHover(u, e.currentTarget)}
       onPointerLeave={() => onHover(null, null)}
@@ -48,12 +145,13 @@ const UnitTile = React.memo(function UnitTile({ u, dark, dim, hit, compact, dela
       onBlur={() => onHover(null, null)}
       aria-label={`Unit ${u.number}${u.bhk ? `, ${u.bhk}` : ""}, ${s.label}${u.sale_price ? `, ${money(u.sale_price)}` : ""}`}
       data-unit={u.id}
-      style={tileStyle(u.status, dark)}
-      className={cn("relative flex min-w-0 flex-col justify-between overflow-hidden rounded-[7px] text-left outline-none ring-offset-2 ring-offset-transparent focus-visible:ring-2 focus-visible:ring-primary",
-        compact ? "h-10 px-1.5 py-1" : "h-[60px] px-2 py-1.5", u.status === "on_hold" && "unit-hold", hit && "z-10 ring-2 ring-white/90 shadow-lg")}>
+      data-dim={dim ? "1" : undefined}
+      style={{ ...tileStyle(u.status, dark), ...(animate ? { ["--d" as string]: `${delay + 0.35}s` } : null) }}
+      className={cn("unit-tile relative flex min-w-0 flex-col justify-between overflow-hidden rounded-[7px] text-left outline-none focus-visible:ring-2 focus-visible:ring-primary",
+        `unit-${u.status}`, compact ? "h-10 px-1.5 py-1" : "h-[60px] px-2 py-1.5", animate && "tile-wave", u.status === "on_hold" && "unit-hold", hit && "tile-hit z-10")}>
       <span className="flex items-start justify-between gap-1">
         <span className={cn("font-semibold tabular-nums leading-none", compact ? "text-[11px]" : "text-[13px]")}>{u.number}</span>
-        <Icon className={cn("shrink-0 opacity-90", compact ? "size-3" : "size-3.5")} aria-hidden />
+        <Icon className={cn("shrink-0 opacity-90", `ico-${u.status}`, compact ? "size-3" : "size-3.5")} aria-hidden />
       </span>
       {!compact && (
         <span className="flex items-end justify-between gap-1 text-[10.5px] font-medium leading-none opacity-90">
@@ -65,58 +163,55 @@ const UnitTile = React.memo(function UnitTile({ u, dark, dim, hit, compact, dela
   );
 });
 
-function Cloud({ top, size, delay, opacity }: { top: string; size: number; delay: number; opacity: number }) {
-  return (
-    <svg aria-hidden className="cloud pointer-events-none absolute" style={{ top, width: size, animationDelay: `${delay}s`, opacity }} viewBox="0 0 120 50" fill="currentColor">
-      <g className="text-white dark:text-[#2a3470]"><ellipse cx="38" cy="34" rx="30" ry="14" /><ellipse cx="66" cy="26" rx="28" ry="18" /><ellipse cx="92" cy="35" rx="24" ry="12" /></g>
-    </svg>
-  );
-}
-
-export function Sky({ children, className }: { children: React.ReactNode; className?: string }) {
-  return (
-    <div className={cn("facade-sky relative overflow-hidden", className)}>
-      <div className="facade-stars pointer-events-none absolute inset-0" aria-hidden />
-      <Cloud top="6%" size={150} delay={0} opacity={0.9} /><Cloud top="22%" size={100} delay={-35} opacity={0.7} /><Cloud top="12%" size={120} delay={-62} opacity={0.8} />
-      <svg aria-hidden className="pointer-events-none absolute right-6 top-5 size-14" viewBox="0 0 64 64" style={{ animation: "sun-breathe 6s ease-in-out infinite" }}>
-        <defs><radialGradient id="sunglow"><stop offset="0" stopColor="#fff7c2" /><stop offset="1" stopColor="#fde047" stopOpacity="0" /></radialGradient></defs>
-        <circle cx="32" cy="32" r="30" fill="url(#sunglow)" className="dark:hidden" /><circle cx="32" cy="32" r="12" fill="#fde047" className="dark:hidden" />
-        <circle cx="32" cy="32" r="11" fill="#e8ecff" className="hidden dark:block" /><circle cx="37" cy="29" r="9" fill="#1b2352" className="hidden dark:block" />
-      </svg>
-      <div className="relative">{children}</div>
-    </div>
-  );
-}
-
-/** Rooftop: parapet, water tank, antenna with a blinking beacon, and the tower's name on a sign. */
-function Roof({ name }: { name: string }) {
+/** Rooftop: parapet, water tank, a flag, an antenna with a beacon, and the tower's name on a sign. Unfinished projects get a crane. */
+function Roof({ name, building }: { name: string; building: boolean }) {
   return (
     <div className="relative mx-auto">
-      <svg aria-hidden viewBox="0 0 160 52" className="mx-auto block h-[52px] w-[160px]">
+      {building && <Crane />}
+      <svg aria-hidden viewBox="0 0 160 52" className="mx-auto block h-[52px] w-[160px] overflow-visible">
         <rect x="26" y="26" width="34" height="26" rx="3" fill="var(--slab)" /><rect x="30" y="20" width="26" height="8" rx="4" fill="var(--slab-edge)" />
         <rect x="76" y="30" width="48" height="22" rx="2" fill="var(--slab)" />
         <line x1="136" y1="52" x2="136" y2="6" stroke="var(--slab-edge)" strokeWidth="2.5" strokeLinecap="round" /><line x1="128" y1="20" x2="144" y2="20" stroke="var(--slab-edge)" strokeWidth="2" strokeLinecap="round" />
         <circle cx="136" cy="5" r="3.2" fill="#ef4444" style={{ animation: "beacon 1.8s ease-in-out infinite" }} />
+        <line x1="92" y1="30" x2="92" y2="10" stroke="var(--slab-edge)" strokeWidth="1.6" strokeLinecap="round" /><path className="flag" d="M92 10 L108 13 L92 17 Z" fill="#f97316" />
       </svg>
       <div className="relative -mt-px flex h-7 items-center justify-center rounded-t-lg border border-b-0 border-[var(--frame-edge)] bg-[var(--slab)]">
-        <span className="rounded-full bg-[var(--frame)] px-3 py-0.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-fg-muted">{name}</span>
+        <span className="rounded-full bg-[var(--frame)] px-3 py-0.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--facade-ink)]">{name}</span>
       </div>
     </div>
   );
 }
 
+function Crane() {
+  return (
+    <svg aria-hidden viewBox="0 0 150 96" className="pointer-events-none absolute bottom-7 right-[4%] h-[96px] w-[150px] overflow-visible">
+      <rect x="28" y="20" width="5" height="76" fill="var(--slab-edge)" />
+      <path d="M28 96 L33 84 L28 72 L33 60 L28 48 L33 36 L28 24 M33 96 L28 84 L33 72 L28 60 L33 48 L28 36 L33 24" stroke="var(--slab)" strokeWidth="1.2" fill="none" />
+      <path d="M30 6 L22 20 M31 6 L39 20" stroke="var(--slab-edge)" strokeWidth="1.6" />
+      <rect x="2" y="16" width="146" height="4" rx="1" fill="#f59e0b" /><rect x="4" y="20" width="14" height="9" fill="var(--slab-edge)" />
+      <path d="M30 6 L148 16 M30 6 L4 16" stroke="var(--slab-edge)" strokeWidth="1" />
+      <g className="trolley"><rect x="62" y="20" width="9" height="4" fill="var(--slab-edge)" /><g className="hook"><line x1="66.5" y1="24" x2="66.5" y2="58" stroke="var(--slab-edge)" strokeWidth="1.1" /><rect x="58" y="58" width="17" height="7" rx="1" fill="#7c4a24" /></g></g>
+      <circle cx="30" cy="4" r="2.6" fill="#ef4444" style={{ animation: "beacon 1.4s ease-in-out infinite" }} />
+    </svg>
+  );
+}
+
 function Street() {
   return (
-    <div className="relative mt-0 overflow-hidden rounded-b-xl bg-[var(--ground)] pb-3 pt-2">
-      <svg aria-hidden viewBox="0 0 600 36" preserveAspectRatio="xMidYMax slice" className="block h-9 w-full">
-        <g fill="#16a34a"><circle cx="70" cy="22" r="11" /><circle cx="84" cy="25" r="9" /><circle cx="530" cy="22" r="11" /><circle cx="516" cy="25" r="9" /><circle cx="130" cy="27" r="7" /><circle cx="470" cy="27" r="7" /></g>
-        <g fill="#7c4a24"><rect x="68" y="28" width="4" height="8" /><rect x="528" y="28" width="4" height="8" /></g>
+    <div className="relative overflow-hidden rounded-b-xl bg-[var(--ground)] pb-3 pt-2">
+      <svg aria-hidden viewBox="0 0 600 40" preserveAspectRatio="xMidYMax slice" className="block h-10 w-full">
+        <g className="sway"><circle cx="70" cy="22" r="11" fill="#16a34a" /><circle cx="84" cy="25" r="9" fill="#15803d" /></g><rect x="68" y="28" width="4" height="10" fill="#7c4a24" />
+        <g className="sway" style={{ animationDelay: "-2s" }}><circle cx="530" cy="22" r="11" fill="#16a34a" /><circle cx="516" cy="25" r="9" fill="#15803d" /></g><rect x="528" y="28" width="4" height="10" fill="#7c4a24" />
+        <g className="sway" style={{ animationDelay: "-1s" }}><circle cx="130" cy="27" r="7" fill="#22c55e" /></g><g className="sway" style={{ animationDelay: "-3s" }}><circle cx="470" cy="27" r="7" fill="#22c55e" /></g>
+        {[200, 300, 400].map((x) => (<g key={x}><rect x={x - 1} y="16" width="2" height="22" fill="var(--slab-edge)" /><rect x={x - 5} y="14" width="10" height="3" rx="1.5" fill="var(--slab-edge)" /><circle className="lamp-glow" cx={x} cy="20" r="14" fill="#fde68a" opacity="0.35" /><circle className="lamp-glow" cx={x} cy="17" r="2.2" fill="#fef08a" /></g>))}
       </svg>
-      <div className="relative mt-1 h-3 bg-[var(--slab)]">
+      <div className="walker pointer-events-none absolute bottom-[19px] z-[1]" aria-hidden>
+        <svg viewBox="0 0 10 16" className="h-[14px] w-[9px]"><circle cx="5" cy="3" r="2.4" fill="#f4c7a1" /><rect x="3" y="5.5" width="4" height="6" rx="1.5" fill="#6366f1" /><path d="M4 11 L3 15 M6 11 L7 15" stroke="#334155" strokeWidth="1.3" strokeLinecap="round" /></svg>
+      </div>
+      <div className="relative mt-1 h-3.5 bg-[var(--slab)]">
         <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2" style={{ backgroundImage: "repeating-linear-gradient(90deg,#fff 0 14px,transparent 14px 28px)", opacity: 0.55 }} />
-        <svg aria-hidden viewBox="0 0 40 16" className="absolute -top-2.5 h-5 w-10" style={{ animation: "car-drive 16s linear infinite" }}>
-          <path d="M3 12h34v-3l-5-1-4-4H14l-4 4-6 1z" fill="#2563eb" /><path d="M13 8l3-3h7l3 3z" fill="#bfdbfe" /><circle cx="12" cy="13" r="3" fill="#0f172a" /><circle cx="29" cy="13" r="3" fill="#0f172a" />
-        </svg>
+        <svg aria-hidden viewBox="0 0 40 16" className="car-a absolute -top-2 h-5 w-10"><path d="M3 12h34v-3l-5-1-4-4H14l-4 4-6 1z" fill="#2563eb" /><path d="M13 8l3-3h7l3 3z" fill="#bfdbfe" /><circle cx="12" cy="13" r="3" fill="#0f172a" /><circle cx="29" cy="13" r="3" fill="#0f172a" /><circle className="lamp-glow" cx="37" cy="10" r="2" fill="#fef08a" /></svg>
+        <svg aria-hidden viewBox="0 0 40 16" className="car-b absolute -top-1 h-5 w-10" style={{ scale: "-1 1" }}><path d="M3 12h34v-3l-5-1-4-4H14l-4 4-6 1z" fill="#dc2626" /><path d="M13 8l3-3h7l3 3z" fill="#fecaca" /><circle cx="12" cy="13" r="3" fill="#0f172a" /><circle cx="29" cy="13" r="3" fill="#0f172a" /><circle className="lamp-glow" cx="37" cy="10" r="2" fill="#fef08a" /></svg>
       </div>
     </div>
   );
@@ -124,33 +219,65 @@ function Street() {
 
 type Hover = { u: UnitMini; x: number; y: number; w: number } | null;
 
-/** The hero: the tower as you'd see it from the street. Floors stack bottom-to-top, each flat is a lit window coloured by its status. */
+/** The hero: the tower as you'd see it from the street. Floors stack bottom-to-top, each flat is a lit window coloured by its status.
+ *  Move the pointer over it and the flats swell toward you; a glint of sunlight sweeps across the glass every few seconds. */
 export function BuildingView({ data, spot, onOpen, flashFloor, registerFloor }: {
   data: Building; spot: Spot; onOpen: (id: string) => void; flashFloor?: number | null; registerFloor?: (floor: number, el: HTMLElement | null) => void;
 }) {
   const { resolved } = useTheme();
-  const dark = resolved === "dark";
+  const night = useSkyNow() === "night";
+  const dark = resolved === "dark" || night; // at night the empty flats go dark; lit ones glow
   const reduce = useReducedMotion();
   const wrap = React.useRef<HTMLDivElement>(null);
+  const frame = React.useRef<HTMLDivElement>(null);
   const [hover, setHover] = React.useState<Hover>(null);
   const spotting = isSpotting(spot);
   const cols = Math.max(data.summary.units_per_floor ?? 4, 1);
   const total = data.summary.total;
   const compact = data.floors.length > 22 || cols > 8;
   const animateTiles = !reduce && total <= 260;
+  const magnifyOn = !reduce && total <= 260;
   const rows = data.floors.length;
   const onHover = React.useCallback((u: UnitMini | null, el: HTMLElement | null) => {
     if (!u || !el || !wrap.current) return setHover(null);
     const a = el.getBoundingClientRect(), b = wrap.current.getBoundingClientRect();
     setHover({ u, x: a.left - b.left + a.width / 2, y: a.top - b.top, w: b.width });
   }, []);
+
+  // "Dock" magnify: flats near the pointer swell, falling off smoothly. Writes a CSS variable per tile (no React re-render per move).
+  const centres = React.useRef<{ el: HTMLElement; x: number; y: number }[] | null>(null);
+  const stamp = React.useRef(0);
+  const raf = React.useRef(0);
+  const magnify = (e: React.PointerEvent) => {
+    if (!magnifyOn || e.pointerType !== "mouse" || !frame.current) return;
+    const { clientX: cx, clientY: cy } = e;
+    cancelAnimationFrame(raf.current);
+    raf.current = requestAnimationFrame(() => {
+      const now = performance.now();
+      if (!centres.current || now - stamp.current > 350) {
+        stamp.current = now;
+        centres.current = [...frame.current!.querySelectorAll<HTMLElement>("[data-unit]")].map((el) => { const r = el.getBoundingClientRect(); return { el, x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
+      }
+      for (const t of centres.current) {
+        const m = t.el.dataset.dim ? 1 : 1 + 0.16 * Math.exp(-((t.x - cx) ** 2 + (t.y - cy) ** 2) / (2 * 80 * 80));
+        t.el.style.setProperty("--mag", m.toFixed(3));
+      }
+    });
+  };
+  const calm = () => {
+    cancelAnimationFrame(raf.current);
+    setHover(null);
+    frame.current?.querySelectorAll<HTMLElement>("[data-unit]").forEach((el) => el.style.setProperty("--mag", "1"));
+    centres.current = null;
+  };
   const maxW = Math.min(1040, 96 + cols * (compact ? 78 : 118));
 
   return (
-    <div ref={wrap} className="relative" onPointerLeave={() => setHover(null)}>
+    <div ref={wrap} className="relative" onPointerLeave={calm}>
       <div className="mx-auto w-full" style={{ maxWidth: maxW }}>
-        <Roof name={data.tower.name} />
-        <div className="border-x border-[var(--frame-edge)] bg-[var(--frame)] px-2 py-1.5 sm:px-3" role="list" aria-label={`${data.tower.name}, ${rows} floors`}>
+        <Roof name={data.tower.name} building={data.project.stage !== "ready"} />
+        <div ref={frame} onPointerMove={magnify} className="relative overflow-hidden border-x border-[var(--frame-edge)] bg-[var(--frame)] px-2 py-1.5 sm:px-3" role="list" aria-label={`${data.tower.name}, ${rows} floors`}>
+          {!reduce && <div aria-hidden className="glare pointer-events-none absolute inset-y-0 left-0 z-20 w-[40%]" />}
           {data.floors.map((f, ri) => {
             const fromBottom = rows - 1 - ri;
             const free = f.units.filter((u) => ["vacant", "for_sale", "for_rent"].includes(u.status)).length;
@@ -158,14 +285,14 @@ export function BuildingView({ data, spot, onOpen, flashFloor, registerFloor }: 
             return (
               <div key={f.floor} ref={(el) => registerFloor?.(f.floor, el)} role="listitem" data-floor={f.floor}
                 className={cn("grid grid-cols-[44px_1fr] items-center gap-2 rounded-md border-b-[5px] border-[var(--slab)] py-[3px] sm:grid-cols-[62px_1fr]", flashFloor === f.floor && "floor-flash", !anyHit && "opacity-60")}>
-                <div className="pr-1 text-right leading-tight">
-                  <div className="text-[11px] font-semibold text-fg-muted sm:text-xs"><span className="sm:hidden">{f.floor === 0 ? "G" : String(f.floor).padStart(2, "0")}</span><span className="hidden sm:inline">{floorLabel(f.floor)}</span></div>
-                  {free > 0 && !compact && <div className="hidden text-[10px] text-fg-subtle sm:block">{free} free</div>}
+                <div className="pr-1 text-right leading-tight text-[color:var(--facade-ink)]">
+                  <div className="text-[11px] font-semibold sm:text-xs"><span className="sm:hidden">{f.floor === 0 ? "G" : String(f.floor).padStart(2, "0")}</span><span className="hidden sm:inline">{floorLabel(f.floor)}</span></div>
+                  {free > 0 && !compact && <div className="hidden text-[10px] opacity-70 sm:block">{free} free</div>}
                 </div>
                 <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
                   {f.units.map((u) => {
                     const hit = spotting && fitsSpot(u, spot);
-                    return <UnitTile key={u.id} u={u} dark={dark} dim={spotting && !hit} hit={hit} compact={compact} animate={animateTiles} delay={Math.min(fromBottom * 0.04 + (u.position - 1) * 0.02, 1.4)} onOpen={onOpen} onHover={onHover} />;
+                    return <UnitTile key={u.id} u={u} dark={dark} dim={spotting && !hit} hit={hit} compact={compact} animate={animateTiles} delay={Math.min(fromBottom * 0.045 + (u.position - 1) * 0.02, 1.5)} onOpen={onOpen} onHover={onHover} />;
                   })}
                   {f.units.length === 0 && <div className="col-span-full rounded-md border border-dashed border-border-strong py-3 text-center text-xs text-fg-subtle">No flats on this floor yet</div>}
                 </div>

@@ -12,7 +12,7 @@ import { useAccess } from "@/lib/queries";
 import { AVAILABLE, PROJECT_KINDS, PROJECT_STAGES, STATUS, STATUS_ORDER, floorLabel, priceLine, where } from "@/lib/realestate";
 import type { Building, Project, Summary, UnitMini, UnitStatus } from "@/lib/realestate";
 import { AddFloorsDialog, AddTowerDialog, AddUnitDialog } from "./forms";
-import { BuildingView, Legend, NO_SPOT, Sky, fitsSpot, isSpotting } from "./building";
+import { BuildingView, Legend, NO_SPOT, Sky, SkyProvider, SkyToggle, fitsSpot, isSpotting } from "./building";
 import type { Spot } from "./building";
 import { TowerArt } from "./tower-art";
 import { UnitDrawer } from "./unit-drawer";
@@ -20,6 +20,10 @@ import { UnitDrawer } from "./unit-drawer";
 type View = "building" | "list" | "analytics";
 
 export function ProjectView() {
+  return <SkyProvider><ProjectViewInner /></SkyProvider>;
+}
+
+function ProjectViewInner() {
   const { id } = useParams<{ id: string }>();
   const sp = useSearchParams();
   const router = useRouter();
@@ -141,7 +145,8 @@ export function ProjectView() {
               </Card>
 
               {view === "building" && (
-                <Sky className="rounded-2xl border border-border px-2 pb-0 pt-5 sm:px-6">
+                <Sky className="rounded-2xl border border-border px-2 pb-0 pt-12 sm:px-6">
+                  <SkyToggle className="absolute -top-8 left-0 z-30" />
                   <BuildingView data={b} spot={spot} onOpen={setUnitId} flashFloor={flash} registerFloor={(f, el) => { if (el) floorEls.current.set(f, el); else floorEls.current.delete(f); }} />
                 </Sky>
               )}

@@ -3,25 +3,73 @@
 @source "../../../../packages/ui/src";
 
 /* ---- Real estate: the building facade -------------------------------------------------------------------------------- */
+/* Three skies: day, dusk, night. `data-sky` on .facade-sky switches every colour below, and the transitions make it glide. */
 .facade-sky {
-  --sky-top: #9fd3ff; --sky-bot: #eef8ff; --slab: #c4cad8; --slab-edge: #a9b0c2; --frame: #e9ecf3; --frame-edge: #cfd4e0; --ground: #d9dee9;
+  --sky-top: #7cc4ff; --sky-bot: #eaf6ff; --slab: #c4cad8; --slab-edge: #a9b0c2; --frame: #e9ecf3; --frame-edge: #cfd4e0; --ground: #d9dee9;
+  --facade-ink: #565a72; --cloud: #ffffff; --sun: #fde047; --lamp: 0; --stars: 0; --haze: rgba(255, 255, 255, 0.0);
   background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-bot) 78%);
   overflow: clip; /* clouds drift past the edge; `clip` (unlike `hidden`) can never be scrolled into view by focus */
+  transition: --sky-top 600ms;
 }
-.dark .facade-sky {
+.facade-sky[data-sky="dusk"] {
+  --sky-top: #4a3f8f; --sky-bot: #ffc08a; --slab: #b9a9a6; --slab-edge: #9a8a8c; --frame: #e8d6cf; --frame-edge: #c9b3ad; --ground: #cdb7b0;
+  --facade-ink: #5a4a52; --cloud: #ffd7c2; --sun: #ff8a3d; --lamp: 1; --stars: 0.25; --haze: rgba(255, 150, 90, 0.18);
+  background: linear-gradient(180deg, var(--sky-top) 0%, #c9627c 38%, var(--sky-bot) 82%);
+}
+.facade-sky[data-sky="night"] {
   --sky-top: #060a1d; --sky-bot: #1b2352; --slab: #2d3450; --slab-edge: #3b4466; --frame: #151a2c; --frame-edge: #262d48; --ground: #11141f;
+  --facade-ink: #a6a9c2; --cloud: #2a3470; --lamp: 1; --stars: 1; --haze: rgba(40, 60, 160, 0.12);
 }
-.facade-stars { background-image: radial-gradient(1.2px 1.2px at 12% 18%, #fff, transparent), radial-gradient(1px 1px at 38% 8%, #fff, transparent), radial-gradient(1.4px 1.4px at 71% 22%, #fff, transparent), radial-gradient(1px 1px at 88% 10%, #fff, transparent), radial-gradient(1px 1px at 55% 30%, #fff, transparent), radial-gradient(1.2px 1.2px at 25% 38%, #fff, transparent); opacity: 0; transition: opacity 400ms; }
-.dark .facade-stars { opacity: 0.8; }
-@keyframes cloud-drift { from { left: -25%; } to { left: 105%; } }
-@keyframes hold-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.55), inset 0 -5px 0 rgba(0, 0, 0, 0.18); } 50% { box-shadow: 0 0 0 7px rgba(124, 58, 237, 0), inset 0 -5px 0 rgba(0, 0, 0, 0.18); } }
-@keyframes beacon { 0%, 100% { opacity: 0.2; } 50% { opacity: 1; } }
-@keyframes car-drive { from { transform: translateX(-14%); } to { transform: translateX(110%); } }
-@keyframes floor-flash { 0% { background-color: rgba(255, 255, 255, 0); } 20% { background-color: rgba(250, 204, 21, 0.45); } 100% { background-color: rgba(255, 255, 255, 0); } }
-@keyframes sun-breathe { 0%, 100% { transform: scale(1); opacity: 0.9; } 50% { transform: scale(1.08); opacity: 1; } }
+.sky-body { transition: opacity 600ms; }
+.sky-stars { opacity: var(--stars); transition: opacity 700ms; }
+.twinkle { animation: twinkle 3.2s ease-in-out infinite; }
+.lamp-glow { opacity: var(--lamp); transition: opacity 600ms; }
+.cloud { position: absolute; fill: var(--cloud); transition: fill 600ms; animation: cloud-drift 90s linear infinite; }
+.bird { animation: bird-fly 22s linear infinite; }
+.bird-wing { transform-box: fill-box; transform-origin: center; animation: flap 0.5s ease-in-out infinite alternate; }
+.glare { background: linear-gradient(100deg, transparent 35%, rgba(255, 255, 255, 0.28) 50%, transparent 65%); animation: glare 11s ease-in-out infinite; }
+.haze { background: var(--haze); transition: background 600ms; }
+.sway { transform-box: fill-box; transform-origin: 50% 100%; animation: sway 4.5s ease-in-out infinite alternate; }
+.walker { animation: walk 38s linear infinite; }
+.car-a { animation: car-drive 16s linear infinite; }
+.car-b { animation: car-drive-rev 23s linear infinite; animation-delay: -9s; }
+.flag { transform-box: fill-box; transform-origin: 0 50%; animation: flag 1.6s ease-in-out infinite alternate; }
+.hook { transform-box: fill-box; transform-origin: 50% 0; animation: hook 3.4s ease-in-out infinite alternate; }
+.trolley { animation: trolley 9s ease-in-out infinite alternate; }
+
+/* the flats */
+.unit-tile { box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.18); scale: var(--mag, 1); transition: scale 140ms ease-out, box-shadow 400ms; }
+.unit-tile.tile-wave { animation: tile-wave 1100ms ease-out backwards; animation-delay: var(--d, 0s); }
+.facade-sky[data-sky="night"] .unit-tile:not(.unit-vacant) { box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.18), 0 0 18px -3px var(--st); }
+.facade-sky[data-sky="dusk"] .unit-tile:not(.unit-vacant) { box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.18), 0 0 12px -4px var(--st); }
+.unit-tile.tile-hit { animation: hit-glow 1.6s ease-in-out infinite; }
 .unit-hold { animation: hold-pulse 2.2s ease-in-out infinite; }
+.ico-for_sale { transform-origin: 50% 0; animation: tag-swing 2.8s ease-in-out infinite alternate; }
+.ico-on_hold { animation: hour-flip 4s ease-in-out infinite; }
+.ico-booked { animation: mark-bounce 2.6s ease-in-out infinite; }
 .floor-flash { animation: floor-flash 1400ms ease-out; }
-.cloud { animation: cloud-drift 90s linear infinite; }
+
+@keyframes cloud-drift { from { left: -25%; } to { left: 105%; } }
+@keyframes bird-fly { 0% { transform: translate(-10%, 0); } 50% { transform: translate(55vw, -18px); } 100% { transform: translate(110vw, 6px); } }
+@keyframes flap { from { transform: scaleY(1); } to { transform: scaleY(0.25); } }
+@keyframes twinkle { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+@keyframes glare { 0%, 62% { transform: translateX(-150%); } 100% { transform: translateX(350%); } }
+@keyframes sway { from { transform: rotate(-2.5deg); } to { transform: rotate(2.5deg); } }
+@keyframes walk { from { left: -4%; } to { left: 102%; } }
+@keyframes car-drive { from { left: -12%; } to { left: 102%; } }
+@keyframes car-drive-rev { from { left: 102%; } to { left: -12%; } }
+@keyframes flag { from { transform: scaleX(1) skewY(0deg); } to { transform: scaleX(0.82) skewY(6deg); } }
+@keyframes hook { from { transform: rotate(-6deg); } to { transform: rotate(6deg); } }
+@keyframes trolley { from { transform: translateX(0); } to { transform: translateX(34px); } }
+@keyframes hold-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.55), inset 0 -5px 0 rgba(0, 0, 0, 0.18); } 50% { box-shadow: 0 0 0 7px rgba(124, 58, 237, 0), inset 0 -5px 0 rgba(0, 0, 0, 0.18); } }
+@keyframes hit-glow { 0%, 100% { box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.18), 0 0 0 2px #fff, 0 0 10px 0 var(--st); } 50% { box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.18), 0 0 0 2px #fff, 0 0 26px 4px var(--st); } }
+@keyframes tile-wave { 0% { filter: brightness(2.2) saturate(0.3); } 100% { filter: brightness(1) saturate(1); } }
+@keyframes tag-swing { from { transform: rotate(-14deg); } to { transform: rotate(14deg); } }
+@keyframes hour-flip { 0%, 70% { transform: rotate(0deg); } 85%, 100% { transform: rotate(180deg); } }
+@keyframes mark-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
+@keyframes beacon { 0%, 100% { opacity: 0.2; } 50% { opacity: 1; } }
+@keyframes floor-flash { 0% { background-color: rgba(255, 255, 255, 0); } 20% { background-color: rgba(250, 204, 21, 0.45); } 100% { background-color: rgba(255, 255, 255, 0); } }
+@keyframes sun-breathe { 0%, 100% { opacity: 0.9; } 50% { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
   .facade-sky *, .facade-sky { animation: none !important; transition: none !important; }
 }

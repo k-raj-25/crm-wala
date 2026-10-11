@@ -8,6 +8,7 @@ import * as React from "react";
 import { ApiError, Button, Drawer, Field, Input, NativeSelect, Skeleton, Textarea, cn, formatDate, timeAgo, useTheme, useToast } from "@crm/ui";
 import { AsyncSelect, toLocalInput } from "@/components/forms/fields";
 import { api } from "@/lib/api";
+import { celebrate } from "@/lib/confetti";
 import { BHK_OPTIONS, FACINGS, STATUS, STATUS_ORDER, UNIT_KINDS, holdLeft, money, priceLine } from "@/lib/realestate";
 import type { MatchLead, Unit, UnitEvent, UnitStatus } from "@/lib/realestate";
 
@@ -50,6 +51,7 @@ export function UnitDrawer({ unitId, onClose, canEdit }: { unitId: string | null
     try {
       await api.post(`/api/v1/units/${unitId}/status`, { status, ...extra });
       toast.success(`${u?.name ?? "Unit"} is now ${STATUS[status].label.toLowerCase()}`);
+      if (status === "sold" || status === "booked") celebrate();
       setPending(null); setNote(""); setClientId(null); setLeadId(null);
       refresh();
     } catch (e) { fail(e); } finally { setBusy(false); }
