@@ -19,7 +19,7 @@ function StatusPill({ status, big }: { status: UnitStatus; big?: boolean }) {
   const { resolved } = useTheme();
   const s = STATUS[status];
   const Icon = s.icon;
-  return <span className={cn("inline-flex items-center gap-1.5 rounded-full font-semibold", big ? "px-3 py-1 text-sm" : "px-2 py-0.5 text-xs")} style={{ background: resolved === "dark" ? s.bgDark : s.bg, color: s.ink }}><Icon className={big ? "size-4" : "size-3"} />{s.label}</span>;
+  return <span className={cn("inline-flex items-center gap-1.5 rounded-full font-semibold", big ? "px-3 py-1 text-sm" : "px-2 py-0.5 text-xs")} style={{ background: resolved === "dark" ? s.bgDark : s.bg, color: resolved === "dark" ? s.inkDark : s.ink }}><Icon className={big ? "size-4" : "size-3"} />{s.label}</span>;
 }
 
 export function UnitDrawer({ unitId, onClose, canEdit }: { unitId: string | null; onClose: () => void; canEdit: boolean }) {
@@ -111,8 +111,8 @@ export function UnitDrawer({ unitId, onClose, canEdit }: { unitId: string | null
                   return (
                     <button key={s} type="button" disabled={busy} onClick={() => pick(s)} aria-pressed={cur} title={m.hint}
                       className={cn("flex h-11 items-center gap-2 rounded-lg border px-2 text-left text-[12.5px] font-medium transition-all", cur ? "border-transparent shadow-sm" : "border-border bg-surface hover:-translate-y-px hover:border-border-strong hover:shadow-xs", pending === s && "ring-2 ring-primary")}
-                      style={cur ? { background: resolved === "dark" ? m.bgDark : m.bg, color: m.ink } : undefined}>
-                      <span className="grid size-6 shrink-0 place-items-center rounded-md" style={{ background: resolved === "dark" ? m.bgDark : m.bg, color: m.ink }}><Icon className="size-3.5" /></span>
+                      style={cur ? { background: resolved === "dark" ? m.bgDark : m.bg, color: resolved === "dark" ? m.inkDark : m.ink } : undefined}>
+                      <span className="grid size-6 shrink-0 place-items-center rounded-md" style={{ background: resolved === "dark" ? m.bgDark : m.bg, color: resolved === "dark" ? m.inkDark : m.ink }}><Icon className="size-3.5" /></span>
                       <span className="line-clamp-2 leading-tight">{m.label}</span>
                     </button>
                   );

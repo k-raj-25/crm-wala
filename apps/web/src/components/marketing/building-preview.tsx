@@ -56,7 +56,7 @@ export function BuildingHero() {
                       return (
                         <motion.div key={`${i}-${s}`} initial={pulse === i ? { scale: 1.18 } : false} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 380, damping: 16 }}
                           className="relative flex h-9 items-center justify-between rounded-md px-1.5 text-[11px] font-semibold sm:h-10"
-                          style={{ background: dark ? m.bgDark : m.bg, color: m.ink, boxShadow: "inset 0 -4px 0 rgba(0,0,0,.18)", backgroundImage: "linear-gradient(160deg, rgba(255,255,255,.28), rgba(255,255,255,0) 55%)" }}>
+                          style={{ background: dark ? m.bgDark : m.bg, color: dark ? m.inkDark : m.ink, boxShadow: "inset 0 -4px 0 rgba(0,0,0,.18)", backgroundImage: "linear-gradient(160deg, rgba(255,255,255,.28), rgba(255,255,255,0) 55%)" }}>
                           {num(i)}<Icon className="size-3 opacity-90" aria-hidden />
                         </motion.div>
                       );
@@ -85,7 +85,7 @@ export function BuildingHero() {
                   const m = STATUS[f.status]; const Icon = m.icon;
                   return (
                     <motion.li key={f.id} layout initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="flex items-center gap-2.5 rounded-lg border border-border bg-surface px-3 py-2 text-[13px]">
-                      <span className="grid size-6 shrink-0 place-items-center rounded-md" style={{ background: dark ? m.bgDark : m.bg, color: m.ink }}><Icon className="size-3.5" /></span>{f.text}
+                      <span className="grid size-6 shrink-0 place-items-center rounded-md" style={{ background: dark ? m.bgDark : m.bg, color: dark ? m.inkDark : m.ink }}><Icon className="size-3.5" /></span>{f.text}
                     </motion.li>
                   );
                 })}

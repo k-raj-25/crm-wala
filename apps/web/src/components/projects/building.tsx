@@ -116,7 +116,7 @@ function tileStyle(status: UnitStatus, dark: boolean): React.CSSProperties {
   const bg = dark ? s.bgDark : s.bg;
   const lamp = status === "rented" || status === "self_occupied" ? ", radial-gradient(circle at 82% 88%, rgba(255,226,140,.55), transparent 52%)" : "";
   return {
-    color: s.ink,
+    color: dark ? s.inkDark : s.ink,
     backgroundColor: bg,
     // glass: a window mullion, a light-to-dark wash, and (for lived-in flats) a lamp glowing in the corner
     backgroundImage: `linear-gradient(to right, transparent calc(50% - .5px), rgba(255,255,255,.28) calc(50% - .5px) calc(50% + .5px), transparent calc(50% + .5px)), linear-gradient(160deg, rgba(255,255,255,${status === "vacant" ? 0.45 : 0.22}) 0%, rgba(255,255,255,0) 48%, rgba(0,0,0,.14) 100%)${lamp}`,
@@ -348,8 +348,8 @@ export function Legend({ counts, active, onToggle, className }: { counts: Partia
         return (
           <button key={s} type="button" onClick={() => onToggle(s)} aria-pressed={on} title={m.hint}
             className={cn("group inline-flex h-8 items-center gap-2 rounded-full border px-2.5 text-[13px] font-medium transition-all", on ? "border-transparent shadow-sm" : "border-border bg-surface text-fg-muted hover:border-border-strong hover:text-fg")}
-            style={on ? { background: resolved === "dark" ? m.bgDark : m.bg, color: m.ink } : undefined}>
-            <span className="grid size-5 place-items-center rounded-full" style={{ background: on ? "rgba(255,255,255,.22)" : resolved === "dark" ? m.bgDark : m.bg, color: m.ink }}><Icon className="size-3" /></span>
+            style={on ? { background: resolved === "dark" ? m.bgDark : m.bg, color: resolved === "dark" ? m.inkDark : m.ink } : undefined}>
+            <span className="grid size-5 place-items-center rounded-full" style={{ background: on ? "rgba(255,255,255,.22)" : resolved === "dark" ? m.bgDark : m.bg, color: resolved === "dark" ? m.inkDark : m.ink }}><Icon className="size-3" /></span>
             {m.label}<span className={cn("tabular-nums", on ? "opacity-90" : "text-fg-subtle")}>{counts[s] ?? 0}</span>
           </button>
         );

@@ -27,7 +27,7 @@ export function MatchingFlats({ leadId, hasRequirement }: { leadId: string; hasR
               return (
                 <li key={u.id}>
                   <Link href={`/app/projects/${u.project_id}?tower=${u.tower_id}&unit=${u.id}`} className="flex items-center gap-3 rounded-lg border border-border p-2.5 transition-colors hover:border-primary/40 hover:bg-primary-soft/40">
-                    <span className="grid size-9 shrink-0 place-items-center rounded-md text-[13px] font-semibold" style={{ background: resolved === "dark" ? m.bgDark : m.bg, color: m.ink }}>{u.number}</span>
+                    <span className="grid size-9 shrink-0 place-items-center rounded-md text-[13px] font-semibold" style={{ background: resolved === "dark" ? m.bgDark : m.bg, color: resolved === "dark" ? m.inkDark : m.ink }}>{u.number}</span>
                     <span className="min-w-0 flex-1"><span className="block truncate text-[13px] font-medium">{[u.bhk, u.tower_name, u.project_name].filter(Boolean).join(" · ")}</span><span className="block truncate text-xs text-fg-muted">{m.label} · {priceLine(u)}{u.match?.reasons.length ? ` · ${u.match.reasons.join(", ")}` : ""}</span></span>
                   </Link>
                 </li>
