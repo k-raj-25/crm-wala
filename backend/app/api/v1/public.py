@@ -14,7 +14,7 @@ from app.extensions import db, limiter
 from app.models import Activity, Email, Lead, Workspace
 from app.models.base import utcnow
 from app.schemas.common import Email as EmailStr, Schema, parse
-from app.services import activities, analytics, audit, notifications
+from app.services import activities, analytics, audit, notifications, portal_leads
 from app.services.access import compute_access
 
 bp = Blueprint("public", __name__, url_prefix="/api/v1/public")
@@ -101,6 +101,8 @@ def inbound_email(token):
     with bypass_scope():
         ws = _workspace_by_token(token)
     set_tenant(ws.id)
+    if portal_leads.looks_like_99acres(d.from_address, d.subject, d.text):
+        return ok(_intake_99acres_email(ws, d))
     if d.message_id and db.session.query(Email.id).filter_by(workspace_id=ws.id, provider_message_id=d.message_id).first():
         return ok({"duplicate": True})
     from app.models import Contact
@@ -120,3 +122,38 @@ def inbound_email(token):
         activities.log_activity("email", f"Email received: {d.subject}", workspace_id=ws.id, body=d.text[:500], user_id=None, data={"email_id": str(e.id)}, **rel)
     db.session.commit()
     return ok({"matched": bool(rel)})
+
+
+def _intake_99acres_email(ws: Workspace, d: InboundIn) -> dict:
+    portal_leads.bind(ws)
+    lead, created = portal_leads.intake(ws, portal_leads.parse_email(d.subject, d.text), via="email", dedupe_key=d.message_id)
+    db.session.commit()
+    return {"lead_id": str(lead.id) if lead else None, "created": created, "status": lead.status if lead else None}
+
+
+@inbound_bp.post("/99acres/<token>")
+@limiter.limit("120 per minute")
+def inbound_99acres(token):
+    """99acres enquiries: a forwarded response e-mail ({from, subject, text}) or a lead push (one record, a list, or {"leads": [...]}, JSON or form).
+    Every enquiry becomes a lead in "Awaiting review"; repeats of the same enquiry id / message id are ignored."""
+    with bypass_scope():
+        ws = _workspace_by_token(token)
+    if not compute_access(ws).allowed:
+        raise ApiError(403, "intake_unavailable", "This workspace is not accepting leads right now.")
+    set_tenant(ws.id)
+    portal_leads.bind(ws)
+    body = request.get_json(silent=True)
+    if body is None:
+        body = request.form.to_dict() or {}
+    if isinstance(body, dict) and ("text" in body or "subject" in body) and ("from" in body or "from_address" in body):
+        return ok(_intake_99acres_email(ws, parse(InboundIn)))
+    records = body if isinstance(body, list) else body.get("leads", [body]) if isinstance(body, dict) else []
+    if not isinstance(records, list) or not records or len(records) > 100 or not all(isinstance(r, dict) for r in records):
+        raise ApiError(422, "validation_error", "Send one enquiry, a list of enquiries, or {\"leads\": [...]} (at most 100).")
+    results = []
+    for rec in records:
+        lead, created = portal_leads.intake(ws, portal_leads.parse_push(rec), via="push")
+        results.append({"lead_id": str(lead.id) if lead else None, "created": created, "status": lead.status if lead else None,
+                        **({} if lead else {"error": "No phone number or e-mail in this enquiry"})})
+    db.session.commit()
+    return ok({"received": len(results), "created": sum(r["created"] for r in results), "results": results})

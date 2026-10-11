@@ -22,6 +22,7 @@ from app.services.email_templates import DEFAULT_TEMPLATES
 # Keys stay stable (reports and follow-up filters rely on them); labels speak the realtor's language.
 DEFAULT_LEAD_STATUSES = [
     {"key": "new", "label": "New enquiry", "color": "#6366f1"},
+    {"key": "pending_review", "label": "Awaiting review", "color": "#f59e0b"},  # portal enquiries (99acres) land here until an owner accepts them
     {"key": "contacted", "label": "Contacted", "color": "#0ea5e9"},
     {"key": "qualified", "label": "Interested", "color": "#10b981"},
     {"key": "unqualified", "label": "Not interested", "color": "#94a3b8"},

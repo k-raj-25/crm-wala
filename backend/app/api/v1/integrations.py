@@ -33,7 +33,8 @@ def _meta(provider: str) -> dict:
 def list_():
     rows = {i.provider: i for i in db.session.query(Integration).filter_by(workspace_id=g.workspace.id) if i.provider not in svc.PER_USER or i.connected_by == g.user.id}
     return ok({"categories": svc.CATEGORIES, "integrations": [svc.public_view(p, rows.get(p)) for p in svc.CATALOG], "webhook_events": svc.WEBHOOK_EVENTS,
-               "lead_form": {"token": (g.workspace.settings or {}).get("public_form_token"), "endpoint": f"{current_app.config['WEB_ORIGIN']}/api/v1/public/forms/{(g.workspace.settings or {}).get('public_form_token')}"}})
+               "lead_form": {"token": (g.workspace.settings or {}).get("public_form_token"), "endpoint": f"{current_app.config['WEB_ORIGIN']}/api/v1/public/forms/{(g.workspace.settings or {}).get('public_form_token')}"},
+               "portal_intake": {"99acres": f"{current_app.config['WEB_ORIGIN']}/api/v1/inbound/99acres/{(g.workspace.settings or {}).get('public_form_token')}"}})
 
 
 class ConnectIn(Schema):
