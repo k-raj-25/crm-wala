@@ -66,7 +66,7 @@ function ColumnView({ col, ids, deals, onAdd, canCreate }: { col: Column; ids: s
   );
 }
 
-export function PipelineBoard() {
+export function PipelineBoard({ headerLead }: { headerLead?: React.ReactNode }) {
   const qc = useQueryClient(); const toast = useToast(); const ui = useUI(); const { can } = useAccess(); const inv = useInvalidate();
   const pipelines = usePipelines();
   const [pid, setPid] = useLocalStorage<string | null>("pipeline-id", null);
@@ -120,6 +120,7 @@ export function PipelineBoard() {
     <PageContainer wide className="!pb-4">
       <PageHeader title="Pipeline" description={totals ? `${totals.n} open deals · ${formatMoneyCompact(totals.v, cur)} total · ${formatMoneyCompact(totals.w, cur)} weighted` : " "}
         actions={<>
+          {headerLead}
           {(pipelines.data?.length ?? 0) > 1 && <div className="w-48"><Select value={current?.id} onValueChange={setPid} options={pipelines.data!.map((p) => ({ value: p.id, label: p.name }))} /></div>}
           {can("pipelines.update") && <Button variant="secondary" asChild><Link href="/app/settings/pipelines"><Settings2 /> Stages</Link></Button>}
           {can("deals.create") && <Button onClick={() => ui.openCreate("deal", { stage_id: current?.stages.find((s) => s.kind === "open")?.id })}><Plus /> New deal</Button>}

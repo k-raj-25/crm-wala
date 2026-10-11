@@ -1,6 +1,9 @@
-"use client";
-import { Suspense } from "react";
-import { EntityList } from "@/components/list/entity-list";
-import { DEALS } from "@/lib/entities";
+import { redirect } from "next/navigation";
 
-export default function Page() { return <Suspense><EntityList cfg={DEALS} /></Suspense>; }
+/** Deals now live inside Pipeline (List view). Old links and filters keep working. */
+export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(await searchParams)) if (typeof v === "string") q.set(k, v);
+  q.set("view", "list");
+  redirect(`/app/pipeline?${q.toString()}`);
+}

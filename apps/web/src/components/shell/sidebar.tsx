@@ -100,7 +100,7 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
   const { can } = useAccess();
   const tasks = useQuery({ queryKey: ["tasks-summary-badge"], enabled: can("tasks.read"), queryFn: () => api.get<{ today: number; overdue: number }>("/api/v1/tasks/summary", { mine: "true" }), refetchInterval: 60_000 });
   const badge = (href: string) => (href === "/app/tasks" ? (tasks.data?.overdue ?? 0) + (tasks.data?.today ?? 0) : 0);
-  const active = (href: string) => (href === "/app" ? pathname === "/app" : pathname.startsWith(href));
+  const active = (href: string) => (href === "/app" ? pathname === "/app" : pathname.startsWith(href) || (href === "/app/pipeline" && pathname.startsWith("/app/deals")));
   const renderItem = (n: (typeof items)[number]) => {
     const a = active(n.href);
     const b = badge(n.href);

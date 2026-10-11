@@ -43,7 +43,7 @@ function MultiFilter({ def, value, onChange }: { def: Extract<FilterDef, { kind:
   );
 }
 
-export function EntityList({ cfg }: { cfg: EntityConfig }) {
+export function EntityList({ cfg, heading, headerLead }: { cfg: EntityConfig; heading?: string; headerLead?: React.ReactNode }) {
   const router = useRouter(); const pathname = usePathname(); const sp = useSearchParams(); const qc = useQueryClient(); const toast = useToast(); const ui = useUI();
   const { can } = useAccess(); const { data: me } = useMe(); const isMobile = useMediaQuery("(max-width: 767px)");
   const params = React.useMemo(() => new URLSearchParams(sp.toString()), [sp]);
@@ -99,8 +99,9 @@ export function EntityList({ cfg }: { cfg: EntityConfig }) {
 
   return (
     <PageContainer wide>
-      <PageHeader title={cfg.title} description={meta ? `${meta.total.toLocaleString("en-IN")} ${meta.total === 1 ? cfg.singular : cfg.title.toLowerCase()}` : " "}
+      <PageHeader title={heading ?? cfg.title} description={meta ? `${meta.total.toLocaleString("en-IN")} ${meta.total === 1 ? cfg.singular : cfg.title.toLowerCase()}` : " "}
         actions={<>
+          {headerLead}
           {can("data.import") && <Button variant="secondary" asChild><Link href={`/app/settings/data?import=${cfg.importAs}`}><FileUp /> Import</Link></Button>}
           {can("data.export") && <Button variant="secondary" onClick={doExport}><Download /> Export</Button>}
           {can(`${cfg.key}.create`) && <Button onClick={() => ui.openCreate(cfg.createKind)}><Plus /> New {cfg.singular}</Button>}
