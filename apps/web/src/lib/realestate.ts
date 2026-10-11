@@ -6,15 +6,15 @@ export type UnitStatus = "vacant" | "for_sale" | "for_rent" | "on_hold" | "booke
 
 /** One entry per colour on the building. `bg` is the lit window, `ink` the text on it. Every status also has its own icon
  *  so the meaning never depends on colour alone (red/green is a common colour-blindness pair). */
-export const STATUS: Record<UnitStatus, { label: string; hint: string; bg: string; bgDark: string; ink: string; icon: LucideIcon; group: "open" | "progress" | "closed" | "lived" }> = {
-  vacant: { label: "Vacant", hint: "Empty, not listed yet", bg: "#dfe5ee", bgDark: "#2b3140", ink: "#3b4558", icon: DoorOpen, group: "open" },
-  for_sale: { label: "For sale", hint: "Listed for sale", bg: "#dc2626", bgDark: "#dc2626", ink: "#ffffff", icon: Tag, group: "open" },
-  for_rent: { label: "For rent", hint: "Listed for rent", bg: "#0e7490", bgDark: "#0e7490", ink: "#ffffff", icon: KeyRound, group: "open" },
-  on_hold: { label: "On hold", hint: "Held for a client", bg: "#7c3aed", bgDark: "#7c3aed", ink: "#ffffff", icon: Hourglass, group: "progress" },
-  booked: { label: "Booked", hint: "Token paid", bg: "#2563eb", bgDark: "#2563eb", ink: "#ffffff", icon: BookmarkCheck, group: "progress" },
-  sold: { label: "Sold", hint: "Sale completed", bg: "#334155", bgDark: "#475569", ink: "#ffffff", icon: BadgeCheck, group: "closed" },
-  rented: { label: "Rented", hint: "Currently on rent", bg: "#15803d", bgDark: "#15803d", ink: "#ffffff", icon: KeyRound, group: "closed" },
-  self_occupied: { label: "Self occupied", hint: "Lived in by the owner", bg: "#f59e0b", bgDark: "#f59e0b", ink: "#3a2100", icon: Home, group: "lived" },
+export const STATUS: Record<UnitStatus, { label: string; hint: string; bg: string; bgDark: string; ink: string; inkDark: string; icon: LucideIcon; group: "open" | "progress" | "closed" | "lived" }> = {
+  vacant: { label: "Vacant", hint: "Empty, not listed yet", bg: "#dfe5ee", bgDark: "#2b3140", ink: "#3b4558", inkDark: "#b4bccd", icon: DoorOpen, group: "open" },
+  for_sale: { label: "For sale", hint: "Listed for sale", bg: "#dc2626", bgDark: "#dc2626", ink: "#ffffff", inkDark: "#ffffff", icon: Tag, group: "open" },
+  for_rent: { label: "For rent", hint: "Listed for rent", bg: "#0e7490", bgDark: "#0e7490", ink: "#ffffff", inkDark: "#ffffff", icon: KeyRound, group: "open" },
+  on_hold: { label: "On hold", hint: "Held for a client", bg: "#7c3aed", bgDark: "#7c3aed", ink: "#ffffff", inkDark: "#ffffff", icon: Hourglass, group: "progress" },
+  booked: { label: "Booked", hint: "Token paid", bg: "#2563eb", bgDark: "#2563eb", ink: "#ffffff", inkDark: "#ffffff", icon: BookmarkCheck, group: "progress" },
+  sold: { label: "Sold", hint: "Sale completed", bg: "#334155", bgDark: "#475569", ink: "#ffffff", inkDark: "#ffffff", icon: BadgeCheck, group: "closed" },
+  rented: { label: "Rented", hint: "Currently on rent", bg: "#15803d", bgDark: "#15803d", ink: "#ffffff", inkDark: "#ffffff", icon: KeyRound, group: "closed" },
+  self_occupied: { label: "Self occupied", hint: "Lived in by the owner", bg: "#f59e0b", bgDark: "#f59e0b", ink: "#3a2100", inkDark: "#3a2100", icon: Home, group: "lived" },
 };
 export const STATUS_ORDER = Object.keys(STATUS) as UnitStatus[];
 export const AVAILABLE: UnitStatus[] = ["vacant", "for_sale", "for_rent"];

@@ -12,7 +12,7 @@ import { useAccess } from "@/lib/queries";
 import { AVAILABLE, PROJECT_KINDS, PROJECT_STAGES, STATUS, STATUS_ORDER, floorLabel, priceLine, where } from "@/lib/realestate";
 import type { Building, Project, Summary, UnitMini, UnitStatus } from "@/lib/realestate";
 import { AddFloorsDialog, AddTowerDialog, AddUnitDialog } from "./forms";
-import { BuildingView, Legend, NO_SPOT, Sky, fitsSpot, isSpotting } from "./building";
+import { BuildingView, Legend, NO_SPOT, Sky, SkyProvider, SkyToggle, fitsSpot, isSpotting } from "./building";
 import type { Spot } from "./building";
 import { TowerArt } from "./tower-art";
 import { UnitDrawer } from "./unit-drawer";
@@ -20,6 +20,10 @@ import { UnitDrawer } from "./unit-drawer";
 type View = "building" | "list" | "analytics";
 
 export function ProjectView() {
+  return <SkyProvider><ProjectViewInner /></SkyProvider>;
+}
+
+function ProjectViewInner() {
   const { id } = useParams<{ id: string }>();
   const sp = useSearchParams();
   const router = useRouter();
@@ -141,7 +145,8 @@ export function ProjectView() {
               </Card>
 
               {view === "building" && (
-                <Sky className="rounded-2xl border border-border px-2 pb-0 pt-5 sm:px-6">
+                <Sky className="rounded-2xl border border-border px-2 pb-0 pt-12 sm:px-6">
+                  <SkyToggle className="absolute -top-8 left-0 z-30" />
                   <BuildingView data={b} spot={spot} onOpen={setUnitId} flashFloor={flash} registerFloor={(f, el) => { if (el) floorEls.current.set(f, el); else floorEls.current.delete(f); }} />
                 </Sky>
               )}
@@ -195,8 +200,8 @@ function StatusTile({ s, n, active, onClick }: { s: UnitStatus; n: number; activ
   const { resolved } = useTheme();
   const m = STATUS[s]; const Icon = m.icon; const bg = resolved === "dark" ? m.bgDark : m.bg;
   return (
-    <button type="button" onClick={onClick} aria-pressed={active} title={m.hint} className={cn("rounded-xl border p-3 text-left transition-all hover:-translate-y-px hover:shadow-sm", active ? "border-transparent" : "border-border bg-surface")} style={active ? { background: bg, color: m.ink } : undefined}>
-      <div className="flex items-center justify-between"><span className="text-2xl font-semibold tabular-nums leading-none">{n}</span><span className="grid size-6 place-items-center rounded-md" style={{ background: bg, color: m.ink }}><Icon className="size-3.5" /></span></div>
+    <button type="button" onClick={onClick} aria-pressed={active} title={m.hint} className={cn("rounded-xl border p-3 text-left transition-all hover:-translate-y-px hover:shadow-sm", active ? "border-transparent" : "border-border bg-surface")} style={active ? { background: bg, color: resolved === "dark" ? m.inkDark : m.ink } : undefined}>
+      <div className="flex items-center justify-between"><span className="text-2xl font-semibold tabular-nums leading-none">{n}</span><span className="grid size-6 place-items-center rounded-md" style={{ background: bg, color: resolved === "dark" ? m.inkDark : m.ink }}><Icon className="size-3.5" /></span></div>
       <div className={cn("mt-1.5 text-xs", active ? "opacity-90" : "text-fg-muted")}>{m.label}</div>
     </button>
   );
@@ -239,7 +244,7 @@ function UnitTable({ b, spot, onOpen }: { b: Building; spot: Spot; onOpen: (id: 
                   <td className="px-4 py-2.5 text-fg-muted">{floorLabel(u.floor)}</td><td className="px-4 py-2.5">{u.bhk ?? "—"}</td>
                   <td className="px-4 py-2.5 text-right tabular-nums">{u.area_sqft ? `${Math.round(u.area_sqft).toLocaleString("en-IN")} sq ft` : "—"}</td><td className="px-4 py-2.5 text-fg-muted">{u.facing ?? "—"}</td>
                   <td className="px-4 py-2.5 text-right font-medium tabular-nums">{priceLine(u)}</td>
-                  <td className="px-4 py-2.5"><span className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: resolved === "dark" ? m.bgDark : m.bg, color: m.ink }}><Icon className="size-3" />{m.label}</span></td>
+                  <td className="px-4 py-2.5"><span className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: resolved === "dark" ? m.bgDark : m.bg, color: resolved === "dark" ? m.inkDark : m.ink }}><Icon className="size-3" />{m.label}</span></td>
                 </tr>
               );
             })}
