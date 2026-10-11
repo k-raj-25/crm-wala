@@ -43,7 +43,11 @@ function MultiFilter({ def, value, onChange }: { def: Extract<FilterDef, { kind:
   );
 }
 
-export function EntityList({ cfg, heading, headerLead }: { cfg: EntityConfig; heading?: string; headerLead?: React.ReactNode }) {
+/** `embedded`: render only the table area (view tabs + toolbar + table) inside another page, using that page's own search/owner/priority filters. */
+export type Embedded = { q?: string; owner_id?: string | null; priority?: string };
+function Wrap({ embedded, children }: { embedded: boolean; children: React.ReactNode }) { return embedded ? <>{children}</> : <PageContainer wide>{children}</PageContainer>; }
+
+export function EntityList({ cfg, heading, embedded }: { cfg: EntityConfig; heading?: string; embedded?: Embedded }) {
   const router = useRouter(); const pathname = usePathname(); const sp = useSearchParams(); const qc = useQueryClient(); const toast = useToast(); const ui = useUI();
   const { can } = useAccess(); const { data: me } = useMe(); const isMobile = useMediaQuery("(max-width: 767px)");
   const params = React.useMemo(() => new URLSearchParams(sp.toString()), [sp]);
@@ -59,7 +63,8 @@ export function EntityList({ cfg, heading, headerLead }: { cfg: EntityConfig; he
   React.useEffect(() => { if ((params.get("q") ?? "") !== dsearch) setParam("q", dsearch || null); }, [dsearch]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const page = Number(params.get("page") ?? 1), perPage = Number(params.get("per_page") ?? 25), sort = params.get("sort") ?? cfg.defaultSort;
-  const apiParams = Object.fromEntries([...params.entries()].filter(([k]) => !["page", "per_page", "sort", "view"].includes(k)));
+  const urlParams = Object.fromEntries([...params.entries()].filter(([k]) => !["page", "per_page", "sort", "view", "mode"].includes(k)));
+  const apiParams = { ...urlParams, ...(embedded?.q ? { q: embedded.q } : {}), ...(embedded?.owner_id ? { owner_id: embedded.owner_id } : {}), ...(embedded?.priority ? { priority: embedded.priority } : {}) };
   const key = [cfg.key, { ...apiParams, page, perPage, sort }];
   const list = useQuery({ queryKey: key, queryFn: () => api.page<Row>(cfg.endpoint, { ...apiParams, page, per_page: perPage, sort }), placeholderData: keepPreviousData });
   const views = useQuery({ queryKey: ["views", cfg.entityType], queryFn: () => api.get<SavedView[]>("/api/v1/views", { entity_type: cfg.entityType }) });
@@ -97,26 +102,30 @@ export function EntityList({ cfg, heading, headerLead }: { cfg: EntityConfig; he
   const defaultViews = cfg.defaultViews.map((v) => ({ ...v, params: Object.fromEntries(Object.entries(v.params).map(([k, val]) => [k, val.startsWith("date:") ? new Date(Date.now() - Number(val.slice(5)) * 864e5).toISOString().slice(0, 10) : val])) }));
   const saved = views.data ?? [];
 
-  return (
-    <PageContainer wide>
-      <PageHeader title={heading ?? cfg.title} description={meta ? `${meta.total.toLocaleString("en-IN")} ${meta.total === 1 ? cfg.singular : cfg.title.toLowerCase()}` : " "}
-        actions={<>
-          {headerLead}
-          {can("data.import") && <Button variant="secondary" asChild><Link href={`/app/settings/data?import=${cfg.importAs}`}><FileUp /> Import</Link></Button>}
-          {can("data.export") && <Button variant="secondary" onClick={doExport}><Download /> Export</Button>}
-          {can(`${cfg.key}.create`) && <Button onClick={() => ui.openCreate(cfg.createKind)}><Plus /> New {cfg.singular}</Button>}
-        </>}
-        tabs={
+  const tabsEl = (
           <div className="hide-scrollbar -mx-1 flex items-center gap-1 overflow-x-auto px-1">
             {[...defaultViews.map((v) => ({ ...v, saved: false, sort: null as string | null })), ...saved.map((v) => ({ id: v.id, name: v.name, params: v.filters as Record<string, string>, saved: true, sort: v.sort }))].map((v) => {
               const active = activeViewId ? activeViewId === v.id : v.id === "all" && !hasFilters;
               return <button key={v.id} onClick={() => applyView(v.id, v.params, v.sort)} className={cn("flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13px] font-medium transition-colors", active ? "bg-fg text-bg" : "text-fg-muted hover:bg-surface-hover hover:text-fg")}>{v.saved && <Bookmark className="size-3" />}{v.name}</button>;
             })}
-          </div>} />
+          </div>
+  );
+
+  return (
+    <Wrap embedded={!!embedded}>
+      {embedded ? <div className="mb-4">{tabsEl}</div> : (
+      <PageHeader title={heading ?? cfg.title} description={meta ? `${meta.total.toLocaleString("en-IN")} ${meta.total === 1 ? cfg.singular : cfg.title.toLowerCase()}` : " "}
+        actions={<>
+          {can("data.import") && <Button variant="secondary" asChild><Link href={`/app/settings/data?import=${cfg.importAs}`}><FileUp /> Import</Link></Button>}
+          {can("data.export") && <Button variant="secondary" onClick={doExport}><Download /> Export</Button>}
+          {can(`${cfg.key}.create`) && <Button onClick={() => ui.openCreate(cfg.createKind)}><Plus /> New {cfg.singular}</Button>}
+        </>}
+        tabs={tabsEl} />
+      )}
 
       <Card className="overflow-hidden">
         <div className="flex flex-wrap items-center gap-2 border-b border-border p-3">
-          <div className="min-w-[200px] flex-1 sm:max-w-sm"><Input icon={<Search />} value={search} onChange={(e) => setSearch(e.target.value)} placeholder={cfg.searchPlaceholder} aria-label={`Search ${cfg.title}`} /></div>
+          {!embedded && <div className="min-w-[200px] flex-1 sm:max-w-sm"><Input icon={<Search />} value={search} onChange={(e) => setSearch(e.target.value)} placeholder={cfg.searchPlaceholder} aria-label={`Search ${cfg.title}`} /></div>}
           <Popover>
             <PopoverTrigger asChild><Button variant="secondary" size="md"><Filter /> Filters{activeFilters.length > 0 && <Badge tone="primary">{activeFilters.length}</Badge>}</Button></PopoverTrigger>
             <PopoverContent align="start" className="w-[340px] max-w-[calc(100vw-24px)] space-y-4">
@@ -129,6 +138,10 @@ export function EntityList({ cfg, heading, headerLead }: { cfg: EntityConfig; he
             <DropdownContent><DropdownLabel>Columns</DropdownLabel>{cfg.columns.map((c, i) => <DropdownCheckItem key={c.key} checked={visible.some((v) => v.key === c.key)} disabled={i === 0} onSelect={(e) => e.preventDefault()} onCheckedChange={(on) => setVis((cur) => { const base = cur ?? cfg.columns.filter((x) => x.defaultVisible !== false).map((x) => x.key); return on ? [...base, c.key] : base.filter((k) => k !== c.key); })}>{c.label}</DropdownCheckItem>)}</DropdownContent>
           </DropdownMenu>
           {hasFilters && <Button variant="ghost" size="sm" onClick={saveView}><Bookmark /> Save view</Button>}
+          {embedded && <div className="ml-auto flex items-center gap-2">
+            {can("data.import") && <Button variant="ghost" size="sm" asChild><Link href={`/app/settings/data?import=${cfg.importAs}`}><FileUp /> Import</Link></Button>}
+            {can("data.export") && <Button variant="ghost" size="sm" onClick={doExport}><Download /> Export</Button>}
+          </div>}
         </div>
         {activeFilters.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 border-b border-border bg-surface-2 px-3 py-2">
@@ -183,7 +196,7 @@ export function EntityList({ cfg, heading, headerLead }: { cfg: EntityConfig; he
         )}
       </AnimatePresence>
       <ConfirmDialog open={confirmDelete} onOpenChange={setConfirmDelete} title={`Delete ${selected.size} ${selected.size === 1 ? cfg.singular : cfg.title.toLowerCase()}?`} description="They'll be removed from your workspace. This is recorded in the audit log." confirmLabel="Delete" onConfirm={() => bulk.mutateAsync({ action: "delete" })} />
-    </PageContainer>
+    </Wrap>
   );
 }
 

@@ -4,15 +4,18 @@ import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalList
 import { CSS } from "@dnd-kit/utilities";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { CalendarDays, Flame, GripVertical, Plus, Search, Settings2, Trophy } from "lucide-react";
+import { CalendarDays, Flame, GripVertical, LayoutGrid, List, Plus, Search, Settings2, Trophy } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
-import { Avatar, Badge, Button, ConfirmDialog, EmptyState, ErrorState, Input, NativeSelect, Select, Skeleton, Tooltip, cn, formatMoney, formatMoneyCompact, useDebounce, useLocalStorage, useToast } from "@crm/ui";
+import { Avatar, Badge, Button, ConfirmDialog, EmptyState, ErrorState, Input, NativeSelect, Segmented, Select, Skeleton, Tooltip, cn, formatMoney, formatMoneyCompact, useDebounce, useLocalStorage, useToast } from "@crm/ui";
 import { api } from "@/lib/api";
 import { celebrate } from "@/lib/confetti";
 import { useAccess, useInvalidate, keys, usePipelines } from "@/lib/queries";
 import type { Deal, Pipeline } from "@/lib/types";
+import { useSearchParams } from "next/navigation";
 import { MemberSelect } from "../forms/fields";
+import { EntityList } from "../list/entity-list";
+import { DEALS } from "@/lib/entities";
 import { ScorePill } from "../list/cells";
 import { PageContainer, PageHeader } from "../shell/page";
 import { useUI } from "../shell/ui-context";
@@ -66,9 +69,12 @@ function ColumnView({ col, ids, deals, onAdd, canCreate }: { col: Column; ids: s
   );
 }
 
-export function PipelineBoard({ headerLead }: { headerLead?: React.ReactNode }) {
+export function PipelineBoard() {
   const qc = useQueryClient(); const toast = useToast(); const ui = useUI(); const { can } = useAccess(); const inv = useInvalidate();
   const pipelines = usePipelines();
+  const sp = useSearchParams();
+  const [mode, setMode] = useLocalStorage<"board" | "list">("pipeline-mode", "board"); // remembered between visits
+  React.useEffect(() => { if (sp.get("mode") === "list") setMode("list"); }, [sp, setMode]); // old /app/deals links land on the table
   const [pid, setPid] = useLocalStorage<string | null>("pipeline-id", null);
   const [search, setSearch] = React.useState(""); const dsearch = useDebounce(search, 250); const [owner, setOwner] = React.useState<string | null>(null); const [priority, setPriority] = React.useState("");
   const current = pipelines.data?.find((p) => p.id === pid) ?? pipelines.data?.find((p) => p.is_default) ?? pipelines.data?.[0];
@@ -120,7 +126,7 @@ export function PipelineBoard({ headerLead }: { headerLead?: React.ReactNode }) 
     <PageContainer wide className="!pb-4">
       <PageHeader title="Pipeline" description={totals ? `${totals.n} open deals · ${formatMoneyCompact(totals.v, cur)} total · ${formatMoneyCompact(totals.w, cur)} weighted` : " "}
         actions={<>
-          {headerLead}
+          <Segmented value={mode} onChange={setMode} options={[{ value: "board", label: "Board", icon: <LayoutGrid /> }, { value: "list", label: "List", icon: <List /> }]} />
           {(pipelines.data?.length ?? 0) > 1 && <div className="w-48"><Select value={current?.id} onValueChange={setPid} options={pipelines.data!.map((p) => ({ value: p.id, label: p.name }))} /></div>}
           {can("pipelines.update") && <Button variant="secondary" asChild><Link href="/app/settings/pipelines"><Settings2 /> Stages</Link></Button>}
           {can("deals.create") && <Button onClick={() => ui.openCreate("deal", { stage_id: current?.stages.find((s) => s.kind === "open")?.id })}><Plus /> New deal</Button>}
@@ -130,7 +136,8 @@ export function PipelineBoard({ headerLead }: { headerLead?: React.ReactNode }) 
         <div className="w-48"><MemberSelect value={owner} onChange={setOwner} noneLabel="All owners" size="sm" /></div>
         <NativeSelect className="h-8 w-36 text-[13px]" value={priority} onChange={(e) => setPriority(e.target.value)} aria-label="Priority"><option value="">All priorities</option>{["urgent", "high", "medium", "low"].map((p) => <option key={p} value={p}>{p[0].toUpperCase() + p.slice(1)}</option>)}</NativeSelect>
       </div>
-      {board.isError ? <ErrorState kind="unavailable" onRetry={() => board.refetch()} />
+      {mode === "list" ? <EntityList cfg={DEALS} embedded={{ q: dsearch, owner_id: owner, priority }} />
+        : board.isError ? <ErrorState kind="unavailable" onRetry={() => board.refetch()} />
         : board.isLoading || !board.data ? <div className="flex gap-4 overflow-hidden">{[0, 1, 2, 3].map((i) => <div key={i} className="w-[256px] shrink-0 space-y-3 rounded-2xl bg-bg-subtle/70 p-3"><Skeleton className="h-6 w-28" />{[0, 1].map((j) => <Skeleton key={j} className="h-28" />)}</div>)}</div>
         : board.data.columns.every((c) => c.count === 0) && !dsearch && !owner && !priority ? <EmptyState icon={<Trophy />} title="No deals yet" description="Create your first deal and start tracking your sales pipeline." action={can("deals.create") ? <Button onClick={() => ui.openCreate("deal")}><Plus /> Create Deal</Button> : undefined} />
         : (
