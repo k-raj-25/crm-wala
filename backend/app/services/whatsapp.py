@@ -223,10 +223,12 @@ def send(i: Integration, entity_type: str, entity, *, text: str | None = None, t
     elif file is not None:
         if not window_open(ws_id, phone):
             mt = (i.config or {}).get("media_template")
+            if not mt and i.mode == "sandbox":  # sandbox has no real client to reply, so use the sample brochure template
+                mt = next(t for t in SANDBOX_TEMPLATES if t["name"] == "property_brochure")
             if not mt:
                 raise ApiError(409, "whatsapp_window_closed",
-                               f"{entity.name} hasn't messaged you in the last 24 hours, so WhatsApp only allows an approved template. "
-                               "Send a template first, or choose a brochure template in WhatsApp settings.")
+                               f"{entity.name} hasn't messaged you in the last 24 hours, so WhatsApp only allows approved templates. "
+                               "Choose a brochure template in Integrations → WhatsApp → Manage, and files will go out with it.")
             label = unit_label(unit) if unit else file.filename
             params = [entity.first_name, label][: int(mt.get("body_params", 0))]
             return send(i, entity_type, entity, template={**mt, "params": params}, file=file, unit=unit)
@@ -236,7 +238,8 @@ def send(i: Integration, entity_type: str, entity, *, text: str | None = None, t
         payload, kind, body = {"to": phone, "type": kind_, kind_: media}, "document", caption
     elif text:
         if not window_open(ws_id, phone):
-            raise ApiError(409, "whatsapp_window_closed", f"{entity.name} hasn't messaged you in the last 24 hours, so WhatsApp only allows an approved template.")
+            raise ApiError(409, "whatsapp_window_closed", f"{entity.name} hasn't messaged you in the last 24 hours, so WhatsApp only allows approved templates. "
+                           "Send a template; once they reply you can message freely for 24 hours.")
         payload, kind, body = {"to": phone, "type": "text", "text": {"body": text[:4096], "preview_url": True}}, "text", text[:4096]
     else:
         raise ApiError(422, "validation_error", "Nothing to send.")
@@ -398,3 +401,10 @@ def _status(ws_id, s: dict) -> int:
                                 data={"whatsapp_message_id": str(m.id), "direction": "outbound"}, touch=False,
                                 lead_id=m.lead_id, contact_id=m.contact_id, company_id=m.company_id, deal_id=m.deal_id)
     return 1
+
+
+def simulate_reply(i: Integration, entity, text: str) -> None:
+    """Sandbox only: pretend the client replied, exactly as Meta's webhook would deliver it."""
+    phone = recipient_phone(entity)
+    _receive(i, {"from": phone, "id": f"wamid.sandbox.in.{secrets.token_hex(12)}", "timestamp": str(int(utcnow().timestamp())),
+                 "type": "text", "text": {"body": text}}, entity.name)

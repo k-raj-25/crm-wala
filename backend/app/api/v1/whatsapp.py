@@ -184,6 +184,27 @@ def send():
     return created(m.to_dict())
 
 
+class SimulateIn(Schema):
+    lead_id: uuid.UUID | None = None
+    contact_id: uuid.UUID | None = None
+    text: str = Field(min_length=1, max_length=1000)
+
+
+@bp.post("/simulate-reply")
+@protect("emails.create")
+def simulate_reply():
+    """Sandbox connections never get real replies; this lets people try the reply → timeline flow."""
+    _feature()
+    i = svc.connection(g.workspace.id)
+    if i.mode != "sandbox":
+        raise ApiError(409, "not_sandbox", "Replies can only be simulated in sandbox mode.")
+    d = parse(SimulateIn)
+    _, e = _recipient(d.lead_id, d.contact_id)
+    svc.simulate_reply(i, e, d.text)
+    db.session.commit()
+    return ok({"simulated": True})
+
+
 # ---- Meta webhook ------------------------------------------------------------------------------------------------
 
 def _integration(token: str) -> Integration:

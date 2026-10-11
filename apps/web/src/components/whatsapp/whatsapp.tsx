@@ -97,6 +97,25 @@ export function WhatsAppTab({ entity, id, firstName }: { entity: "lead" | "conta
           )}
         </div>
       )}
+      {c.mode === "sandbox" && can("emails.create") && <SimulateReply entity={entity} id={id} firstName={firstName} />}
+    </div>
+  );
+}
+
+/** Sandbox only: play the client's side so the reply → timeline flow (and the 24-hour window) can be tried without Meta. */
+function SimulateReply({ entity, id, firstName }: { entity: "lead" | "contact"; id: string; firstName: string }) {
+  const qc = useQueryClient(); const toast = useToast();
+  const [text, setText] = React.useState(""); const [busy, setBusy] = React.useState(false);
+  const go = async () => {
+    setBusy(true);
+    try { await api.post("/api/v1/whatsapp/simulate-reply", { [`${entity}_id`]: id, text }); setText(""); ["wa-conversation", "timeline", "notifications"].forEach((k) => qc.invalidateQueries({ queryKey: [k] })); }
+    catch (e) { toast.error("Couldn't simulate", errText(e)); } finally { setBusy(false); }
+  };
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-border px-4 py-3">
+      <span className="text-xs text-fg-muted">Sandbox: reply as {firstName}</span>
+      <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="Can you send the floor plan?" maxLength={1000} className="h-8 min-w-0 flex-1" onKeyDown={(e) => e.key === "Enter" && text.trim() && go()} />
+      <Button size="sm" variant="secondary" loading={busy} disabled={!text.trim()} onClick={go}>Simulate reply</Button>
     </div>
   );
 }

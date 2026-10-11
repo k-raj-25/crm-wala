@@ -66,8 +66,7 @@ def test_sandbox_templates_brochure_and_replies_on_timeline(client):
     assert fp["project_id"] == pid
     docs = client.get(f"/api/v1/units/{uid}/documents").get_json()["data"]
     assert [(d["doc_kind"], d["scope"]) for d in docs] == [("floor_plan", "unit"), ("brochure", "project")]
-    r = client.post("/api/v1/whatsapp/send", json={"lead_id": lead["id"], "file_id": fp["id"], "unit_id": uid})
-    assert r.status_code == 409 and r.get_json()["error"]["code"] == "whatsapp_window_closed"
+    assert client.post("/api/v1/whatsapp/send", json={"lead_id": lead["id"], "text": "hi"}).get_json()["error"]["code"] == "whatsapp_window_closed"
     assert client.patch("/api/v1/whatsapp/settings", json={"media_template": "hello_world|en_US"}).status_code == 422
     assert client.patch("/api/v1/whatsapp/settings", json={"media_template": "property_brochure|en"}).status_code == 200
     r = client.post("/api/v1/whatsapp/send", json={"lead_id": lead["id"], "file_id": fp["id"], "unit_id": uid})
@@ -75,6 +74,11 @@ def test_sandbox_templates_brochure_and_replies_on_timeline(client):
     m = r.get_json()["data"]
     assert m["kind"] == "template" and m["template_name"] == "property_brochure" and m["unit_id"] == uid and "Unit 301" in m["body"]
     assert client.get(f"/api/v1/units/{uid}/history").get_json()["data"][0]["note"] == "Floor plan sent to Rohit Sharma on WhatsApp"
+
+    # sandbox falls back to the sample brochure template when none is chosen
+    assert client.patch("/api/v1/whatsapp/settings", json={"media_template": None}).status_code == 200
+    r = client.post("/api/v1/whatsapp/send", json={"lead_id": lead["id"], "file_id": fp["id"], "unit_id": uid})
+    assert r.status_code == 201 and r.get_json()["data"]["template_name"] == "property_brochure"
 
     # client replies: logged on the lead's timeline, opens the 24h window, and Meta retries are ignored
     tok = _token(client.app)
@@ -85,7 +89,7 @@ def test_sandbox_templates_brochure_and_replies_on_timeline(client):
     replies = [a for a in tl if a["type"] == "whatsapp" and a["title"].startswith("WhatsApp reply")]
     assert len(replies) == 1 and replies[0]["body"] == "Is the 3 BHK east facing?"
     conv = client.get(f"/api/v1/whatsapp/conversation?lead_id={lead['id']}").get_json()["data"]
-    assert conv["window_open"] is True and [x["direction"] for x in conv["messages"]] == ["outbound", "outbound", "inbound"]
+    assert conv["window_open"] is True and [x["direction"] for x in conv["messages"]] == ["outbound", "outbound", "outbound", "inbound"]
 
     # inside the window documents and free text go out directly
     r = client.post("/api/v1/whatsapp/send", json={"lead_id": lead["id"], "file_id": fp["id"], "unit_id": uid, "caption": "Here you go"})
@@ -148,3 +152,12 @@ def test_live_connect_verifies_with_meta_and_webhook_checks_signature(client, mo
 def test_feature_gate_and_bad_token(client):
     assert client.post("/api/v1/inbound/whatsapp/not-a-real-token-at-all", json={}).status_code == 404
     assert client.get("/api/v1/whatsapp/templates").get_json()["error"]["code"] == "whatsapp_not_connected"
+
+
+def test_simulated_reply_in_sandbox(client):
+    client.post("/api/v1/integrations/whatsapp/connect", json={})
+    lead = client.post("/api/v1/leads", json={"first_name": "Jasmine", "phone": "+91 89716 30639"}).get_json()["data"]
+    assert client.post("/api/v1/whatsapp/simulate-reply", json={"lead_id": lead["id"], "text": "Please send the plan"}).status_code == 200
+    conv = client.get(f"/api/v1/whatsapp/conversation?lead_id={lead['id']}").get_json()["data"]
+    assert conv["window_open"] is True and conv["messages"][-1]["body"] == "Please send the plan"
+    assert any(a["title"] == "WhatsApp reply from Jasmine" for a in client.get(f"/api/v1/timeline?entity=lead&id={lead['id']}").get_json()["data"])
