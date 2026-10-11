@@ -1,8 +1,7 @@
 "use client";
 import { AnimatePresence, motion, useMotionValue, useReducedMotion, useSpring, useTransform } from "framer-motion";
-import { Clock, Moon, Sun, Sunset } from "lucide-react";
 import * as React from "react";
-import { cn, useLocalStorage, useTheme } from "@crm/ui";
+import { cn, useTheme } from "@crm/ui";
 import { STATUS, STATUS_ORDER, floorLabel, holdLeft, money, priceLine } from "@/lib/realestate";
 import type { Building, UnitMini, UnitStatus } from "@/lib/realestate";
 
@@ -18,46 +17,15 @@ export const fitsSpot = (u: UnitMini, s: Spot) => {
 };
 
 /* ---- time of day ------------------------------------------------------------------------------------------------------ */
-export type SkyMode = "auto" | "day" | "dusk" | "night";
+// The sky follows the device clock: night 19:00-05:00, dusk/dawn 05:00-07:00 and 17:00-19:00, otherwise day.
 type Sky3 = "day" | "dusk" | "night";
 const byHour = (h: number): Sky3 => (h >= 19 || h < 5 ? "night" : h >= 17 || h < 7 ? "dusk" : "day");
 
-function useAutoSky(mode: SkyMode): Sky3 {
-  const { resolved } = useTheme();
-  const [hour, setHour] = React.useState<number | null>(null); // unknown on the server, so first paint matches the HTML
-  React.useEffect(() => { setHour(new Date().getHours()); const t = setInterval(() => setHour(new Date().getHours()), 5 * 60_000); return () => clearInterval(t); }, []);
-  if (mode !== "auto") return mode;
-  if (resolved === "dark") return "night";
-  return hour == null ? "day" : byHour(hour);
-}
-
-/** The sky currently showing (explicit choice, else the clock / dark mode). Works with or without a provider. */
+/** The sky for the current local time. Unknown on the server, so the first paint is "day" and it settles right after mount. */
 export function useSkyNow(): Sky3 {
-  const ctx = React.useContext(SkyCtx);
-  const own = useAutoSky("auto");
-  return ctx?.sky ?? own;
-}
-
-const SkyCtx = React.createContext<{ mode: SkyMode; setMode: (m: SkyMode) => void; sky: Sky3 } | null>(null);
-export function SkyProvider({ children }: { children: React.ReactNode }) {
-  const [mode, setMode] = useLocalStorage<SkyMode>("sky-mode", "auto");
-  const sky = useAutoSky(mode);
-  return <SkyCtx.Provider value={{ mode, setMode, sky }}>{children}</SkyCtx.Provider>;
-}
-
-/** Little switch for the time of day. "Auto" follows your clock (and dark mode). */
-export function SkyToggle({ className }: { className?: string }) {
-  const ctx = React.useContext(SkyCtx);
-  if (!ctx) return null;
-  const opts: [SkyMode, string, React.ElementType][] = [["auto", "Follow the clock", Clock], ["day", "Day", Sun], ["dusk", "Sunset", Sunset], ["night", "Night", Moon]];
-  return (
-    <div role="group" aria-label="Time of day" className={cn("inline-flex gap-0.5 rounded-full border border-white/40 bg-black/25 p-0.5 text-white shadow-sm backdrop-blur-md", className)}>
-      {opts.map(([m, label, I]) => (
-        <button key={m} type="button" title={label} aria-label={label} aria-pressed={ctx.mode === m} onClick={() => ctx.setMode(m)}
-          className={cn("grid size-7 place-items-center rounded-full transition-colors", ctx.mode === m ? "bg-white text-slate-900" : "hover:bg-white/20")}><I className="size-3.5" /></button>
-      ))}
-    </div>
-  );
+  const [hour, setHour] = React.useState<number | null>(null);
+  React.useEffect(() => { setHour(new Date().getHours()); const t = setInterval(() => setHour(new Date().getHours()), 60_000); return () => clearInterval(t); }, []);
+  return hour == null ? "day" : byHour(hour);
 }
 
 const STARS = Array.from({ length: 22 }, (_, i) => { const r = (n: number) => { const x = Math.sin(i * 91.7 + n * 12.3) * 10000; return x - Math.floor(x); }; return { x: r(1) * 100, y: r(2) * 60, s: 0.8 + r(3) * 1.4, d: r(4) * 3 }; });
@@ -79,9 +47,7 @@ function Bird({ top, delay, scale = 1 }: { top: string; delay: number; scale?: n
 
 /** Sky, sun/moon, clouds, birds and stars behind whatever you put in it. The content leans toward the pointer a little. */
 export function Sky({ children, className, tilt = true }: { children: React.ReactNode; className?: string; tilt?: boolean }) {
-  const ctx = React.useContext(SkyCtx);
-  const own = useAutoSky("auto");
-  const sky = ctx?.sky ?? own;
+  const sky = useSkyNow();
   const reduce = useReducedMotion();
   const px = useMotionValue(0), py = useMotionValue(0);
   const sx = useSpring(px, { stiffness: 60, damping: 16 }), sy = useSpring(py, { stiffness: 60, damping: 16 });
