@@ -42,7 +42,7 @@ export const FORMS: Record<Kind, { title: string; noun: string; endpoint: string
     F("title", "Title", "text", { required: true, span: 2 }), F("due_at", "Due", "datetime"), F("priority", "Priority", "priority"), F("assignee_id", "Assignee", "member"),
     F("kind", "Type", "select", { options: [["task", "Task"], ["follow_up", "Follow-up"], ["deadline", "Deadline"]] }), F("related", "Related to", "related", { span: 2 }), F("description", "Description", "textarea", { span: 2, advanced: true }),
   ] },
-  meeting: { title: "Schedule meeting", noun: "visit", plural: "meetings", endpoint: "/api/v1/meetings", fields: [
+  meeting: { title: "Schedule event", noun: "event", plural: "meetings", endpoint: "/api/v1/meetings", fields: [
     F("title", "Title", "text", { required: true, span: 2 }), F("kind", "Type", "select", { options: [["site_visit", "Site visit"], ["meeting", "Meeting"]] }), F("starts_at", "Starts", "datetime", { required: true }), F("duration", "Duration", "duration"), F("unit_id", "Flat to show", "unit"), F("location", "Location", "text"), F("meeting_url", "Meeting link", "url", { placeholder: "https://meet…", advanced: true }),
     F("attendees", "Attendee emails", "text", { span: 2, placeholder: "name@company.com, …", hint: "Separate with commas" }), F("related", "Related to", "related", { span: 2 }), F("description", "Agenda", "textarea", { span: 2, advanced: true }),
   ] },

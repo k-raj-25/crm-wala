@@ -1,5 +1,5 @@
 "use client";
-import { Building2, CalendarPlus, CheckSquare, ChevronDown, Handshake, Landmark, MapPin, Phone, Plus, StickyNote, UserRound, Users } from "lucide-react";
+import { Building2, CalendarPlus, CheckSquare, ChevronDown, Handshake, Landmark, Phone, Plus, StickyNote, UserRound, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button, Drawer, DropdownContent, DropdownItem, DropdownMenu, DropdownTrigger, Tooltip } from "@crm/ui";
 import { FORMS, RecordForm } from "../forms/record-form";
@@ -9,10 +9,10 @@ import { useAccess } from "@/lib/queries";
 
 export const CREATE_ITEMS: { kind: CreateKind | "project"; label: string; icon: React.ElementType; perm: string; defaults?: Record<string, unknown> }[] = [
   { kind: "lead", label: "New Lead", icon: Users, perm: "leads.create" }, { kind: "project", label: "New Project", icon: Building2, perm: "projects.create" },
-  { kind: "meeting", label: "Schedule Site Visit", icon: MapPin, perm: "meetings.create", defaults: { kind: "site_visit" } }, { kind: "deal", label: "New Deal", icon: Handshake, perm: "deals.create" },
+  { kind: "meeting", label: "New Event", icon: CalendarPlus, perm: "meetings.create" }, { kind: "deal", label: "New Deal", icon: Handshake, perm: "deals.create" },
   { kind: "contact", label: "New Client", icon: UserRound, perm: "contacts.create" }, { kind: "task", label: "New To-do", icon: CheckSquare, perm: "tasks.create" },
   { kind: "call", label: "Log Call", icon: Phone, perm: "meetings.create" }, { kind: "note", label: "New Note", icon: StickyNote, perm: "notes.create" },
-  { kind: "company", label: "New Builder", icon: Landmark, perm: "companies.create" }, { kind: "meeting", label: "New Meeting", icon: CalendarPlus, perm: "meetings.create" },
+  { kind: "company", label: "New Builder", icon: Landmark, perm: "companies.create" },
 ];
 
 export function QuickCreateMenu({ variant = "button" }: { variant?: "button" | "fab" }) {
@@ -37,7 +37,7 @@ export function QuickCreateDrawer() {
   const cfg = c ? FORMS[c.kind] : null;
   const href: Partial<Record<CreateKind, string>> = { lead: "leads", contact: "contacts", company: "companies", deal: "deals" };
   return (
-    <Drawer open={!!c} onOpenChange={(o) => !o && ui.closeCreate()} title={c?.kind === "meeting" && c.defaults?.kind === "site_visit" ? "Schedule site visit" : (cfg?.title ?? "")} description={c ? `Quick add — you'll stay right where you are.` : undefined}
+    <Drawer open={!!c} onOpenChange={(o) => !o && ui.closeCreate()} title={cfg?.title ?? ""} description={c ? `Quick add — you'll stay right where you are.` : undefined}
       footer={c && <><Button variant="secondary" onClick={ui.closeCreate}>Cancel</Button><Button type="submit" form={`form-${c.kind}`}>{c.kind === "call" ? "Log call" : c.kind === "meeting" ? "Schedule" : c.kind === "note" ? "Add note" : `Create ${cfg!.noun}`}</Button></>}>
       {c && <RecordForm key={c.kind + JSON.stringify(c.defaults ?? {})} kind={c.kind} defaults={c.defaults} hideActions onView={href[c.kind] ? (rec) => router.push(`/app/${href[c.kind]}/${rec.id}`) : undefined} onSaved={() => ui.closeCreate()} />}
     </Drawer>

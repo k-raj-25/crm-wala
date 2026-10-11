@@ -1,7 +1,7 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import { Command } from "cmdk";
-import { Activity, ArrowRight, Building2, CalendarPlus, Home, Landmark, MapPin, CheckSquare, FileUp, Handshake, Mail, Moon, Plus, Search, Settings, StickyNote, Sun, UserRound, Users } from "lucide-react";
+import { Activity, ArrowRight, Building2, CalendarPlus, Home, Landmark, CheckSquare, FileUp, Handshake, Mail, Moon, Plus, Search, Settings, StickyNote, Sun, UserRound, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { Dialog as D } from "radix-ui";
@@ -25,11 +25,10 @@ export function CommandPalette() {
   const create = (kind: Parameters<typeof ui.openCreate>[0]) => run(() => ui.openCreate(kind));
   const cmds = [
     { label: "Add lead", icon: Plus, perm: "leads.create", on: create("lead"), kw: "new enquiry buyer renter" }, { label: "New project", icon: Building2, perm: "projects.create", on: run(() => router.push("/app/projects?new=1")), kw: "add tower building society" },
-    { label: "Schedule site visit", icon: MapPin, perm: "meetings.create", on: run(() => ui.openCreate("meeting", { kind: "site_visit" })), kw: "visit calendar book show" },
     { label: "Add client", icon: Plus, perm: "contacts.create", on: create("contact"), kw: "new add person owner buyer tenant" },
     { label: "Create deal", icon: Plus, perm: "deals.create", on: create("deal"), kw: "new add booking" }, { label: "Add to-do", icon: CheckSquare, perm: "tasks.create", on: create("task"), kw: "new add task reminder" },
     { label: "Add builder", icon: Landmark, perm: "companies.create", on: create("company"), kw: "new developer company" },
-    { label: "Schedule meeting", icon: CalendarPlus, perm: "meetings.create", on: create("meeting"), kw: "calendar book" }, { label: "Send email", icon: Mail, perm: "emails.create", on: run(() => ui.openCompose()), kw: "compose write" },
+    { label: "Schedule event", icon: CalendarPlus, perm: "meetings.create", on: create("meeting"), kw: "calendar book meeting site visit show" }, { label: "Send email", icon: Mail, perm: "emails.create", on: run(() => ui.openCompose()), kw: "compose write" },
     { label: "Import clients", icon: FileUp, perm: "data.import", on: run(() => router.push("/app/settings/data?import=contacts")), kw: "csv upload" },
     { label: "Open settings", icon: Settings, perm: "", on: run(() => router.push("/app/settings")), kw: "preferences" },
     { label: resolved === "dark" ? "Switch to light mode" : "Switch to dark mode", icon: resolved === "dark" ? Sun : Moon, perm: "", on: run(() => setPref(resolved === "dark" ? "light" : "dark")), kw: "theme" },

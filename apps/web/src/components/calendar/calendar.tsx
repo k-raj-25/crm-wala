@@ -120,7 +120,7 @@ export function CalendarView({ mine, kinds, defaultView = "month", taskOnly }: {
   const step = (n: number) => setDate((d) => (view === "month" ? addMonths(d, n) : addDays(d, n * (view === "week" ? 7 : 1))));
   const title = view === "month" ? format(date, "MMMM yyyy") : view === "week" ? `${format(from, "d MMM")} – ${format(to, "d MMM yyyy")}` : format(date, "EEEE, d MMMM yyyy");
   const days = view === "day" ? [date] : Array.from({ length: 7 }, (_, i) => addDays(from, i));
-  const create = (d: Date) => ui.openCreate("meeting", { starts_at: d.toISOString(), kind: "site_visit" });
+  const create = (d: Date) => ui.openCreate("meeting", { starts_at: d.toISOString() });
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-xs">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-3">
