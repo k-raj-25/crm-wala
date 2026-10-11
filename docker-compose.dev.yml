@@ -1,0 +1,21 @@
+# Local development databases only (the app itself runs on your machine).
+#   docker compose -f docker-compose.dev.yml up -d
+# Data lives in the named volumes below, so it SURVIVES restarts, reboots and `docker compose down`.
+# Only `docker compose down -v` (or deleting the volume) wipes it.
+services:
+  postgres:
+    image: postgres:16
+    container_name: crm-pg
+    restart: unless-stopped
+    environment: { POSTGRES_PASSWORD: postgres }
+    ports: ["5432:5432"]
+    volumes:
+      - crm_pgdata:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
+  redis:
+    image: redis:7
+    container_name: crm-redis
+    restart: unless-stopped
+    ports: ["6379:6379"]
+    volumes: [crm_redisdata:/data]
+volumes: { crm_pgdata: {}, crm_redisdata: {} }

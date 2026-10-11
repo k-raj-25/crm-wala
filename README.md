@@ -11,6 +11,18 @@ The centrepiece is the **building view**: pick a project and a tower and see eve
 | Design system | `packages/ui` (`@crm/ui`) | – | Tokens, components, accessible primitives, charts (shared by both apps) |
 | API | `backend` | 5000 | Flask 3 · SQLAlchemy 2 · Alembic · PostgreSQL 16 · Redis · Celery |
 
+## Keeping your data between restarts
+
+If you run Postgres in Docker for local development, use the volume-backed file so data isn't lost when the container is recreated:
+
+```powershell
+docker rm -f crm-pg                                  # remove any old container started without a volume
+docker compose -f docker-compose.dev.yml up -d       # Postgres + Redis with persistent volumes
+cd backend; flask db upgrade; flask seed-demo        # one-time: create tables and (optionally) demo data
+```
+
+After that, restarting the apps, Docker or your PC keeps your accounts and data. Never run `docker compose down -v` unless you want to erase everything.
+
 ## Quick start
 
 Needs Node 22+, Python 3.12+, PostgreSQL 16 and Redis. (Or `docker compose up --build` — see [Docker](#docker).)
