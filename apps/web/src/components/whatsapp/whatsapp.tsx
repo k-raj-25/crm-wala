@@ -3,21 +3,21 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, CheckCheck, Download, FileText, MessageCircle, Send, Trash2, UploadCloud, XCircle } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
-import { ApiError, Badge, Button, ConfirmDialog, EmptyState, ErrorState, Field, Input, NativeSelect, Skeleton, Textarea, cn, formatDate, timeAgo, useToast } from "@crm/ui";
+import { ApiError, Button, ConfirmDialog, EmptyState, ErrorState, Field, Input, NativeSelect, Skeleton, Textarea, cn, formatDate, timeAgo, useToast } from "@crm/ui";
 import { AsyncSelect } from "@/components/forms/fields";
 import { api } from "@/lib/api";
 import { useAccess } from "@/lib/queries";
 
-export type WaTemplate = { name: string; language: string; category: string | null; body: string; body_params: number; header: string | null };
-export type WaMessage = { id: string; direction: "inbound" | "outbound"; status: "sent" | "delivered" | "read" | "failed" | "received"; kind: string; body: string | null; template_name: string | null; error: string | null; created_at: string; data: { filename?: string; sandbox?: boolean } };
-type Conversation = { phone: string | null; connected: boolean; mode: "live" | "sandbox" | null; window_open: boolean; messages: WaMessage[] };
+export type WaTemplate = { name: string; language: string; category: string | null; body: string; body_params: number; param_names: string[]; header: string | null; supported: boolean };
+export type WaMessage = { id: string; direction: "inbound" | "outbound"; status: "sent" | "delivered" | "read" | "failed" | "received"; kind: string; body: string | null; template_name: string | null; error: string | null; created_at: string; data: { filename?: string } };
+type Conversation = { phone: string | null; connected: boolean; window_open: boolean; messages: WaMessage[] };
 export type UnitDoc = { id: string; filename: string; mime_type: string; size_bytes: number; doc_kind: string | null; scope: "unit" | "project"; created_at: string };
 
 export const DOC_KINDS: [string, string][] = [["brochure", "Brochure"], ["floor_plan", "Floor plan"], ["price_list", "Price list"], ["other", "Other"]];
 export const WA_GREEN = "#25d366";
 const errText = (e: unknown) => (e instanceof ApiError ? e.message : "Something went wrong. Please try again.");
 const templateKey = (t: WaTemplate) => `${t.name}|${t.language}`;
-const fill = (body: string, params: string[]) => body.replace(/\{\{\s*(\d+)\s*\}\}/g, (m, n) => params[Number(n) - 1] || m);
+const fill = (body: string, names: string[], params: string[]) => body.replace(/\{\{\s*(\w+)\s*\}\}/g, (m, n) => params[names.indexOf(n)] || m);
 
 export function useWaTemplates(enabled = true) {
   return useQuery({ queryKey: ["wa-templates"], enabled, staleTime: 5 * 60_000, retry: false, queryFn: () => api.get<WaTemplate[]>("/api/v1/whatsapp/templates") });
@@ -32,7 +32,7 @@ function Ticks({ m }: { m: WaMessage }) {
 
 /** Template picker with one input per {{n}} placeholder and a live preview. */
 function TemplateComposer({ templates, defaults, onSend, busy }: { templates: WaTemplate[]; defaults: string[]; onSend: (t: WaTemplate, params: string[]) => void; busy: boolean }) {
-  const usable = templates.filter((t) => !t.header || t.header === "TEXT");
+  const usable = templates.filter((t) => t.supported && (!t.header || t.header === "TEXT"));
   const [key, setKey] = React.useState("");
   const t = usable.find((x) => templateKey(x) === key);
   const [params, setParams] = React.useState<string[]>([]);
@@ -42,8 +42,8 @@ function TemplateComposer({ templates, defaults, onSend, busy }: { templates: Wa
     <div className="space-y-3">
       <Field label="Template"><NativeSelect value={key} onChange={(e) => setKey(e.target.value)}><option value="">Choose an approved template…</option>{usable.map((x) => <option key={templateKey(x)} value={templateKey(x)}>{x.name.replace(/_/g, " ")} ({x.language})</option>)}</NativeSelect></Field>
       {t && <>
-        {params.map((p, i) => <Field key={i} label={`Placeholder {{${i + 1}}}`}><Input value={p} onChange={(e) => setParams(params.map((x, j) => (j === i ? e.target.value : x)))} maxLength={200} /></Field>)}
-        <p className="whitespace-pre-line rounded-lg bg-bg-subtle px-3 py-2 text-[13px] text-fg-muted">{fill(t.body, params)}</p>
+        {params.map((p, i) => <Field key={i} label={/^\d+$/.test(t.param_names[i] ?? "") ? `Placeholder {{${t.param_names[i]}}}` : (t.param_names[i] ?? "").replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase())}><Input value={p} onChange={(e) => setParams(params.map((x, j) => (j === i ? e.target.value : x)))} maxLength={200} /></Field>)}
+        <p className="whitespace-pre-line rounded-lg bg-bg-subtle px-3 py-2 text-[13px] text-fg-muted">{fill(t.body, t.param_names, params)}</p>
         <div className="flex justify-end"><Button size="sm" loading={busy} disabled={params.some((p) => !p.trim())} onClick={() => onSend(t, params)}><Send /> Send template</Button></div>
       </>}
     </div>
@@ -72,7 +72,7 @@ export function WhatsAppTab({ entity, id, firstName }: { entity: "lead" | "conta
   const windowOpen = c.window_open; const tab = windowOpen ? mode : "template";
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2 text-xs text-fg-muted"><span className="font-medium text-fg">+{c.phone}</span>{c.mode === "sandbox" && <Badge tone="warning">Sandbox</Badge>}<span className="ml-auto">{windowOpen ? "Replied in the last 24 hours: free messages allowed" : "Outside the 24-hour window: templates only"}</span></div>
+      <div className="flex flex-wrap items-center gap-2 text-xs text-fg-muted"><span className="font-medium text-fg">+{c.phone}</span><span className="ml-auto">{windowOpen ? "Replied in the last 24 hours: free messages allowed" : "Outside the 24-hour window: templates only"}</span></div>
       <div className="max-h-[420px] space-y-2 overflow-y-auto rounded-xl border border-border bg-bg-subtle p-3">
         {!c.messages.length ? <p className="py-6 text-center text-sm text-fg-muted">No WhatsApp messages yet.</p> : c.messages.map((m) => (
           <div key={m.id} className={cn("flex", m.direction === "outbound" ? "justify-end" : "justify-start")}>
@@ -97,25 +97,6 @@ export function WhatsAppTab({ entity, id, firstName }: { entity: "lead" | "conta
           )}
         </div>
       )}
-      {c.mode === "sandbox" && can("emails.create") && <SimulateReply entity={entity} id={id} firstName={firstName} />}
-    </div>
-  );
-}
-
-/** Sandbox only: play the client's side so the reply → timeline flow (and the 24-hour window) can be tried without Meta. */
-function SimulateReply({ entity, id, firstName }: { entity: "lead" | "contact"; id: string; firstName: string }) {
-  const qc = useQueryClient(); const toast = useToast();
-  const [text, setText] = React.useState(""); const [busy, setBusy] = React.useState(false);
-  const go = async () => {
-    setBusy(true);
-    try { await api.post("/api/v1/whatsapp/simulate-reply", { [`${entity}_id`]: id, text }); setText(""); ["wa-conversation", "timeline", "notifications"].forEach((k) => qc.invalidateQueries({ queryKey: [k] })); }
-    catch (e) { toast.error("Couldn't simulate", errText(e)); } finally { setBusy(false); }
-  };
-  return (
-    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-border px-4 py-3">
-      <span className="text-xs text-fg-muted">Sandbox: reply as {firstName}</span>
-      <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="Can you send the floor plan?" maxLength={1000} className="h-8 min-w-0 flex-1" onKeyDown={(e) => e.key === "Enter" && text.trim() && go()} />
-      <Button size="sm" variant="secondary" loading={busy} disabled={!text.trim()} onClick={go}>Simulate reply</Button>
     </div>
   );
 }

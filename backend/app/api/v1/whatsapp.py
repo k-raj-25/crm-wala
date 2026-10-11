@@ -38,23 +38,22 @@ class ConnectIn(Schema):
 
 
 def connect(i: Integration, body: dict) -> dict:
+    """Verify the organisation's own Meta app details and store them encrypted. On a reconnect, blank fields keep
+    the stored values, so rotating just the access token is one field."""
     d = parse(ConnectIn, body)
-    given = {k: (v or "").strip() for k, v in d.model_dump().items()}
-    cfg = {**svc.new_webhook_config(), **{k: v for k, v in (i.config or {}).items() if k in ("webhook_token", "verify_token", "media_template")}}
-    if any(given.values()):
-        missing = {k: "Required" for k, v in given.items() if not v}
-        if missing:
-            raise ApiError(422, "validation_error", "Fill in all four details from your Meta app, or leave them all empty to try sandbox mode.", missing)
-        info = svc.verify_credentials(given["phone_number_id"], given["access_token"])
-        integrations.set_creds(i, given)
-        i.mode = "live"
-        i.account_label = f"{info.get('verified_name') or 'WhatsApp'} · {info.get('display_phone_number') or given['phone_number_id']}"
-    else:
-        i.credentials_enc, i.mode, i.account_label = None, "sandbox", f"{g.user.email} (sandbox)"
-        cfg.pop("media_template", None)
-    i.config = cfg
+    old = integrations.get_creds(i) if i.credentials_enc else {}
+    creds = {k: (v or "").strip() or old.get(k, "") for k, v in d.model_dump().items()}
+    missing = {k: "Required" for k, v in creds.items() if not v}
+    if missing:
+        raise ApiError(422, "validation_error", "Fill in all four details from your Meta app.", missing)
+    info = svc.verify_and_subscribe(creds)
+    keep = ("webhook_token", "verify_token") + (("media_template",) if old.get("waba_id") == creds["waba_id"] else ())
+    cfg = {**svc.new_webhook_config(), **{k: v for k, v in (i.config or {}).items() if k in keep}}
+    integrations.set_creds(i, creds)
+    i.config, i.mode = cfg, "live"
+    i.account_label = f"{info.get('verified_name') or 'WhatsApp'} · {info.get('display_phone_number') or creds['phone_number_id']}"
     i.status, i.last_error, i.connected_by = "connected", None, g.user.id
-    audit.record("integration.connected", entity_type="integration", entity_id=i.id, summary=f"Connected WhatsApp Business ({i.mode})")
+    audit.record("integration.connected", entity_type="integration", entity_id=i.id, summary=f"Connected WhatsApp Business ({i.account_label})")
     db.session.commit()
     return {**integrations.public_view("whatsapp", i), "webhook": {"url": webhook_url(i), "verify_token": cfg["verify_token"]}}
 
@@ -66,7 +65,7 @@ def connect(i: Integration, body: dict) -> dict:
 def get_settings():
     _feature()
     i = svc.connection(g.workspace.id)
-    return ok({"mode": i.mode, "account_label": i.account_label, "webhook": {"url": webhook_url(i), "verify_token": (i.config or {}).get("verify_token")},
+    return ok({"account_label": i.account_label, "webhook": {"url": webhook_url(i), "verify_token": (i.config or {}).get("verify_token")},
                "media_template": (i.config or {}).get("media_template")})
 
 
@@ -84,9 +83,10 @@ def update_settings():
     if d.media_template:
         name, _, lang = d.media_template.partition("|")
         t = next((t for t in svc.list_templates(i) if t["name"] == name and (not lang or t["language"] == lang)), None)
-        if t is None or t["header"] not in ("DOCUMENT", "IMAGE"):
-            raise ApiError(422, "validation_error", "Pick an approved template with a document or image header.", {"media_template": "Not a media template"})
-        cfg["media_template"] = {k: t[k] for k in ("name", "language", "body", "body_params", "header")}
+        if t is None or t["header"] not in ("DOCUMENT", "IMAGE") or not t["supported"] or t["body_params"] > 2:
+            raise ApiError(422, "validation_error", "Pick an approved template with a document or image header and at most two placeholders "
+                           "(client's first name, then the flat or project).", {"media_template": "Not a usable brochure template"})
+        cfg["media_template"] = {k: t[k] for k in ("name", "language", "body", "body_params", "param_names", "header")}
     else:
         cfg.pop("media_template", None)
     i.config = cfg
@@ -126,7 +126,7 @@ def conversation():
         .order_by(WhatsAppMessage.created_at.desc()).limit(100).all()
     phone = svc.normalize_phone(e.phone)
     i = integrations.get(g.workspace.id, "whatsapp")
-    return ok({"phone": phone, "connected": bool(i and i.status in ("connected", "error")), "mode": i.mode if i else None,
+    return ok({"phone": phone, "connected": bool(i and i.status in ("connected", "error")),
                "window_open": bool(phone) and svc.window_open(g.workspace.id, phone), "messages": [m.to_dict() for m in reversed(rows)]})
 
 
@@ -173,6 +173,8 @@ def send():
         t = known.get((d.template.name, d.template.language))
         if t is None:
             raise ApiError(422, "whatsapp_template_missing", "That template isn't approved for this number or language.")
+        if not t["supported"]:
+            raise ApiError(422, "whatsapp_template_unsupported", "This template needs header text or button values, which can't be filled from the CRM yet.")
         if len(d.template.params) != t["body_params"] or any(not p.strip() for p in d.template.params):
             raise ApiError(422, "validation_error", f"Fill in all {t['body_params']} placeholders in the template.", {"params": "Incomplete"})
         if (t["header"] in ("DOCUMENT", "IMAGE")) != (file is not None):
@@ -182,27 +184,6 @@ def send():
     m = svc.send(i, etype, e, text=d.text, template=template, file=file, caption=d.caption, unit=unit)
     db.session.commit()
     return created(m.to_dict())
-
-
-class SimulateIn(Schema):
-    lead_id: uuid.UUID | None = None
-    contact_id: uuid.UUID | None = None
-    text: str = Field(min_length=1, max_length=1000)
-
-
-@bp.post("/simulate-reply")
-@protect("emails.create")
-def simulate_reply():
-    """Sandbox connections never get real replies; this lets people try the reply → timeline flow."""
-    _feature()
-    i = svc.connection(g.workspace.id)
-    if i.mode != "sandbox":
-        raise ApiError(409, "not_sandbox", "Replies can only be simulated in sandbox mode.")
-    d = parse(SimulateIn)
-    _, e = _recipient(d.lead_id, d.contact_id)
-    svc.simulate_reply(i, e, d.text)
-    db.session.commit()
-    return ok({"simulated": True})
 
 
 # ---- Meta webhook ------------------------------------------------------------------------------------------------
@@ -231,11 +212,8 @@ def verify(token):
 def receive(token):
     i = _integration(token)
     raw = request.get_data(cache=True)
-    if i.mode == "live":
-        if not svc.valid_signature(i, raw, request.headers.get("X-Hub-Signature-256")):
-            raise ApiError(401, "invalid_signature", "Signature check failed.")
-    elif current_app.config["ENV"] == "production":
-        raise not_found("Webhook")  # sandbox connections never receive real traffic
+    if not svc.valid_signature(i, raw, request.headers.get("X-Hub-Signature-256")):
+        raise ApiError(401, "invalid_signature", "Signature check failed.")
     ws_id = i.workspace_id
     set_tenant(ws_id)
     from app.models import Workspace

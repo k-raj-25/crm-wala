@@ -1,12 +1,13 @@
 """WhatsApp Business via the Meta WhatsApp Cloud API.
 
 Each workspace connects its own WhatsApp Business number (phone number ID, WhatsApp Business Account ID, a permanent access
-token and the Meta app secret); nothing is shared across organisations. Without credentials the integration runs in
-`sandbox` mode: messages are logged exactly as in live mode but never leave the CRM.
+token and the Meta app secret); nothing is shared across organisations. Connecting verifies the details with Meta and
+subscribes the Meta app to the WhatsApp Business Account so replies are delivered to our webhook.
 
 Outbound: approved templates (any time) and documents / images such as brochures and floor plans. Meta only allows
 free-form messages inside the 24-hour customer-service window that opens when the client last wrote to you; outside it
-a document can still go out as the header of an approved "media template" chosen in WhatsApp settings.
+a document can still go out as the header of an approved "media template" chosen in WhatsApp settings. Files are
+uploaded to Meta's media store first, so storage never has to be publicly reachable.
 Inbound: Meta calls /api/v1/inbound/whatsapp/<webhook_token>; replies land on the matching lead/contact timeline and
 delivery receipts update message status.
 """
@@ -35,15 +36,8 @@ GRAPH = "https://graph.facebook.com"
 WINDOW = dt.timedelta(hours=24)
 STATUS_RANK = {"sent": 1, "delivered": 2, "read": 3, "failed": 4}
 DOC_KINDS = {"brochure": "Brochure", "floor_plan": "Floor plan", "price_list": "Price list", "other": "Document"}
-SANDBOX_TEMPLATES = [
-    {"name": "hello_world", "language": "en_US", "category": "UTILITY", "body": "Hello World! Welcome and congratulations!!", "body_params": 0, "header": None},
-    {"name": "site_visit_reminder", "language": "en", "category": "UTILITY",
-     "body": "Hi {{1}}, a reminder about your site visit to {{2}} on {{3}}. Reply YES to confirm or call us to reschedule.", "body_params": 3, "header": None},
-    {"name": "new_listing_alert", "language": "en", "category": "MARKETING",
-     "body": "Hi {{1}}, a new {{2}} just opened up at {{3}}. Want the brochure or a visit this week?", "body_params": 3, "header": None},
-    {"name": "property_brochure", "language": "en", "category": "MARKETING",
-     "body": "Hi {{1}}, here are the details for {{2}} you asked about. Happy to answer any questions.", "body_params": 2, "header": "DOCUMENT"},
-]
+IMAGE_MAX_BYTES = 5 * 1024 * 1024  # Meta limits; documents may be up to 100 MB
+DOC_MAX_BYTES = 100 * 1024 * 1024
 
 
 # ---- connection --------------------------------------------------------------------------------------------------
@@ -54,22 +48,38 @@ def _url(path: str) -> str:
 
 def connection(workspace_id) -> Integration:
     i = integrations.get(workspace_id, "whatsapp")
-    if i is None or i.status not in ("connected", "error"):
+    if i is None or i.status not in ("connected", "error") or not i.credentials_enc:
         raise ApiError(409, "whatsapp_not_connected", "Connect WhatsApp in Integrations first.")
     return i
 
 
-def verify_credentials(phone_number_id: str, access_token: str) -> dict:
-    """Checks the number and token against Meta before we store them. Returns the display number and verified name."""
+def _get(path: str, token: str, **params) -> httpx.Response:
     try:
-        r = httpx.get(_url(phone_number_id), params={"fields": "display_phone_number,verified_name"},
-                      headers={"Authorization": f"Bearer {access_token}"}, timeout=15)
+        return httpx.get(_url(path), params=params or None, headers={"Authorization": f"Bearer {token}"}, timeout=15)
+    except httpx.HTTPError:
+        raise ApiError(502, "whatsapp_unreachable", "Couldn't reach WhatsApp. Please try again in a minute.")
+
+
+def verify_and_subscribe(creds: dict) -> dict:
+    """Check every detail against Meta before storing it, then subscribe the app to the WhatsApp Business Account so
+    Meta starts delivering replies and delivery receipts. Returns the number's display phone and verified name."""
+    tok = creds["access_token"]
+    r = _get(creds["phone_number_id"], tok, fields="display_phone_number,verified_name")
+    if r.status_code >= 400:
+        raise ApiError(422, "validation_error", "Meta rejected the phone number ID or access token.", {"phone_number_id": _meta_error(r)})
+    info = r.json()
+    r = _get(f"{creds['waba_id']}/message_templates", tok, limit=1, fields="name")
+    if r.status_code >= 400:
+        raise ApiError(422, "validation_error", "Meta rejected the WhatsApp Business Account ID, or the token can't manage its templates "
+                       "(it needs the whatsapp_business_management permission).", {"waba_id": _meta_error(r)})
+    try:
+        r = httpx.post(_url(f"{creds['waba_id']}/subscribed_apps"), headers={"Authorization": f"Bearer {tok}"}, timeout=15)
     except httpx.HTTPError:
         raise ApiError(502, "whatsapp_unreachable", "Couldn't reach WhatsApp. Please try again in a minute.")
     if r.status_code >= 400:
-        raise ApiError(422, "validation_error", "Meta rejected these details. Check the phone number ID and access token.",
-                       {"access_token": _meta_error(r)})
-    return r.json()
+        raise ApiError(422, "validation_error", "Meta wouldn't subscribe your app to this WhatsApp account, so replies wouldn't arrive.",
+                       {"waba_id": _meta_error(r)})
+    return info
 
 
 def new_webhook_config() -> dict:
@@ -126,21 +136,38 @@ def window_open(workspace_id, phone: str) -> bool:
 
 # ---- templates ---------------------------------------------------------------------------------------------------
 
+def _vars(text: str) -> list[str]:
+    """Placeholder names in order of first appearance: ['1', '2'] for positional templates, ['first_name', ...] for named ones."""
+    out: list[str] = []
+    for v in re.findall(r"\{\{\s*(\w+)\s*\}\}", text or ""):
+        if v not in out:
+            out.append(v)
+    return out
+
+
 def _shape_template(t: dict) -> dict:
-    body = next((c.get("text", "") for c in t.get("components", []) if c.get("type") == "BODY"), "")
-    header = next((c.get("format") for c in t.get("components", []) if c.get("type") == "HEADER"), None)
-    return {"name": t["name"], "language": t.get("language"), "category": t.get("category"), "body": body,
-            "body_params": len(set(re.findall(r"\{\{\s*(\w+)\s*\}\}", body))), "header": header}
+    comps = t.get("components", [])
+    body = next((c.get("text", "") for c in comps if c.get("type") == "BODY"), "")
+    header = next((c for c in comps if c.get("type") == "HEADER"), None)
+    fmt = header.get("format") if header else None
+    buttons = [b for c in comps if c.get("type") == "BUTTONS" for b in c.get("buttons", [])]
+    # We fill body placeholders and a document/image header. Templates that also need header text or button values are listed but not sendable.
+    supported = fmt in (None, "TEXT", "DOCUMENT", "IMAGE") and not (fmt == "TEXT" and _vars(header.get("text", ""))) \
+        and not any(_vars(b.get("url", "")) for b in buttons)
+    names = _vars(body)
+    return {"name": t["name"], "language": t.get("language"), "category": t.get("category"), "body": body, "body_params": len(names),
+            "param_names": names, "header": fmt, "supported": supported}
 
 
 def list_templates(i: Integration) -> list[dict]:
-    if i.mode == "sandbox":
-        return SANDBOX_TEMPLATES
     creds = integrations.get_creds(i)
     out: list[dict] = []
     url, params = _url(f"{creds['waba_id']}/message_templates"), {"status": "APPROVED", "limit": 100, "fields": "name,language,status,category,components"}
     for _ in range(5):  # a few pages is plenty for a brokerage
-        r = httpx.get(url, params=params, headers={"Authorization": f"Bearer {creds['access_token']}"}, timeout=15)
+        try:
+            r = httpx.get(url, params=params, headers={"Authorization": f"Bearer {creds['access_token']}"}, timeout=15)
+        except httpx.HTTPError:
+            raise ApiError(502, "whatsapp_unreachable", "Couldn't reach WhatsApp. Please try again in a minute.")
         if r.status_code >= 400:
             _raise_for(i, r)
         j = r.json()
@@ -171,8 +198,6 @@ def _raise_for(i: Integration, r: httpx.Response) -> None:
 
 
 def _post(i: Integration, payload: dict) -> str:
-    if i.mode == "sandbox":
-        return f"wamid.sandbox.{secrets.token_hex(12)}"
     creds = integrations.get_creds(i)
     try:
         r = httpx.post(_url(f"{creds['phone_number_id']}/messages"), json={"messaging_product": "whatsapp", "recipient_type": "individual", **payload},
@@ -185,15 +210,33 @@ def _post(i: Integration, payload: dict) -> str:
     return r.json()["messages"][0]["id"]
 
 
-def _media(file: FileAsset) -> tuple[str, dict]:
-    url = storage.get_storage().signed_url(file.storage_key, file.filename, expires=3600)  # Meta fetches it within seconds
-    if file.mime_type in ("image/jpeg", "image/png"):
-        return "image", {"link": url}
-    return "document", {"link": url, "filename": file.filename}
+def _media(i: Integration, file: FileAsset) -> tuple[str, dict]:
+    """Upload the file to Meta's media store and return the message part that references it."""
+    is_image = file.mime_type in ("image/jpeg", "image/png")
+    if file.size_bytes > (IMAGE_MAX_BYTES if is_image else DOC_MAX_BYTES):
+        raise ApiError(413, "file_too_large", f"WhatsApp accepts {'images up to 5 MB' if is_image else 'documents up to 100 MB'}.")
+    creds = integrations.get_creds(i)
+    content = storage.get_storage().read(file.storage_key)
+    try:
+        r = httpx.post(_url(f"{creds['phone_number_id']}/media"), headers={"Authorization": f"Bearer {creds['access_token']}"}, timeout=60,
+                       data={"messaging_product": "whatsapp", "type": file.mime_type}, files={"file": (file.filename, content, file.mime_type)})
+    except httpx.HTTPError:
+        raise ApiError(502, "whatsapp_unreachable", "Couldn't reach WhatsApp. Please try again in a minute.")
+    if r.status_code >= 400:
+        _raise_for(i, r)
+    media_id = r.json()["id"]
+    return ("image", {"id": media_id}) if is_image else ("document", {"id": media_id, "filename": file.filename})
 
 
-def _render(body: str, params: list[str]) -> str:
-    return re.sub(r"\{\{\s*(\d+)\s*\}\}", lambda m: params[int(m.group(1)) - 1] if 0 < int(m.group(1)) <= len(params) else m.group(0), body)
+def _render(body: str, names: list[str], params: list[str]) -> str:
+    values = dict(zip(names, params))
+    return re.sub(r"\{\{\s*(\w+)\s*\}\}", lambda m: values.get(m.group(1), m.group(0)), body)
+
+
+def _body_parameters(names: list[str], params: list[str]) -> list[dict]:
+    if all(n.isdigit() for n in names):
+        return [{"type": "text", "text": p} for p in params]
+    return [{"type": "text", "parameter_name": n, "text": p} for n, p in zip(names, params)]
 
 
 def recipient_phone(entity) -> str:
@@ -211,20 +254,19 @@ def send(i: Integration, entity_type: str, entity, *, text: str | None = None, t
     data: dict = {}
     if template:
         params = [str(p)[:1000] for p in template.get("params") or []]
+        names = template.get("param_names") or [str(n + 1) for n in range(len(params))]
         comps: list[dict] = []
         if file is not None:
-            kind_, media = _media(file)
+            kind_, media = _media(i, file)
             comps.append({"type": "header", "parameters": [{"type": kind_, kind_: media}]})
         if params:
-            comps.append({"type": "body", "parameters": [{"type": "text", "text": p} for p in params]})
+            comps.append({"type": "body", "parameters": _body_parameters(names, params)})
         payload = {"to": phone, "type": "template", "template": {"name": template["name"], "language": {"code": template["language"]}, **({"components": comps} if comps else {})}}
-        kind, body = "template", _render(template.get("body") or "", params) or None
+        kind, body = "template", _render(template.get("body") or "", names, params) or None
         data["params"] = params
     elif file is not None:
         if not window_open(ws_id, phone):
             mt = (i.config or {}).get("media_template")
-            if not mt and i.mode == "sandbox":  # sandbox has no real client to reply, so use the sample brochure template
-                mt = next(t for t in SANDBOX_TEMPLATES if t["name"] == "property_brochure")
             if not mt:
                 raise ApiError(409, "whatsapp_window_closed",
                                f"{entity.name} hasn't messaged you in the last 24 hours, so WhatsApp only allows approved templates. "
@@ -232,7 +274,7 @@ def send(i: Integration, entity_type: str, entity, *, text: str | None = None, t
             label = unit_label(unit) if unit else file.filename
             params = [entity.first_name, label][: int(mt.get("body_params", 0))]
             return send(i, entity_type, entity, template={**mt, "params": params}, file=file, unit=unit)
-        kind_, media = _media(file)
+        kind_, media = _media(i, file)
         if caption:
             media["caption"] = caption[:1000]
         payload, kind, body = {"to": phone, "type": kind_, kind_: media}, "document", caption
@@ -250,7 +292,7 @@ def send(i: Integration, entity_type: str, entity, *, text: str | None = None, t
     m = WhatsAppMessage(workspace_id=ws_id, direction="outbound", status="sent", kind=kind, phone=phone, body=body,
                         template_name=template["name"] if template else None, template_language=template.get("language") if template else None,
                         file_id=file.id if file else None, unit_id=unit.id if unit else None, user_id=user_id, wa_message_id=wamid,
-                        data={**data, **({"filename": file.filename, "doc_kind": file.doc_kind} if file else {}), "sandbox": i.mode == "sandbox"}, **links)
+                        data={**data, **({"filename": file.filename, "doc_kind": file.doc_kind} if file else {})}, **links)
     db.session.add(m)
     db.session.flush()
     if file is not None:
@@ -402,9 +444,3 @@ def _status(ws_id, s: dict) -> int:
                                 lead_id=m.lead_id, contact_id=m.contact_id, company_id=m.company_id, deal_id=m.deal_id)
     return 1
 
-
-def simulate_reply(i: Integration, entity, text: str) -> None:
-    """Sandbox only: pretend the client replied, exactly as Meta's webhook would deliver it."""
-    phone = recipient_phone(entity)
-    _receive(i, {"from": phone, "id": f"wamid.sandbox.in.{secrets.token_hex(12)}", "timestamp": str(int(utcnow().timestamp())),
-                 "type": "text", "text": {"body": text}}, entity.name)

@@ -8,7 +8,7 @@ import { useWaTemplates } from "./whatsapp";
 
 export type WaCreds = { phone_number_id: string; waba_id: string; access_token: string; app_secret: string };
 export type WaWebhook = { url: string; verify_token: string };
-type Settings = { mode: "live" | "sandbox"; account_label: string; webhook: WaWebhook; media_template: { name: string; language: string } | null };
+type Settings = { account_label: string; webhook: WaWebhook; media_template: { name: string; language: string } | null };
 
 function CopyRow({ label, text }: { label: string; text: string }) {
   const [ok, setOk] = React.useState(false);
@@ -19,12 +19,12 @@ function CopyRow({ label, text }: { label: string; text: string }) {
   );
 }
 
-/** The four details each organisation copies from its own Meta app. Left empty, the workspace connects in sandbox mode. */
-export function WhatsAppConnectFields({ value, onChange }: { value: WaCreds; onChange: (v: WaCreds) => void }) {
+/** The four details each organisation copies from its own Meta app. On a reconnect, blank fields keep the saved values. */
+export function WhatsAppConnectFields({ value, onChange, reconnect }: { value: WaCreds; onChange: (v: WaCreds) => void; reconnect?: boolean }) {
   const set = (k: keyof WaCreds) => (e: React.ChangeEvent<HTMLInputElement>) => onChange({ ...value, [k]: e.target.value });
   return (
     <div className="space-y-3">
-      <p className="text-sm text-fg-muted">Copy these from your app in <b className="text-fg">Meta for Developers → WhatsApp → API Setup</b>. Use a permanent System User token. Leave everything empty to try it in sandbox mode first.</p>
+      <p className="text-sm text-fg-muted">Copy these from your app in <b className="text-fg">Meta for Developers → WhatsApp → API Setup</b>. Use a permanent System User token with the <code className="rounded bg-bg-subtle px-1">whatsapp_business_messaging</code> and <code className="rounded bg-bg-subtle px-1">whatsapp_business_management</code> permissions.{reconnect && " Leave a field empty to keep the saved value."}</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Phone number ID"><Input value={value.phone_number_id} onChange={set("phone_number_id")} inputMode="numeric" autoComplete="off" /></Field>
         <Field label="WhatsApp Business Account ID"><Input value={value.waba_id} onChange={set("waba_id")} inputMode="numeric" autoComplete="off" /></Field>
@@ -53,7 +53,7 @@ export function WhatsAppManage() {
   const [busy, setBusy] = React.useState(false);
   if (s.isLoading) return <Skeleton className="h-32 w-full" />;
   if (!s.data) return null;
-  const media = (templates.data ?? []).filter((t) => t.header === "DOCUMENT" || t.header === "IMAGE");
+  const media = (templates.data ?? []).filter((t) => (t.header === "DOCUMENT" || t.header === "IMAGE") && t.supported && t.body_params <= 2);
   const current = s.data.media_template ? `${s.data.media_template.name}|${s.data.media_template.language}` : "";
   const save = async (v: string) => {
     setBusy(true);
@@ -62,8 +62,8 @@ export function WhatsAppManage() {
   };
   return (
     <div className="space-y-4 border-t border-border pt-4">
-      {s.data.mode === "live" && <WhatsAppWebhook hook={s.data.webhook} />}
-      <Field label="Brochure template" hint="WhatsApp only allows templates when a client hasn't written to you in 24 hours. Pick an approved template with a document header and brochures go out with it automatically.">
+      <WhatsAppWebhook hook={s.data.webhook} />
+      <Field label="Brochure template" hint="WhatsApp only allows templates when a client hasn't written to you in 24 hours. Pick an approved template with a document header and brochures go out with it automatically. Its placeholders are filled with the client's first name, then the flat or project.">
         <NativeSelect value={current} disabled={busy || templates.isLoading} onChange={(e) => save(e.target.value)}>
           <option value="">None: only send files after the client replies</option>
           {media.map((t) => <option key={`${t.name}|${t.language}`} value={`${t.name}|${t.language}`}>{t.name.replace(/_/g, " ")} ({t.language})</option>)}

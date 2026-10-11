@@ -24,7 +24,7 @@ export default function IntegrationsPage() {
   const q = useQuery({ queryKey: ["integrations"], queryFn: () => api.get<Resp>("/api/v1/integrations") });
   const [cat, setCat] = React.useState("All"); const [search, setSearch] = React.useState(""); const [dlg, setDlg] = React.useState<Integ | null>(null); const [disc, setDisc] = React.useState<Integ | null>(null);
   const [url, setUrl] = React.useState(""); const [eps, setEps] = React.useState("");  const [secret, setSecret] = React.useState<string | null>(null); const [busy, setBusy] = React.useState(false); const [err, setErr] = React.useState<string | null>(null);
-  const [wa, setWa] = React.useState<WaCreds>({ phone_number_id: "", waba_id: "", access_token: "", app_secret: "" }); const [hook, setHook] = React.useState<WaWebhook | null>(null);
+  const [wa, setWa] = React.useState<WaCreds>({ phone_number_id: "", waba_id: "", access_token: "", app_secret: "" }); const [hook, setHook] = React.useState<WaWebhook | null>(null); const [reconnecting, setReconnecting] = React.useState(false);
   const refresh = () => qc.invalidateQueries({ queryKey: ["integrations"] });
   React.useEffect(() => { const c = sp.get("connect"); if (c && q.data) { const i = q.data.integrations.find((x) => x.provider === c); if (i) setDlg(i); } if (sp.get("connected")) toast.success("Connected"); if (sp.get("error")) toast.error("Couldn't connect", "Authorisation failed. Please try again."); }, [q.data]); // eslint-disable-line react-hooks/exhaustive-deps
   const sync = useMutation({ mutationFn: (p: string) => api.post<{ imported: number }>(`/api/v1/integrations/${p}/sync`), onSuccess: (r) => { refresh(); qc.invalidateQueries({ queryKey: ["contacts"] }); toast.success("Sync complete", r.imported ? `${r.imported} contacts imported.` : "Everything is up to date."); }, onError: (e) => toast.error("Sync failed", (e as Error).message) });
@@ -34,7 +34,7 @@ export default function IntegrationsPage() {
       const body = i.provider === "slack" ? { webhook_url: url } : i.provider === "webhooks" ? { endpoints: eps.split("\n").map((l) => l.trim()).filter(Boolean).map((u) => ({ url: u, events: [] })) } : i.provider === "whatsapp" ? wa : {};
       const r = await api.post<Integ & { auth_url?: string; signing_secret?: string; webhook?: WaWebhook }>(`/api/v1/integrations/${i.provider}/connect`, body);
       if (r.auth_url) { window.location.href = r.auth_url; return; }
-      if (r.webhook && r.mode === "live") { setHook(r.webhook); setWa({ phone_number_id: "", waba_id: "", access_token: "", app_secret: "" }); refresh(); return; }
+      if (r.webhook) { setHook(r.webhook); setWa({ phone_number_id: "", waba_id: "", access_token: "", app_secret: "" }); refresh(); return; }
       if (r.signing_secret) { setSecret(r.signing_secret); } else { setDlg(null); toast.success(`${i.name} connected`, r.mode === "sandbox" ? "Running in sandbox mode — no data leaves your workspace." : undefined); }
       refresh();
     } catch (e) { setErr((e as Error).message); } finally { setBusy(false); }
@@ -60,9 +60,9 @@ export default function IntegrationsPage() {
               {i.status === "connected" && <p className="mt-3 truncate text-xs text-fg-subtle">{i.account_label}{i.last_synced_at && ` · synced ${timeAgo(i.last_synced_at)}`}</p>}
               <div className="mt-4 flex gap-2">
                 {locked ? <Button variant="secondary" size="sm" className="flex-1" disabled>Upgrade to use</Button>
-                  : i.status === "not_connected" ? <Button size="sm" className="flex-1" disabled={!manage} onClick={() => { setDlg(i); setUrl(""); setEps(""); setSecret(null); setHook(null); setErr(null); }}>Connect</Button>
+                  : i.status === "not_connected" ? <Button size="sm" className="flex-1" disabled={!manage} onClick={() => { setDlg(i); setUrl(""); setEps(""); setSecret(null); setHook(null); setErr(null); setReconnecting(false); }}>Connect</Button>
                   : i.status === "connected" ? <>{["google_contacts", "gmail", "google_calendar", "google_sheets"].includes(i.provider) && <Button size="sm" variant="secondary" disabled={!manage} loading={sync.isPending && sync.variables === i.provider} onClick={() => sync.mutate(i.provider)}><RefreshCw /> Sync</Button>}<Button size="sm" variant="secondary" className="flex-1" disabled={!manage} onClick={() => { setDlg(i); setSecret(null); setErr(null); }}>Manage</Button></>
-                  : <Button size="sm" className="flex-1" disabled={!manage} onClick={() => { if (i.provider === "whatsapp") { setDlg({ ...i, status: "not_connected" }); setHook(null); setErr(null); } else connect(i); }} loading={busy}>Reconnect</Button>}
+                  : <Button size="sm" className="flex-1" disabled={!manage} onClick={() => { if (i.provider === "whatsapp") { setDlg({ ...i, status: "not_connected" }); setHook(null); setErr(null); setReconnecting(true); } else connect(i); }} loading={busy}>Reconnect</Button>}
               </div>
             </Card>); })}
         </div>)}
@@ -87,10 +87,10 @@ export default function IntegrationsPage() {
             </> : <>
               {dlg.provider === "slack" && <Field label="Slack incoming webhook URL" error={err ?? undefined} hint="Create one in Slack → Apps → Incoming Webhooks."><Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://hooks.slack.com/services/…" /></Field>}
               {dlg.provider === "webhooks" && <Field label="Endpoint URLs (https, one per line)" error={err ?? undefined} hint={`Events: ${q.data?.webhook_events.join(", ")}`}><textarea className="min-h-24 w-full rounded-md border border-border bg-surface p-3 text-sm focus:border-primary focus:outline-none focus:ring-4 focus:ring-[var(--ring)]" value={eps} onChange={(e) => setEps(e.target.value)} placeholder="https://example.com/crm-webhook" /></Field>}
-              {dlg.provider === "whatsapp" && <WhatsAppConnectFields value={wa} onChange={setWa} />}
+              {dlg.provider === "whatsapp" && <WhatsAppConnectFields value={wa} onChange={setWa} reconnect={reconnecting} />}
               {!["slack", "webhooks", "whatsapp"].includes(dlg.provider) && <div className="rounded-lg bg-bg-subtle p-4 text-sm text-fg-muted">{dlg.live_capable ? <>You'll be redirected to authorise {dlg.name}.</> : <>This workspace will connect in <strong className="text-fg">sandbox mode</strong> because provider credentials aren't configured on this server. The full flow works, but nothing is sent to {dlg.name}.</>}</div>}
               {err && !["slack", "webhooks"].includes(dlg.provider) && <p role="alert" className="text-sm text-danger">{err}</p>}
-              <DialogFooter><Button variant="secondary" onClick={() => setDlg(null)}>Cancel</Button><Button onClick={() => connect(dlg)} loading={busy} disabled={(dlg.provider === "slack" && !url) || (dlg.provider === "webhooks" && !eps.trim())}>{dlg.provider === "whatsapp" && !Object.values(wa).some(Boolean) ? "Try in sandbox" : `Connect ${dlg.name}`}</Button></DialogFooter>
+              <DialogFooter><Button variant="secondary" onClick={() => setDlg(null)}>Cancel</Button><Button onClick={() => connect(dlg)} loading={busy} disabled={(dlg.provider === "slack" && !url) || (dlg.provider === "webhooks" && !eps.trim()) || (dlg.provider === "whatsapp" && (reconnecting ? !Object.values(wa).some((v) => v.trim()) : Object.values(wa).some((v) => !v.trim())))}>Connect {dlg.name}</Button></DialogFooter>
             </>}
           </div></DialogContent>}
       </Dialog>
