@@ -91,3 +91,15 @@ def test_duplicate_unit_numbers_and_add_floors(client):
     assert r.status_code == 409
     r = client.post("/api/v1/units", json={"tower_id": tid, "floor": 1, "number": "199", "status": "self_occupied"})
     assert r.status_code == 201 and r.get_json()["data"]["status"] == "self_occupied"
+
+
+def test_onboarding_accepts_every_choice_the_screen_offers(app):
+    # Mirrors apps/web/src/app/onboarding/page.tsx: models, goals and first steps.
+    models = ["agent", "brokerage", "channel_partner", "developer", "property_manager", "real_estate"]
+    goals = ["manage_leads", "track_inventory", "track_deals", "automate_followups", "analyze_revenue"]
+    for i, first in enumerate(["project", "csv", "scratch", "integrations"]):
+        cl, _ = signup(app, email=f"ob{i}@acme.io", company_name=f"Realty {i}")
+        r = cl.post("/api/v1/workspace/onboarding", json={"company_name": f"Realty {i}", "industry": "Real estate brokerage", "sales_model": models[i], "company_size": "2-5",
+                                                          "goals": goals, "import_choice": first, "complete": True})
+        assert r.status_code == 200, (first, r.get_json())
+        assert r.get_json()["data"]["onboarding_completed_at"]
