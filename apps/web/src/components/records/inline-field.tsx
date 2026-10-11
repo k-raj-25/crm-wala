@@ -11,10 +11,10 @@ export function InlineField({ label, value, display, onSave, type = "text", opti
   const [v, setV] = React.useState(String(value ?? ""));
   const [busy, setBusy] = React.useState(false);
   React.useEffect(() => { if (!editing) setV(String(value ?? "")); }, [value, editing]);
-  const commit = async () => {
-    if (v === String(value ?? "")) { setEditing(false); return; }
+  const commit = async (next: string = v) => {
+    if (next === String(value ?? "")) { setEditing(false); return; }
     setBusy(true);
-    try { await onSave(v.trim() === "" ? null : v.trim()); setEditing(false); } catch { /* parent toasts; keep editing */ } finally { setBusy(false); }
+    try { await onSave(next.trim() === "" ? null : next.trim()); setEditing(false); } catch { /* parent toasts; keep editing */ } finally { setBusy(false); }
   };
   const key = (e: React.KeyboardEvent) => { if (e.key === "Escape") { setEditing(false); setV(String(value ?? "")); } if (e.key === "Enter" && !multiline) { e.preventDefault(); commit(); } };
   return (
@@ -23,10 +23,10 @@ export function InlineField({ label, value, display, onSave, type = "text", opti
       <dd className="min-w-0">
         {editing ? (
           <div className="flex items-start gap-1.5">
-            {options ? <NativeSelect autoFocus value={v} onChange={(e) => setV(e.target.value)} onBlur={commit} onKeyDown={key} disabled={busy}><option value="">—</option>{options.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</NativeSelect>
-              : multiline ? <Textarea autoFocus rows={3} value={v} onChange={(e) => setV(e.target.value)} onKeyDown={key} onBlur={commit} disabled={busy} />
-              : <Input autoFocus type={type} value={v} onChange={(e) => setV(e.target.value)} onKeyDown={key} onBlur={commit} disabled={busy} className="h-8" />}
-            <button onMouseDown={(e) => e.preventDefault()} onClick={commit} aria-label="Save" className="mt-1 rounded p-1 text-success hover:bg-success-soft"><Check className="size-4" /></button>
+            {options ? <NativeSelect autoFocus defaultOpen value={v} onChange={(e) => { setV(e.target.value); commit(e.target.value); }} onKeyDown={key} disabled={busy}><option value="">—</option>{options.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</NativeSelect>
+              : multiline ? <Textarea autoFocus rows={3} value={v} onChange={(e) => setV(e.target.value)} onKeyDown={key} onBlur={() => commit()} disabled={busy} />
+              : <Input autoFocus type={type} value={v} onChange={(e) => setV(e.target.value)} onKeyDown={key} onBlur={() => commit()} disabled={busy} className="h-8" />}
+            <button onMouseDown={(e) => e.preventDefault()} onClick={() => commit()} aria-label="Save" className="mt-1 rounded p-1 text-success hover:bg-success-soft"><Check className="size-4" /></button>
             <button onMouseDown={(e) => e.preventDefault()} onClick={() => { setEditing(false); setV(String(value ?? "")); }} aria-label="Cancel" className="mt-1 rounded p-1 text-fg-subtle hover:bg-surface-hover"><X className="size-4" /></button>
           </div>
         ) : (

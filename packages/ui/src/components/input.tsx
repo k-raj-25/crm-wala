@@ -1,6 +1,8 @@
 "use client";
 import * as React from "react";
 import { cn } from "../lib/cn";
+import { Select } from "./menus";
+import type { Option } from "./menus";
 
 const base =
   "w-full rounded-md border border-border bg-surface px-3 text-sm text-fg shadow-xs transition-[border-color,box-shadow] duration-150 placeholder:text-fg-subtle hover:border-border-strong focus:border-primary focus:outline-none focus:ring-4 focus:ring-[var(--ring)] disabled:cursor-not-allowed disabled:bg-bg-subtle disabled:opacity-70 aria-[invalid=true]:border-danger aria-[invalid=true]:focus:ring-[color-mix(in_srgb,var(--danger)_25%,transparent)]";
@@ -20,12 +22,48 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, React.TextareaHTML
 ));
 Textarea.displayName = "Textarea";
 
-export const NativeSelect = React.forwardRef<HTMLSelectElement, React.SelectHTMLAttributes<HTMLSelectElement> & { invalid?: boolean }>(({ className, invalid, children, ...props }, ref) => (
-  <select ref={ref} aria-invalid={invalid || undefined} className={cn(base, "h-9 appearance-none bg-[length:16px] bg-[right_10px_center] bg-no-repeat pr-8", className)}
-    style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23878aa0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")" }} {...props}>
-    {children}
-  </select>
-));
+const EMPTY = "__empty__"; // Radix Select forbids an empty-string item value
+
+function flattenOptions(children: React.ReactNode): Option[] {
+  const out: Option[] = [];
+  const walk = (nodes: React.ReactNode) => React.Children.forEach(nodes, (c) => {
+    if (!React.isValidElement(c)) return;
+    const props = c.props as { value?: string | number; disabled?: boolean; children?: React.ReactNode };
+    if (c.type === "option") {
+      const label = props.children;
+      out.push({ value: String(props.value ?? (typeof label === "string" ? label : React.Children.toArray(label).join(""))), label, disabled: props.disabled });
+    } else walk(props.children); // fragments, groups, mapped arrays
+  });
+  walk(children);
+  return out;
+}
+
+type NativeSelectProps = Omit<React.SelectHTMLAttributes<HTMLSelectElement>, "size" | "onChange" | "value" | "defaultValue"> & {
+  invalid?: boolean; size?: "sm" | "md"; defaultOpen?: boolean; value?: string | number | null; defaultValue?: string | number; onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+};
+
+/** Drop-in for a native <select> (same <option> children, same onChange(e.target.value)) that renders the app's own dropdown,
+ *  so every select looks and behaves the same, in light and dark. Works controlled, uncontrolled and with react-hook-form's register(). */
+export const NativeSelect = React.forwardRef<HTMLInputElement, NativeSelectProps>(function NativeSelect(
+  { className, invalid, children, value, defaultValue, onChange, name, disabled, id, autoFocus, size, onKeyDown, defaultOpen, ...rest }, ref) {
+  const options = flattenOptions(children);
+  const [inner, setInner] = React.useState(String(defaultValue ?? ""));
+  const current = value !== undefined ? String(value ?? "") : inner;
+  const known = options.some((o) => o.value === current);
+  const emit = (v: string) => {
+    if (value === undefined) setInner(v);
+    onChange?.({ target: { value: v, name: name ?? "" }, currentTarget: { value: v, name: name ?? "" } } as unknown as React.ChangeEvent<HTMLSelectElement>);
+  };
+  return (
+    <>
+      <Select id={id} className={className} invalid={invalid} disabled={disabled} autoFocus={autoFocus} defaultOpen={defaultOpen} size={size} ariaLabel={rest["aria-label"]}
+        onKeyDown={onKeyDown as React.KeyboardEventHandler<HTMLButtonElement> | undefined}
+        value={known ? (current === "" ? EMPTY : current) : undefined} onValueChange={(v) => emit(v === EMPTY ? "" : v)}
+        options={options.map((o) => ({ ...o, value: o.value === "" ? EMPTY : o.value }))} />
+      {(name || ref) && <input type="hidden" ref={ref} name={name} value={current} readOnly />}
+    </>
+  );
+});
 NativeSelect.displayName = "NativeSelect";
 
 export function Label({ className, children, ...props }: React.LabelHTMLAttributes<HTMLLabelElement>) {

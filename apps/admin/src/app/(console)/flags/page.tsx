@@ -72,7 +72,7 @@ function OverrideDialog({ flag, onClose }: { flag: Flag | null; onClose: () => v
       <DialogContent title={`Override “${flag?.name}”`} description="Force this flag on or off for a single workspace, regardless of rollout." size="sm">
         <div className="space-y-4">
           <Field label="Find workspace"><Input value={term} onChange={(e) => setTerm(e.target.value)} placeholder="Search by name…" autoFocus /></Field>
-          <Field label="Workspace"><NativeSelect value={ws} onChange={(e) => setWs(e.target.value)} size={5}><option value="" disabled>Select…</option>{res.data?.data.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</NativeSelect></Field>
+          <Field label="Workspace"><NativeSelect value={ws} onChange={(e) => setWs(e.target.value)}><option value="" disabled>Select…</option>{res.data?.data.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}</NativeSelect></Field>
           <Field label="State"><NativeSelect value={on} onChange={(e) => setOn(e.target.value)}><option value="true">Force on</option><option value="false">Force off</option></NativeSelect></Field>
         </div>
         <DialogFooter><Button variant="secondary" onClick={onClose}>Cancel</Button><Button disabled={!ws} loading={m.isPending} onClick={() => m.mutate()}>Save override</Button></DialogFooter>

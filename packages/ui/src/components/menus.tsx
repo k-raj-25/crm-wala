@@ -50,13 +50,13 @@ export function PopoverContent({ className, align = "start", sideOffset = 8, ...
 }
 
 /* ---------- Select ---------- */
-export type Option = { value: string; label: React.ReactNode; hint?: string };
-export function Select({ value, onValueChange, options, placeholder = "Select…", className, disabled, id, invalid, size = "md" }: {
-  value?: string | null; onValueChange: (v: string) => void; options: Option[]; placeholder?: string; className?: string; disabled?: boolean; id?: string; invalid?: boolean; size?: "sm" | "md";
+export type Option = { value: string; label: React.ReactNode; hint?: string; disabled?: boolean };
+export function Select({ value, onValueChange, options, placeholder = "Select…", className, disabled, id, invalid, size = "md", ariaLabel, autoFocus, onKeyDown, defaultOpen }: {
+  value?: string | null; onValueChange: (v: string) => void; options: Option[]; placeholder?: string; className?: string; disabled?: boolean; id?: string; invalid?: boolean; size?: "sm" | "md"; ariaLabel?: string; autoFocus?: boolean; onKeyDown?: React.KeyboardEventHandler<HTMLButtonElement>; defaultOpen?: boolean;
 }) {
   return (
-    <S.Root value={value ?? undefined} onValueChange={onValueChange} disabled={disabled}>
-      <S.Trigger id={id} aria-invalid={invalid || undefined}
+    <S.Root value={value ?? undefined} onValueChange={onValueChange} disabled={disabled} defaultOpen={defaultOpen}>
+      <S.Trigger id={id} aria-invalid={invalid || undefined} aria-label={ariaLabel} autoFocus={autoFocus} onKeyDown={onKeyDown}
         className={cn("flex w-full items-center justify-between gap-2 rounded-md border border-border bg-surface px-3 text-left text-sm shadow-xs transition-[border-color,box-shadow] hover:border-border-strong focus:border-primary focus:outline-none focus:ring-4 focus:ring-[var(--ring)] disabled:opacity-60 data-[placeholder]:text-fg-subtle aria-[invalid=true]:border-danger", size === "sm" ? "h-8 text-[13px]" : "h-9", className)}>
         <S.Value placeholder={placeholder} /><S.Icon><ChevronDown className="size-4 text-fg-subtle" /></S.Icon>
       </S.Trigger>
@@ -64,7 +64,7 @@ export function Select({ value, onValueChange, options, placeholder = "Select…
         <S.Content position="popper" sideOffset={6} className="anim-pop z-[90] max-h-72 min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-lg border border-border bg-surface p-1.5 shadow-lg">
           <S.Viewport>
             {options.map((o) => (
-              <S.Item key={o.value} value={o.value} className="relative flex cursor-pointer select-none items-center rounded-md py-2 pl-8 pr-3 text-sm outline-none data-[highlighted]:bg-surface-hover">
+              <S.Item key={o.value} value={o.value} disabled={o.disabled} className="relative flex cursor-pointer select-none items-center rounded-md py-2 pl-8 pr-3 text-sm outline-none data-[highlighted]:bg-surface-hover data-[disabled]:pointer-events-none data-[disabled]:opacity-50">
                 <S.ItemIndicator className="absolute left-2.5"><Check className="size-4 text-primary" /></S.ItemIndicator>
                 <S.ItemText>{o.label}</S.ItemText>{o.hint && <span className="ml-auto pl-3 text-xs text-fg-subtle">{o.hint}</span>}
               </S.Item>

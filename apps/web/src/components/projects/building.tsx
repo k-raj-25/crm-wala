@@ -28,7 +28,7 @@ export function useSkyNow(): Sky3 {
   return hour == null ? "day" : byHour(hour);
 }
 
-const STARS = Array.from({ length: 22 }, (_, i) => { const r = (n: number) => { const x = Math.sin(i * 91.7 + n * 12.3) * 10000; return x - Math.floor(x); }; return { x: r(1) * 100, y: r(2) * 60, s: 0.8 + r(3) * 1.4, d: r(4) * 3 }; });
+const STARS = Array.from({ length: 22 }, (_, i) => { const r = (n: number) => { const x = Math.sin(i * 91.7 + n * 12.3) * 10000; return x - Math.floor(x); }; const f = (n: number) => Math.round(n * 10) / 10; /* rounded so server and browser print identical numbers */ return { x: f(r(1) * 100), y: f(r(2) * 60), s: f(0.8 + r(3) * 1.4), d: f(r(4) * 3) }; });
 
 function Cloud({ top, size, delay, opacity }: { top: string; size: number; delay: number; opacity: number }) {
   return (
