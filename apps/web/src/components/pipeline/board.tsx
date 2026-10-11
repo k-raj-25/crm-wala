@@ -1,5 +1,5 @@
 "use client";
-import { DndContext, DragOverlay, KeyboardSensor, PointerSensor, closestCorners, useDroppable, useSensor, useSensors, type DragEndEvent, type DragOverEvent, type DragStartEvent } from "@dnd-kit/core";
+import { DndContext, DragOverlay, KeyboardSensor, PointerSensor, closestCorners, pointerWithin, useDroppable, useSensor, useSensors, type CollisionDetection, type DragEndEvent, type DragOverEvent, type DragStartEvent } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -16,6 +16,13 @@ import { MemberSelect } from "../forms/fields";
 import { ScorePill } from "../list/cells";
 import { PageContainer, PageHeader } from "../shell/page";
 import { useUI } from "../shell/ui-context";
+
+/** Drop where the pointer is: over a card = that card's slot, over empty space in a column = that column. Falls back to nearest corner (keyboard drags). */
+const collide: CollisionDetection = (args) => {
+  const hits = pointerWithin(args);
+  if (hits.length) return [hits.find((h) => !String(h.id).startsWith("col:")) ?? hits[0]];
+  return closestCorners(args);
+};
 
 type Column = { stage: { id: string; name: string; kind: "open" | "won" | "lost"; color: string | null; probability: number }; count: number; total_value: number; weighted_value: number; deals: Deal[]; has_more: boolean };
 type Board = { pipeline: Pipeline; columns: Column[] };
@@ -45,13 +52,13 @@ function ColumnView({ col, ids, deals, onAdd, canCreate }: { col: Column; ids: s
   const { setNodeRef, isOver } = useDroppable({ id: `col:${col.stage.id}`, data: { type: "column", stageId: col.stage.id } });
   const tone = col.stage.kind === "won" ? "text-success" : col.stage.kind === "lost" ? "text-danger" : "text-fg";
   return (
-    <section aria-label={col.stage.name} className="flex w-[300px] shrink-0 snap-start flex-col rounded-2xl bg-bg-subtle/70 sm:w-[308px]">
+    <section ref={setNodeRef} aria-label={col.stage.name} className="flex w-[256px] shrink-0 snap-start flex-col rounded-2xl bg-bg-subtle/70 sm:w-[260px]">
       <header className="flex items-center justify-between gap-2 px-4 pb-2 pt-3.5">
         <div className="min-w-0"><h2 className="flex items-center gap-2 text-[13px] font-semibold"><span className="size-2.5 rounded-full" style={{ background: col.stage.color ?? "var(--fg-subtle)" }} /><span className={cn("truncate", tone)}>{col.stage.name}</span><span className="rounded-full bg-surface px-1.5 text-xs font-medium text-fg-muted">{deals.length}{col.has_more ? "+" : ""}</span></h2>
           <p className="tabular mt-0.5 text-xs text-fg-muted"><Tooltip content={`${formatMoney(col.weighted_value)} weighted`}><span>{formatMoneyCompact(col.total_value)}</span></Tooltip></p></div>
         {canCreate && col.stage.kind === "open" && <Tooltip content="Add deal"><Button variant="ghost" size="icon-sm" onClick={onAdd} aria-label={`Add deal to ${col.stage.name}`}><Plus /></Button></Tooltip>}
       </header>
-      <div ref={setNodeRef} className={cn("flex min-h-[120px] flex-1 flex-col gap-2.5 overflow-y-auto rounded-b-2xl p-2.5 pt-1 transition-colors", isOver && "bg-primary-soft/50")} style={{ maxHeight: "calc(100dvh - 330px)" }}>
+      <div className={cn("flex min-h-[120px] flex-1 flex-col gap-2.5 overflow-y-auto rounded-b-2xl p-2.5 pt-1 transition-colors", isOver && "bg-primary-soft/50")} style={{ maxHeight: "calc(100dvh - 330px)" }}>
         <SortableContext items={ids} strategy={verticalListSortingStrategy}>{deals.map((d) => <DealCard key={d.id} deal={d} />)}</SortableContext>
         {deals.length === 0 && <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-border-strong py-8 text-xs text-fg-subtle">{col.stage.kind === "won" ? "Drop here when you win 🎉" : col.stage.kind === "lost" ? "Drop here if lost" : "Drop deals here"}</div>}
       </div>
@@ -123,10 +130,10 @@ export function PipelineBoard() {
         <NativeSelect className="h-8 w-36 text-[13px]" value={priority} onChange={(e) => setPriority(e.target.value)} aria-label="Priority"><option value="">All priorities</option>{["urgent", "high", "medium", "low"].map((p) => <option key={p} value={p}>{p[0].toUpperCase() + p.slice(1)}</option>)}</NativeSelect>
       </div>
       {board.isError ? <ErrorState kind="unavailable" onRetry={() => board.refetch()} />
-        : board.isLoading || !board.data ? <div className="flex gap-4 overflow-hidden">{[0, 1, 2, 3].map((i) => <div key={i} className="w-[300px] shrink-0 space-y-3 rounded-2xl bg-bg-subtle/70 p-3"><Skeleton className="h-6 w-28" />{[0, 1].map((j) => <Skeleton key={j} className="h-28" />)}</div>)}</div>
+        : board.isLoading || !board.data ? <div className="flex gap-4 overflow-hidden">{[0, 1, 2, 3].map((i) => <div key={i} className="w-[256px] shrink-0 space-y-3 rounded-2xl bg-bg-subtle/70 p-3"><Skeleton className="h-6 w-28" />{[0, 1].map((j) => <Skeleton key={j} className="h-28" />)}</div>)}</div>
         : board.data.columns.every((c) => c.count === 0) && !dsearch && !owner && !priority ? <EmptyState icon={<Trophy />} title="No deals yet" description="Create your first deal and start tracking your sales pipeline." action={can("deals.create") ? <Button onClick={() => ui.openCreate("deal")}><Plus /> Create Deal</Button> : undefined} />
         : (
-          <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={onStart} onDragOver={onOver} onDragEnd={onEnd} onDragCancel={() => { setActive(null); qc.invalidateQueries({ queryKey: ["board"] }); }}>
+          <DndContext sensors={sensors} collisionDetection={collide} autoScroll={{ acceleration: 2, interval: 14, threshold: { x: 0.035, y: 0.15 } }} onDragStart={onStart} onDragOver={onOver} onDragEnd={onEnd} onDragCancel={() => { setActive(null); qc.invalidateQueries({ queryKey: ["board"] }); }}>
             <div className="-mx-4 flex snap-x gap-4 overflow-x-auto px-4 pb-4 sm:-mx-8 sm:px-8" role="region" aria-label="Pipeline board">
               {board.data.columns.map((c) => <ColumnView key={c.stage.id} col={c} deals={cols[c.stage.id] ?? c.deals} ids={(cols[c.stage.id] ?? c.deals).map((d) => d.id)} canCreate={can("deals.create")} onAdd={() => ui.openCreate("deal", { stage_id: c.stage.id })} />)}
             </div>
