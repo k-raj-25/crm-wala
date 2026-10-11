@@ -186,7 +186,7 @@ def seed_demo(reset: bool = False, plan: str = "trial") -> dict:
                             phone=f"+91 8{rnd.randint(100000000, 999999999)}", source=source, status=status, owner_id=users[i % 4].id, intent=intent,
                             property_type="office" if intent == "invest" else "apartment", bhk=bhk, budget_min=lo, budget_max=hi, location=loc,
                             project_id=interest.project_id if interest else None, unit_id=interest.id if interest else None,
-                            created_at=now - dt.timedelta(days=rnd.randint(0, 45), hours=rnd.randint(0, 20)), last_contacted_at=contacted,
+                            created_at=now - dt.timedelta(days=rnd.randint(0, 80), hours=rnd.randint(0, 20)), last_contacted_at=contacted,
                             tags=(["hot"] if i % 7 == 0 else []) + (["investor"] if intent == "invest" else []) + (["first-time-buyer"] if i % 9 == 4 else []))
                 if status in ("new", "contacted", "qualified"):
                     offset = rnd.choice([-3, -1, 0, 0, 1, 2, 5, None])
@@ -233,8 +233,10 @@ def seed_demo(reset: bool = False, plan: str = "trial") -> dict:
                     open_deals.append(make_deal(f"{cl.name} — {u.name}, {next(p.name for p in projects if p.id == u.project_id)}", u, cl, stage, 1 + slot % 3, "open",
                                                 now - dt.timedelta(days=rnd.randint(6, 50)), close_in=rnd.randint(3, 60), prio=rnd.choice(["medium", "high", "urgent"])))
                     slot += 1
-            for u in [x for x in all_units if x.status == "sold"][:14]:
-                closed = u.status_changed_at
+            for u in [x for x in all_units if x.status == "sold"]:
+                # Spread the closings over ~5 months, a little heavier towards recent weeks, so reports have a shape to show.
+                closed = now - dt.timedelta(days=int(rnd.betavariate(1.1, 2.2) * 150) + 1, hours=rnd.randint(0, 9))
+                u.status_changed_at = closed
                 make_deal(f"{rnd.choice(clients).name} — {u.name}", u, u.occupant_contact_id and next(c for c in clients if c.id == u.occupant_contact_id), "Closed", rnd.randint(0, 3), "won",
                           closed - dt.timedelta(days=rnd.randint(14, 45)), closed=closed, source=rnd.choice(["referral", "99acres", "walk_in"]))
             for i in range(5):
@@ -259,6 +261,12 @@ def seed_demo(reset: bool = False, plan: str = "trial") -> dict:
                             summary="Liked the layout and the view. Wants to discuss the payment plan with family." if past else None)
                 db.session.add(m)
                 db.session.add(Activity(workspace_id=ws.id, type="meeting", title=f"Site visit {'completed' if past else 'scheduled'}: {u.name}", lead_id=ld.id, user_id=m.organizer_id, occurred_at=m.starts_at, is_demo=True))
+            for i in range(26):  # earlier visits, so the Site visits report has history
+                u, ld = rnd.choice(all_units), rnd.choice(leads)
+                when = day(-rnd.randint(5, 80), rnd.randint(10, 18))
+                done = rnd.random() < 0.8
+                db.session.add(Meeting(workspace_id=ws.id, title=f"Site visit — {ld.name}, {u.name}", kind="site_visit", starts_at=when, ends_at=when + dt.timedelta(minutes=45),
+                                       status="completed" if done else "canceled", organizer_id=users[i % 3].id, lead_id=ld.id, unit_id=u.id, project_id=u.project_id))
             task_rows = [
                 ("Call back {0} about the floor plan", 0, 0, 0, "high", "todo", "follow_up"), ("Send brochure and price sheet to {0}", 0, 2, 0, "medium", "todo", "follow_up"),
                 ("Confirm site visit with {0}", 3, 4, 0, "urgent", "todo", "follow_up"), ("Collect token cheque from {0}", 0, 6, 1, "high", "todo", "follow_up"),

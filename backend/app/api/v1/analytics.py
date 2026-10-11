@@ -80,8 +80,20 @@ def _run(rtype: str) -> dict:
     if rtype in reporting.ADVANCED and "advanced_reports" not in g.features:
         raise ApiError(402, "feature_unavailable", "Advanced reports are available on Growth and above.", {"feature": "advanced_reports"})
     start, end = _range()
-    return {**reporting.run_report(rtype, start, end, request.args.get("owner_id"), request.args.get("pipeline_id")),
-            "range": {"from": start.isoformat(), "to": end.isoformat()}, "type": rtype}
+    owner, pipeline = request.args.get("owner_id"), request.args.get("pipeline_id")
+    out = {**reporting.run_report(rtype, start, end, owner, pipeline), "range": {"from": start.isoformat(), "to": end.isoformat()}, "type": rtype}
+    if rtype in reporting.COMPARABLE:  # the same report for the period just before, so each headline number can show a trend
+        pend = start - dt.timedelta(microseconds=1)
+        prev = {x["label"]: x["value"] for x in reporting.run_report(rtype, pend - (end - start), pend, owner, pipeline)["summary"]}
+        out["compare"] = {"from": (pend - (end - start)).isoformat(), "to": pend.isoformat()}
+        for x in out["summary"]:
+            if x["label"] in prev:
+                x["prev"] = prev[x["label"]]
+                x["delta"] = reporting.delta_pct(x["value"], prev[x["label"]])
+    for x in out["summary"]:
+        if x["label"] in reporting.LOWER_IS_BETTER:
+            x["better"] = "down"
+    return out
 
 
 @bp.get("/reports/<rtype>")

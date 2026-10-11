@@ -55,14 +55,14 @@ export function AreaTrend({ data, xKey, series, height = 240, format = (v) => v.
       <ResponsiveContainer width="100%" height={height}>
         <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
           <defs>{series.map((s, i) => (
-            <linearGradient key={s.key} id={`${id}-${s.key}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={seriesColor(i, s)} stopOpacity={0.28} /><stop offset="100%" stopColor={seriesColor(i, s)} stopOpacity={0} /></linearGradient>
+            <linearGradient key={s.key} id={`${id}-${s.key}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={seriesColor(i, s)} stopOpacity={0.34} /><stop offset="100%" stopColor={seriesColor(i, s)} stopOpacity={0} /></linearGradient>
           ))}</defs>
-          <CartesianGrid vertical={false} stroke="var(--grid)" />
+          <CartesianGrid vertical={false} stroke="var(--grid)" strokeDasharray="3 5" />
           <XAxis dataKey={xKey} tick={axisTick} tickLine={false} axisLine={false} tickFormatter={xFormat} minTickGap={28} />
           <YAxis tick={axisTick} tickLine={false} axisLine={false} tickFormatter={(v) => format(Number(v))} width={52} />
           <Tooltip content={<Tip />} cursor={{ stroke: "var(--border-strong)", strokeWidth: 1 }} />
           {series.map((s, i) => (
-            <Area key={s.key} type="monotone" dataKey={s.key} stroke={seriesColor(i, s)} strokeWidth={2} fill={`url(#${id}-${s.key})`} dot={false} animationDuration={800}
+            <Area key={s.key} type="monotone" dataKey={s.key} stroke={seriesColor(i, s)} strokeWidth={2.5} fill={`url(#${id}-${s.key})`} dot={false} animationDuration={800}
               activeDot={{ r: 5, stroke: "var(--surface)", strokeWidth: 2, fill: seriesColor(i, s) }} />
           ))}
         </AreaChart>
@@ -78,7 +78,7 @@ export function LineTrend({ data, xKey, series, height = 240, format = (v) => v.
       <Legend series={series} className="mb-2" />
       <ResponsiveContainer width="100%" height={height}>
         <LineChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
-          <CartesianGrid vertical={false} stroke="var(--grid)" />
+          <CartesianGrid vertical={false} stroke="var(--grid)" strokeDasharray="3 5" />
           <XAxis dataKey={xKey} tick={axisTick} tickLine={false} axisLine={false} tickFormatter={xFormat} minTickGap={28} />
           <YAxis tick={axisTick} tickLine={false} axisLine={false} tickFormatter={(v) => format(Number(v))} width={44} />
           <Tooltip content={<Tip />} cursor={{ stroke: "var(--border-strong)" }} />
@@ -96,11 +96,11 @@ export function BarsChart({ data, xKey, series, height = 240, format = (v) => v.
       <Legend series={series} className="mb-2" />
       <ResponsiveContainer width="100%" height={height}>
         <BarChart data={data} layout={horizontal ? "vertical" : "horizontal"} margin={{ top: 8, right: 8, bottom: 0, left: 0 }} barCategoryGap="28%">
-          <CartesianGrid vertical={horizontal} horizontal={!horizontal} stroke="var(--grid)" />
+          <CartesianGrid vertical={horizontal} horizontal={!horizontal} stroke="var(--grid)" strokeDasharray="3 5" />
           {horizontal ? (
             <>
               <XAxis type="number" tick={axisTick} tickLine={false} axisLine={false} tickFormatter={(v) => format(Number(v))} />
-              <YAxis type="category" dataKey={xKey} tick={{ ...axisTick, fill: "var(--fg-muted)" }} tickLine={false} axisLine={false} width={96} />
+              <YAxis type="category" dataKey={xKey} tick={{ ...axisTick, fill: "var(--fg-muted)" }} tickLine={false} axisLine={false} width={110} />
             </>
           ) : (
             <>
@@ -110,7 +110,7 @@ export function BarsChart({ data, xKey, series, height = 240, format = (v) => v.
           )}
           <Tooltip content={<Tip />} cursor={{ fill: "var(--bg-subtle)", opacity: 0.7 }} />
           {series.map((s, i) => (
-            <Bar key={s.key} dataKey={s.key} stackId={stacked ? "a" : undefined} fill={seriesColor(i, s)} radius={stacked ? [0, 0, 0, 0] : horizontal ? [0, 4, 4, 0] : [4, 4, 0, 0]} maxBarSize={36} animationDuration={700}
+            <Bar key={s.key} dataKey={s.key} stackId={stacked ? "a" : undefined} fill={seriesColor(i, s)} radius={stacked ? [0, 0, 0, 0] : horizontal ? [0, 6, 6, 0] : [6, 6, 0, 0]} maxBarSize={horizontal ? 30 : 44} animationDuration={700}
               stroke={stacked ? "var(--surface)" : undefined} strokeWidth={stacked ? 2 : 0}>
               {colorByPoint && series.length === 1 && data.map((_, idx) => <Cell key={idx} fill={colorByPoint[idx % colorByPoint.length]} />)}
             </Bar>

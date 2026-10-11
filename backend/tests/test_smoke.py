@@ -36,9 +36,12 @@ def test_dashboard_and_reports(app):
     d = r.get_json()["data"]
     assert set(d["metrics"]) >= {"revenue", "pipeline_value", "deals_won", "conversion_rate", "tasks_due_today"}
     assert 4 <= len(d["revenue_series"]) <= 6  # 30 days => weekly buckets
-    for t in ["revenue", "sales", "leads", "conversion", "pipeline", "team_performance", "deal_velocity", "activity", "forecast", "customer_acquisition", "inventory"]:
+    for t in ["revenue", "sales", "leads", "conversion", "pipeline", "team_performance", "deal_velocity", "activity", "forecast", "customer_acquisition", "inventory", "site_visits", "projects"]:
         r = cl.get(f"/api/v1/reports/{t}?days=60")
         assert r.status_code == 200, (t, r.get_json())
+    rev = cl.get("/api/v1/reports/revenue?days=30").get_json()["data"]
+    assert all("delta" in x and "prev" in x for x in rev["summary"]) and rev["compare"]["to"] < rev["range"]["from"]
+    assert cl.get("/api/v1/reports/deal_velocity?days=30").get_json()["data"]["summary"][0]["better"] == "down"
     assert cl.get("/api/v1/reports/revenue/export.pdf").data[:4] == b"%PDF"
     assert cl.get("/api/v1/reports/revenue/export.csv").status_code == 200
 

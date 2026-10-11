@@ -8,14 +8,17 @@ from flask import g
 from sqlalchemy import and_, case, func, or_
 
 from app.extensions import db
-from app.models import Activity, Company, Contact, Deal, Lead, Meeting, PipelineStage, Task, User, WorkspaceMember
+from app.models import Activity, Company, Contact, Deal, Lead, Meeting, PipelineStage, Project, Task, User, WorkspaceMember
 from app.models.base import utcnow
 
 REPORT_TYPES = {
     "revenue": "Revenue", "sales": "Sales", "leads": "Leads", "conversion": "Conversion", "pipeline": "Pipeline",
     "team_performance": "Team performance", "deal_velocity": "Deal velocity", "activity": "Activity", "forecast": "Forecast",
-    "customer_acquisition": "Customer acquisition", "inventory": "Inventory",
+    "customer_acquisition": "Customer acquisition", "inventory": "Inventory", "site_visits": "Site visits", "projects": "Projects",
 }
+# Reports about a period (not a snapshot), so "vs the previous period" makes sense for them.
+COMPARABLE = {"revenue", "sales", "leads", "conversion", "team_performance", "deal_velocity", "activity", "customer_acquisition", "site_visits", "projects"}
+LOWER_IS_BETTER = {"Average sales cycle (days)"}
 ADVANCED = {"team_performance", "deal_velocity", "forecast", "customer_acquisition", "activity", "conversion"}
 
 
@@ -318,7 +321,7 @@ def run_report(rtype: str, start: dt.datetime, end: dt.datetime, owner=None, pip
                 "chart": {"type": "bar", "x": "period", "series": [{"key": "new_customers", "label": "New customers"}]},
                 "summary": [{"label": "New customers", "value": sum(r["new_customers"] for r in rows), "format": "number"}, {"label": "New contacts", "value": contacts, "format": "number"}]}
     if rtype == "inventory":
-        from app.models import Project, Unit
+        from app.models import Unit
         names = dict(s.query(Project.id, Project.name).filter(Project.workspace_id == ws, Project.deleted_at.is_(None)))
         counts: dict = {}
         for pid, st, n in s.query(Unit.project_id, Unit.status, func.count()).filter(Unit.workspace_id == ws, Unit.deleted_at.is_(None)).group_by(Unit.project_id, Unit.status):
@@ -342,4 +345,49 @@ def run_report(rtype: str, start: dt.datetime, end: dt.datetime, owner=None, pip
                             {"label": "On hold / booked", "value": tot["on_hold"] + tot["booked"], "format": "number"},
                             {"label": "Sold or rented", "value": round((tot["sold"] + tot["rented"]) / grand * 100, 1) if grand else 0, "format": "percent"}],
                 "breakdown": {"title": "All projects, by status", "rows": [{"label": k.replace("_", " "), "value": tot[k]} for k in keys if tot[k]]}}
+    if rtype == "site_visits":
+        mq = s.query(Meeting).filter(Meeting.workspace_id == ws, Meeting.deleted_at.is_(None), Meeting.kind == "site_visit", Meeting.starts_at >= start, Meeting.starts_at <= end)
+        if owner:
+            mq = mq.filter(Meeting.organizer_id == owner)
+        b = func.date_trunc(bucket, Meeting.starts_at)
+        data: dict[str, dict] = {}
+        for p, st, c in mq.with_entities(b, Meeting.status, func.count()).group_by(b, Meeting.status).all():
+            data.setdefault(p.date().isoformat(), {})["scheduled" if st not in ("completed", "canceled") else st] = c
+        keys = ["completed", "scheduled", "canceled"]
+        rows = _fill(data, start, end, bucket, keys)
+        done, up, gone = (sum(r[k] for r in rows) for k in keys)
+        by_proj = mq.join(Project, Project.id == Meeting.project_id).with_entities(Project.name, func.count()).group_by(Project.name).order_by(func.count().desc()).limit(8).all()
+        return {"title": "Site visits", "columns": [_col("period", "Period", "date"), _col("completed", "Completed", "number"), _col("scheduled", "Scheduled", "number"), _col("canceled", "Cancelled", "number")], "rows": rows,
+                "chart": {"type": "bar", "stacked": True, "x": "period", "series": [{"key": "completed", "label": "Completed"}, {"key": "scheduled", "label": "Scheduled"}, {"key": "canceled", "label": "Cancelled"}]},
+                "summary": [{"label": "Site visits", "value": done + up + gone, "format": "number"}, {"label": "Completed", "value": done, "format": "number"}, {"label": "Still scheduled", "value": up, "format": "number"},
+                            {"label": "Show-up rate", "value": round(done / (done + gone) * 100, 1) if (done + gone) else 0, "format": "percent"}],
+                "breakdown": {"title": "Most visited projects", "rows": [{"label": r[0], "value": r[1]} for r in by_proj]}}
+    if rtype == "projects":
+        from app.models import Unit
+
+        def per(model, col, *flt):
+            q = s.query(model.project_id, func.count(), func.coalesce(func.sum(col), 0) if col is not None else func.count()).filter(model.workspace_id == ws, model.deleted_at.is_(None), model.project_id.isnot(None), *flt)
+            if owner and model is Lead:
+                q = q.filter(Lead.owner_id == owner)
+            if owner and model is Deal:
+                q = q.filter(Deal.owner_id == owner)
+            return {r[0]: (r[1], float(r[2] or 0)) for r in q.group_by(model.project_id)}
+        leads_p = per(Lead, None, Lead.created_at >= start, Lead.created_at <= end)
+        visits_p = per(Meeting, None, Meeting.kind == "site_visit", Meeting.starts_at >= start, Meeting.starts_at <= end)
+        won_p = per(Deal, Deal.value, Deal.status == "won", Deal.closed_at >= start, Deal.closed_at <= end)
+        avail = dict(s.query(Unit.project_id, func.count()).filter(Unit.workspace_id == ws, Unit.deleted_at.is_(None), Unit.status.in_(("for_sale", "for_rent"))).group_by(Unit.project_id))
+        rows = []
+        for pid, name in s.query(Project.id, Project.name).filter(Project.workspace_id == ws, Project.deleted_at.is_(None)):
+            rows.append({"project": name, "leads": leads_p.get(pid, (0, 0))[0], "visits": visits_p.get(pid, (0, 0))[0], "deals_won": won_p.get(pid, (0, 0))[0],
+                         "revenue": won_p.get(pid, (0, 0))[1], "available": avail.get(pid, 0)})
+        rows.sort(key=lambda r: (-r["revenue"], -r["leads"]))
+        return {"title": "Projects", "columns": [_col("project", "Project"), _col("leads", "New leads", "number"), _col("visits", "Site visits", "number"), _col("deals_won", "Deals won", "number"),
+                                                 _col("revenue", "Revenue", "currency"), _col("available", "Flats available", "number")], "rows": rows,
+                "chart": {"type": "bar", "x": "project", "series": [{"key": "leads", "label": "New leads"}, {"key": "visits", "label": "Site visits"}, {"key": "deals_won", "label": "Deals won"}]},
+                "summary": [{"label": "New leads", "value": sum(r["leads"] for r in rows), "format": "number"}, {"label": "Site visits", "value": sum(r["visits"] for r in rows), "format": "number"},
+                            {"label": "Deals won", "value": sum(r["deals_won"] for r in rows), "format": "number"}, {"label": "Revenue", "value": sum(r["revenue"] for r in rows), "format": "currency"}],
+                "breakdown": {"title": "Where the revenue came from", "rows": [{"label": r["project"], "value": r["revenue"], "format": "money"} for r in rows if r["revenue"]]}}
     raise ValueError(rtype)
+
+
+delta_pct = _delta
