@@ -14,7 +14,7 @@ from app.models.base import utcnow
 REPORT_TYPES = {
     "revenue": "Revenue", "sales": "Sales", "leads": "Leads", "conversion": "Conversion", "pipeline": "Pipeline",
     "team_performance": "Team performance", "deal_velocity": "Deal velocity", "activity": "Activity", "forecast": "Forecast",
-    "customer_acquisition": "Customer acquisition",
+    "customer_acquisition": "Customer acquisition", "inventory": "Inventory",
 }
 ADVANCED = {"team_performance", "deal_velocity", "forecast", "customer_acquisition", "activity", "conversion"}
 
@@ -317,4 +317,29 @@ def run_report(rtype: str, start: dt.datetime, end: dt.datetime, owner=None, pip
         return {"title": "Customer acquisition", "columns": [_col("period", "Period", "date"), _col("new_customers", "New customers", "number")], "rows": rows,
                 "chart": {"type": "bar", "x": "period", "series": [{"key": "new_customers", "label": "New customers"}]},
                 "summary": [{"label": "New customers", "value": sum(r["new_customers"] for r in rows), "format": "number"}, {"label": "New contacts", "value": contacts, "format": "number"}]}
+    if rtype == "inventory":
+        from app.models import Project, Unit
+        names = dict(s.query(Project.id, Project.name).filter(Project.workspace_id == ws, Project.deleted_at.is_(None)))
+        counts: dict = {}
+        for pid, st, n in s.query(Unit.project_id, Unit.status, func.count()).filter(Unit.workspace_id == ws, Unit.deleted_at.is_(None)).group_by(Unit.project_id, Unit.status):
+            counts.setdefault(pid, {})[st] = n
+        keys = ["vacant", "for_sale", "for_rent", "on_hold", "booked", "sold", "rented", "self_occupied"]
+        rows = []
+        for pid, name in names.items():
+            c = counts.get(pid, {})
+            total = sum(c.values())
+            if not total:
+                continue
+            closed = c.get("sold", 0) + c.get("rented", 0)
+            rows.append({"project": name, **{k: c.get(k, 0) for k in keys}, "total": total, "closed_pct": round(closed / total * 100, 1)})
+        rows.sort(key=lambda r: -r["total"])
+        tot = {k: sum(r[k] for r in rows) for k in keys}
+        grand = sum(r["total"] for r in rows)
+        available = tot["for_sale"] + tot["for_rent"]
+        return {"title": "Inventory", "columns": [_col("project", "Project"), *[_col(k, k.replace("_", " ").title(), "number") for k in keys], _col("total", "Total", "number"), _col("closed_pct", "Sold / rented", "percent")], "rows": rows,
+                "chart": {"type": "bar", "stacked": True, "x": "project", "series": [{"key": k, "label": k.replace("_", " ").title()} for k in keys if tot[k]]},
+                "summary": [{"label": "Total flats", "value": grand, "format": "number"}, {"label": "Available now", "value": available, "format": "number"},
+                            {"label": "On hold / booked", "value": tot["on_hold"] + tot["booked"], "format": "number"},
+                            {"label": "Sold or rented", "value": round((tot["sold"] + tot["rented"]) / grand * 100, 1) if grand else 0, "format": "percent"}],
+                "breakdown": {"title": "All projects, by status", "rows": [{"label": k.replace("_", " "), "value": tot[k]} for k in keys if tot[k]]}}
     raise ValueError(rtype)
