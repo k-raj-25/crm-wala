@@ -124,7 +124,7 @@ const FEATURES = [
   [Clock, "Holds that expire", "Hold a flat for a client for a set time. It goes back on the market on its own."],
   [Users, "Leads & clients", "Enquiries from portals, walk-ins and referrals in one list, with owners and follow-ups."],
   [Kanban, "Deal pipeline", "Enquiry → Site visit → Negotiation → Token → Closed. Drag to move; the flat updates itself."],
-  [CalendarDays, "Site visits", "Schedule visits against a flat. Day, week and month views, plus reminders."],
+  [CalendarDays, "Calendar", "Schedule site visits against a flat. Day, week and month views, plus reminders."],
   [CheckCircle2, "Daily plan", "Today's calls, follow-ups and visits at the top, overdue in red. Nothing hides."],
   [Mail, "Email & calls", "Send brochures, log calls and keep every conversation on the right client."],
   [Workflow, "Automations", "New enquiry? Assign it, send the brochure, create a call task and remind in 2 days."],

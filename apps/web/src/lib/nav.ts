@@ -9,7 +9,7 @@ export const NAV: NavItem[] = [
   { href: "/app/leads", label: "Leads", icon: Users, perm: "leads.read", chord: "l" },
   { href: "/app/contacts", label: "Clients", icon: UserRound, perm: "contacts.read", chord: "c" },
   { href: "/app/pipeline", label: "Pipeline", icon: Kanban, perm: "deals.read", chord: "p" },
-  { href: "/app/calendar", label: "Site Visits", icon: CalendarDays, perm: "meetings.read", chord: "k" },
+  { href: "/app/calendar", label: "Calendar", icon: CalendarDays, perm: "meetings.read", chord: "k" },
   { href: "/app/tasks", label: "Daily Plan", icon: CheckSquare, perm: "tasks.read", chord: "t" },
   { href: "/app/inbox", label: "Inbox", icon: Inbox, perm: "emails.read", chord: "i" },
   { href: "/app/reports", label: "Reports", icon: BarChart3, perm: "reports.read", chord: "r", more: true },
