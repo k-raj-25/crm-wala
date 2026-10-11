@@ -5,7 +5,7 @@ import { Building2, MapPin, Plus, Search } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import * as React from "react";
-import { Badge, Button, Card, EmptyState, ErrorState, Input, Skeleton, useDebounce } from "@crm/ui";
+import { Button, Card, EmptyState, ErrorState, Input, Skeleton, useDebounce } from "@crm/ui";
 import { PageContainer, PageHeader } from "@/components/shell/page";
 import { api } from "@/lib/api";
 import { useAccess } from "@/lib/queries";
@@ -22,7 +22,7 @@ function ProjectCard({ p, i }: { p: Project; i: number }) {
     <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i * 0.05, 0.4), duration: 0.35, ease: [0.16, 1, 0.3, 1] }}>
       <Link href={`/app/projects/${p.id}`} className="group block overflow-hidden rounded-2xl border border-border bg-surface shadow-xs transition-all hover:-translate-y-0.5 hover:border-border-strong hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring)]">
         <div className="relative"><ProjectSkyline towers={p.towers} counts={s.counts} />
-          <div className="absolute left-3 top-3 flex gap-1.5">{stage && <Badge tone={p.stage === "ready" ? "success" : p.stage === "under_construction" ? "warning" : "info"}>{stage}</Badge>}</div></div>
+          <div className="absolute left-3 top-3 flex gap-1.5">{stage && <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1 text-xs font-semibold text-fg shadow-sm"><span className={`size-2 rounded-full ${p.stage === "ready" ? "bg-success" : p.stage === "under_construction" ? "bg-warning" : "bg-info"}`} />{stage}</span>}</div></div>
         <div className="space-y-3 p-4">
           <div>
             <h2 className="truncate text-[17px] font-semibold tracking-tight group-hover:text-primary">{p.name}</h2>
