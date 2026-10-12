@@ -238,6 +238,8 @@ def _ping(provider: str, key: str, model: str | None) -> str:
     try:
         res = p.complete("ping", "Reply with the single word OK.", "Say OK", {}, None, 64)
     except ApiError as e:
+        if e.code == "ai_model_missing":
+            raise ApiError(400, e.code, f"{spec['label']} doesn't offer the model \"{p.model}\" on this key. Type a model your account can use under Models, or leave it blank for the recommended one.")
         raise ApiError(400, e.code, e.message)
     return res.model or ""
 

@@ -21,7 +21,7 @@ PROVIDERS: dict[str, dict] = {
                "key_hint": "Starts with sk-…", "key_url": "https://platform.openai.com/api-keys"},
     "anthropic": {"label": "Anthropic (Claude)", "fast": "claude-haiku-5-5", "smart": "claude-sonnet-5-5", "audio": False,
                   "key_hint": "Starts with sk-ant-…", "key_url": "https://console.anthropic.com/settings/keys"},
-    "gemini": {"label": "Google Gemini", "base_url": "https://generativelanguage.googleapis.com/v1beta/openai", "fast": "gemini-2.5-flash", "smart": "gemini-2.5-pro",
+    "gemini": {"label": "Google Gemini", "base_url": "https://generativelanguage.googleapis.com/v1beta/openai", "fast": "gemini-3.5-flash-lite", "smart": "gemini-3.8-flash",
                "audio": False, "key_hint": "From Google AI Studio", "key_url": "https://aistudio.google.com/app/apikey"},
     "openrouter": {"label": "OpenRouter (any model)", "base_url": "https://openrouter.ai/api/v1", "fast": "openai/gpt-4.1-mini", "smart": "anthropic/claude-sonnet-5-5",
                    "audio": False, "key_hint": "Starts with sk-or-…", "key_url": "https://openrouter.ai/keys"},

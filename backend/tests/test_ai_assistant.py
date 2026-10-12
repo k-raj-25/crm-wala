@@ -308,7 +308,7 @@ def test_key_test_shows_the_providers_reason(client, monkeypatch):
         r = client.put("/api/v1/ai/settings", json={"provider": "anthropic", "api_key": key})
         err = r.get_json()["error"]
         assert r.status_code == 400 and err["code"] == code, err
-        assert body["error"]["message"] in err["message"]
+        assert ("claude-haiku-5-5" if code == "ai_model_missing" else body["error"]["message"]) in err["message"]
 
 
 def test_reopened_chat_remembers_what_was_approved(client):
