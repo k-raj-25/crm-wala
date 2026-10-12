@@ -86,6 +86,7 @@ class CrudResource:
     bulk_fields: ClassVar[set[str]] = set()
     export_columns: ClassVar[list[tuple[str, Callable[[Any], Any]]]] = []
     owner_field: ClassVar[str | None] = "owner_id"
+    perm: ClassVar[str | None] = None  # permission prefix when it differs from the URL segment (calls are covered by meetings.*)
 
     # ---- hooks -------------------------------------------------------------------------
     def base_query(self):
@@ -157,6 +158,10 @@ class CrudResource:
                 vals = csv_list(param)
                 if vals:
                     q = q.where(col.overlap(cast(vals, PG_ARRAY(String))))
+            elif kind == "like":
+                v = request.args.get(param)
+                if v:
+                    q = q.where(col.ilike(f"%{v.replace('%', '')[:80]}%"))
             elif kind == "bool":
                 v = request.args.get(param)
                 if v in ("true", "false"):
@@ -292,7 +297,7 @@ class CrudResource:
         rows = db.session.scalars(self.base_query().where(self.model.id.in_(ids))).unique().all()
         value = body.get("value")
         if action == "delete":
-            require(f"{self.name}.delete")
+            require(f"{self.perm or self.name}.delete")
             from app.models.base import utcnow
 
             for o in rows:
@@ -301,7 +306,7 @@ class CrudResource:
             audit.record(f"{self.entity_type}.bulk_deleted", entity_type=self.entity_type, summary=f"Deleted {len(rows)} {self.name}",
                          before={"ids": [str(o.id) for o in rows]})
         else:
-            require(f"{self.name}.update")
+            require(f"{self.perm or self.name}.update")
             if action == "assign" and self.owner_field:
                 try:
                     uid = uuid.UUID(str(value)) if value else None
@@ -351,14 +356,14 @@ class CrudResource:
 
     # ---- routing -----------------------------------------------------------------------
     def register(self, bp: Blueprint) -> None:
-        n = self.name
-        bp.add_url_rule("", f"{n}_list", protect(f"{n}.read")(self.list), methods=["GET"])
-        bp.add_url_rule("", f"{n}_create", protect(f"{n}.create")(self.create), methods=["POST"])
-        bp.add_url_rule("/<uuid:ident>", f"{n}_get", protect(f"{n}.read")(self.get), methods=["GET"])
-        bp.add_url_rule("/<uuid:ident>", f"{n}_update", protect(f"{n}.update")(self.update), methods=["PATCH"])
-        bp.add_url_rule("/<uuid:ident>", f"{n}_delete", protect(f"{n}.delete")(self.delete), methods=["DELETE"])
-        bp.add_url_rule("/bulk", f"{n}_bulk", protect(f"{n}.read")(self.bulk), methods=["POST"])
-        bp.add_url_rule("/export", f"{n}_export", protect(f"{n}.read", allow_restricted=True)(self.export), methods=["GET"])
+        n, pp = self.name, self.perm or self.name
+        bp.add_url_rule("", f"{n}_list", protect(f"{pp}.read")(self.list), methods=["GET"])
+        bp.add_url_rule("", f"{n}_create", protect(f"{pp}.create")(self.create), methods=["POST"])
+        bp.add_url_rule("/<uuid:ident>", f"{n}_get", protect(f"{pp}.read")(self.get), methods=["GET"])
+        bp.add_url_rule("/<uuid:ident>", f"{n}_update", protect(f"{pp}.update")(self.update), methods=["PATCH"])
+        bp.add_url_rule("/<uuid:ident>", f"{n}_delete", protect(f"{pp}.delete")(self.delete), methods=["DELETE"])
+        bp.add_url_rule("/bulk", f"{n}_bulk", protect(f"{pp}.read")(self.bulk), methods=["POST"])
+        bp.add_url_rule("/export", f"{n}_export", protect(f"{pp}.read", allow_restricted=True)(self.export), methods=["GET"])
 
 
 def _csv_safe(v: Any) -> Any:

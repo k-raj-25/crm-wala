@@ -31,6 +31,8 @@ def record(
             elif user is not None:
                 actor_type, actor_id, actor_label = "user", user.id, user.name
                 impersonator = getattr(g, "impersonator_id", None)
+                if request.args.get("via") == "ai":  # the person approved a change the AI assistant prepared
+                    actor_label = f"{user.name} (via AI assistant)"
         if workspace_id is None and getattr(g, "workspace", None) is not None:
             workspace_id = g.workspace.id
     row = AuditLog(

@@ -52,6 +52,10 @@ ACTIONS = {
     "delay": {"label": "Wait", "fields": [{"key": "amount", "label": "Amount", "type": "number", "default": 1},
                                          {"key": "unit", "label": "Unit", "type": "select", "options": ["minutes", "hours", "days"], "default": "days"}]},
     "create_activity": {"label": "Create activity", "fields": [{"key": "title", "label": "Activity title", "type": "text"}]},
+    # AI steps: use the workspace's own AI key when connected, and built-in rules otherwise, so they never block a run.
+    "ai_classify_lead": {"label": "AI: tag hot / warm / cold, broker or spam", "fields": []},
+    "ai_extract_requirements": {"label": "AI: fill budget, size and area from the message", "fields": []},
+    "ai_draft_reply": {"label": "AI: draft a first reply for the owner", "fields": [{"key": "channel", "label": "Reply on", "type": "select", "options": ["whatsapp", "email"], "default": "whatsapp"}]},
 }
 MAX_NODES = 20
 
@@ -312,4 +316,29 @@ def _perform(action: str, cfg: dict, run: AutomationRun, ws) -> str:
                                 lead_id=rec.id if isinstance(rec, Lead) else None, deal_id=rec.id if isinstance(rec, Deal) else None,
                                 contact_id=rec.id if isinstance(rec, Contact) else None, occurred_at=utcnow()))
         return "Activity created"
+    if action in ("ai_classify_lead", "ai_extract_requirements", "ai_draft_reply"):
+        return _perform_ai(action, cfg, rec, ws, owner_id)
     raise ValueError(f"Unknown action {action}")
+
+
+def _perform_ai(action: str, cfg: dict, rec, ws, owner_id) -> str:
+    from app.services.ai import features
+
+    if not isinstance(rec, Lead):
+        return "Skipped: AI steps work on leads"
+    if action == "ai_classify_lead":
+        c = features.classify_lead(rec, ws)
+        tags = set(rec.tags or [])
+        tags.add(c["kind"] if c["kind"] != "genuine" else c["temperature"])
+        rec.tags = sorted(tags)
+        rec.custom = {**(rec.custom or {}), "ai_triage": c}
+        return f"Tagged {c['kind'] if c['kind'] != 'genuine' else c['temperature']} — {c['reason']}"
+    if action == "ai_extract_requirements":
+        found = features.extract_requirements(rec, ws)
+        for k, v in found.items():
+            setattr(rec, k, v)
+        return "Filled " + ", ".join(found) if found else "Nothing new to fill"
+    msg = features.draft_reply(rec, ws, cfg.get("channel", "whatsapp"))
+    db.session.add(Task(workspace_id=ws, title=f"Reply to {rec.name}"[:240], description=f"Suggested {cfg.get('channel', 'whatsapp')} reply:\n\n{msg}", assignee_id=owner_id,
+                        kind="follow_up", priority="high", due_at=utcnow() + dt.timedelta(minutes=30), lead_id=rec.id))
+    return "Drafted a reply on a task for the owner"

@@ -160,8 +160,14 @@ def record_context(entity: str, ident: str) -> dict:
     if entity == "deal":
         base.update(_deal_row(rec), contact=rec.contact.name if rec.contact else None, status=rec.status, priority=rec.priority, description=rec.description)
     elif entity == "lead":
-        base.update(_lead_row(rec), email=rec.email, job_title=rec.job_title, description=rec.description, next_follow_up=rec.next_follow_up_at.isoformat() if rec.next_follow_up_at else None,
-                    score_reasons=rec.score_reasons)
+        from app.services import inventory
+
+        units, projects = inventory.labels_for({rec.unit_id}, {rec.project_id})
+        base.update(_lead_row(rec), email=rec.email, phone=rec.phone, job_title=rec.job_title, description=rec.description,
+                    next_follow_up=rec.next_follow_up_at.isoformat() if rec.next_follow_up_at else None, score_reasons=rec.score_reasons, intent=rec.intent,
+                    property_type=rec.property_type, bhk=rec.bhk, budget_min=float(rec.budget_min) if rec.budget_min is not None else None,
+                    budget_max=float(rec.budget_max) if rec.budget_max is not None else None, preferred_area=rec.location, tags=rec.tags,
+                    project=projects.get(rec.project_id), flat=units.get(rec.unit_id), owner=(db.session.get(User, rec.owner_id).name if rec.owner_id else None))
     elif entity == "contact":
         deals = db.session.query(Deal).filter(Deal.contact_id == rid, Deal.deleted_at.is_(None)).all() if _can("deals.read") else []
         base.update(email=rec.email, job_title=rec.job_title, company=rec.company.name if rec.company else None, description=rec.description,
@@ -174,7 +180,7 @@ def record_context(entity: str, ident: str) -> dict:
     return base
 
 
-TOOL_SPECS: list[dict] = [
+READ_SPECS: list[dict] = [
     {"name": "list_deals", "description": "List deals. Use for questions about pipeline, likely-to-close, highest-value, stalled or lost/won deals.",
      "input_schema": {"type": "object", "properties": {"status": {"type": "string", "enum": ["open", "won", "lost", "any"]}, "closing": {"type": "string", "enum": ["this_month", "next_30_days"]},
                                                       "sort": {"type": "string", "enum": ["value", "probability", "close_date"]}, "min_value": {"type": "number"}, "stale_days": {"type": "integer"}, "limit": {"type": "integer"}}}},
@@ -195,13 +201,141 @@ TOOLS: dict[str, Callable[..., dict]] = {
 }
 
 
+
+
+# ---- real-estate read tools ---------------------------------------------------------------------------------------------
+
+def find_flats(project: str | None = None, bhk: str | None = None, status: str | None = None, max_price: float | None = None, min_price: float | None = None,
+               for_rent: bool | None = None, facing: str | None = None, limit: int = 10) -> dict:
+    if not _can("units.read"):
+        return {"error": "You don't have permission to view flats."}
+    from app.models import Project, Unit
+    from app.services import inventory
+    from app.services.ai import extract
+
+    q = db.session.query(Unit).filter(Unit.workspace_id == g.workspace.id, Unit.deleted_at.is_(None))
+    if project:
+        q = q.join(Project, Project.id == Unit.project_id).filter(Project.name.ilike(f"%{project}%"))
+    if bhk:
+        q = q.filter(Unit.bhk == (extract.bhk(bhk) or bhk))
+    q = q.filter(Unit.status == status) if status else q.filter(Unit.status.in_(inventory.AVAILABLE))
+    price = Unit.monthly_rent if for_rent else Unit.sale_price
+    if max_price:
+        q = q.filter(price <= max_price)
+    if min_price:
+        q = q.filter(price >= min_price)
+    if facing:
+        q = q.filter(Unit.facing.ilike(f"%{facing}%"))
+    total = q.count()
+    rows = q.order_by(price.asc().nullslast()).limit(min(limit, 25)).all()
+    labels, _ = inventory.labels_for({u.id for u in rows}, set())
+    return {"total": total, "units": [{"id": str(u.id), "label": labels.get(u.id, u.name), "bhk": u.bhk, "area_sqft": float(u.area_sqft) if u.area_sqft else None, "floor": u.floor,
+                                       "facing": u.facing, "status": u.status, "sale_price": float(u.sale_price) if u.sale_price else None,
+                                       "monthly_rent": float(u.monthly_rent) if u.monthly_rent else None,
+                                       "url": f"/app/projects/{u.project_id}?tower={u.tower_id}&unit={u.id}"} for u in rows]}
+
+
+def list_projects() -> dict:
+    if not _can("projects.read"):
+        return {"error": "You don't have permission to view projects."}
+    from app.models import Project, Unit
+    from app.services import inventory
+
+    ps = db.session.query(Project).filter(Project.workspace_id == g.workspace.id, Project.deleted_at.is_(None)).order_by(Project.name).limit(40).all()
+    counts = inventory.counts_by(Unit.project_id, [p.id for p in ps])
+    return {"projects": [{"id": str(p.id), "name": p.name, "city": p.city, "locality": p.locality, "stage": p.stage, "possession": p.possession_date.isoformat() if p.possession_date else None,
+                          **inventory.summarize(counts.get(p.id, {})), "url": f"/app/projects/{p.id}"} for p in ps]}
+
+
+def list_site_visits(view: str = "upcoming", mine: bool = False, limit: int = 15) -> dict:
+    if not _can("meetings.read"):
+        return {"error": "You don't have permission to view site visits."}
+    from app.models import Meeting, Project
+
+    now = utcnow()
+    start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    q = db.session.query(Meeting).filter(Meeting.workspace_id == g.workspace.id, Meeting.deleted_at.is_(None), Meeting.kind == "site_visit")
+    if mine:
+        q = q.filter(Meeting.organizer_id == g.user.id)
+    if view == "today":
+        q = q.filter(Meeting.starts_at >= start, Meeting.starts_at < start + dt.timedelta(days=1))
+    elif view == "past_7_days":
+        q = q.filter(Meeting.starts_at >= now - dt.timedelta(days=7), Meeting.starts_at < now)
+    else:
+        q = q.filter(Meeting.starts_at >= now)
+    rows = q.order_by(Meeting.starts_at).limit(limit).all()
+    names = {p.id: p.name for p in db.session.query(Project).filter(Project.id.in_({m.project_id for m in rows if m.project_id}))} if rows else {}
+    return {"visits": [{"title": m.title, "starts_at": m.starts_at.isoformat(), "status": m.status, "project": names.get(m.project_id), "location": m.location,
+                        "lead_url": f"/app/leads/{m.lead_id}" if m.lead_id else None, "url": f"/app/leads/{m.lead_id}" if m.lead_id else "/app/calendar"} for m in rows]}
+
+
+def run_report(report: str, days: int = 90) -> dict:
+    if not _can("reports.read"):
+        return {"error": "You don't have permission to view reports."}
+    if report not in reporting.REPORT_TYPES:
+        return {"error": "Unknown report. Options: " + ", ".join(reporting.REPORT_TYPES)}
+    end = utcnow()
+    r = reporting.run_report(report, end - dt.timedelta(days=max(1, min(days, 730))), end)
+    out = {"title": r["title"], "days": days, "summary": r.get("summary"), "rows": (r.get("rows") or [])[:30]}
+    if r.get("breakdown"):
+        out["breakdown"] = r["breakdown"]
+        rows = r["breakdown"]["rows"][:12]
+        if rows:
+            out["chart"] = {"type": "bar", "title": r["breakdown"]["title"], "x": "label", "series": [{"key": "value", "label": r["breakdown"]["title"]}], "data": rows,
+                            "format": rows[0].get("format")}
+    elif r.get("chart") and r.get("rows"):
+        c = r["chart"]
+        out["chart"] = {"type": c.get("type", "bar"), "title": r["title"], "x": c.get("x"), "series": c.get("series"), "data": r["rows"][:24]}
+    return out
+
+
+def list_team() -> dict:
+    rows = db.session.query(User.id, User.name).join(WorkspaceMember, WorkspaceMember.user_id == User.id).filter(
+        WorkspaceMember.workspace_id == g.workspace.id, WorkspaceMember.status == "active").order_by(User.name).all()
+    return {"members": [{"id": str(i), "name": n} for i, n in rows], "you": g.user.name}
+
+
+def help_topics(query: str) -> dict:
+    from app.services.ai import help as help_kb
+
+    return {"articles": help_kb.search(query)}
+
+
+READ_SPECS += [
+    {"name": "find_flats", "description": "Find flats (units) in inventory. Default: only available ones (vacant / for sale / for rent).",
+     "input_schema": {"type": "object", "properties": {"project": {"type": "string"}, "bhk": {"type": "string"}, "status": {"type": "string"}, "max_price": {"type": "number"},
+                                                       "min_price": {"type": "number"}, "for_rent": {"type": "boolean"}, "facing": {"type": "string"}, "limit": {"type": "integer"}}}},
+    {"name": "list_projects", "description": "Projects with how many flats are available, sold, on hold.", "input_schema": {"type": "object", "properties": {}}},
+    {"name": "list_site_visits", "description": "Site visits: today, upcoming, or past_7_days.",
+     "input_schema": {"type": "object", "properties": {"view": {"type": "string", "enum": ["today", "upcoming", "past_7_days"]}, "mine": {"type": "boolean"}}}},
+    {"name": "run_report", "description": "Run a report and get its numbers (a chart is shown to the user automatically). Use 'leads' or 'conversion' for questions about lead sources.",
+     "input_schema": {"type": "object", "properties": {"report": {"type": "string", "enum": list(reporting.REPORT_TYPES)}, "days": {"type": "integer"}}, "required": ["report"]}},
+    {"name": "list_team", "description": "Active teammates (for assigning work).", "input_schema": {"type": "object", "properties": {}}},
+    {"name": "help_topics", "description": "How-to articles about using CRM Wala (where things are, how to do something).",
+     "input_schema": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}},
+]
+TOOLS.update({"find_flats": find_flats, "list_projects": list_projects, "list_site_visits": list_site_visits, "run_report": run_report, "list_team": list_team,
+              "help_topics": help_topics})
+TOOL_SPECS = READ_SPECS  # kept for callers that only need read tools
+
+
+def specs(with_actions: bool) -> list[dict]:
+    from app.services.ai import actions
+
+    return READ_SPECS + (actions.SPECS if with_actions else [s for s in actions.SPECS if s["name"] == "propose_navigation"])
+
+
 def run_tool(name: str, args: dict) -> dict:
+    from app.services.ai import actions, settings as ai_settings
+
+    if name in actions.PROPOSERS:
+        if name != "propose_navigation" and not ai_settings.resolve().enabled("actions"):
+            return {"error": "Making changes through the assistant is turned off in this workspace."}
+        return actions.run(name, args)
     fn = TOOLS.get(name)
     if fn is None:
         return {"error": f"Unknown tool {name}"}
     allowed = {k: v for k, v in (args or {}).items() if k in fn.__code__.co_varnames[:fn.__code__.co_argcount]}
-    if name == "list_deals" and allowed.get("status") == "any":
-        allowed["status"] = "any"
     try:
         return fn(**allowed)
     except TypeError:

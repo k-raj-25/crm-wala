@@ -88,6 +88,7 @@ class NoteResource(_Related):
 
 class CallResource(_Related):
     name, entity_type, model = "calls", "call", Call
+    perm = "meetings"
     create_schema, patch_schema = CallIn, CallPatch
     owner_field = "user_id"
     sort_fields = {"created_at": Call.created_at, "occurred_at": Call.occurred_at, "scheduled_at": Call.scheduled_at}

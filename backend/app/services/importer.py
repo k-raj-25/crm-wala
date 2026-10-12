@@ -28,7 +28,9 @@ FIELDS: dict[str, list[dict]] = {
         {"key": "last_name", "label": "Last name"}, {"key": "email", "label": "Email"}, {"key": "phone", "label": "Phone"},
         {"key": "company_name", "label": "Company"}, {"key": "job_title", "label": "Job title"}, {"key": "source", "label": "Source"},
         {"key": "status", "label": "Status"}, {"key": "location", "label": "Location"}, {"key": "tags", "label": "Tags", "hint": "Comma separated"},
-        {"key": "description", "label": "Notes"},
+        {"key": "description", "label": "Notes"}, {"key": "intent", "label": "Looking to", "hint": "buy, rent, invest…"},
+        {"key": "property_type", "label": "Property type", "hint": "flat, villa, plot…"}, {"key": "bhk", "label": "Size (BHK)"},
+        {"key": "budget", "label": "Budget", "hint": "e.g. 80L - 1.2 Cr"}, {"key": "budget_min", "label": "Budget from"}, {"key": "budget_max", "label": "Budget up to"},
     ],
     "contacts": [
         {"key": "full_name", "label": "Full name", "hint": "Split into first/last"}, {"key": "first_name", "label": "First name", "required": True},
@@ -49,15 +51,18 @@ FIELDS: dict[str, list[dict]] = {
     ],
 }
 ALIASES = {
-    "full_name": ["name", "full name", "fullname", "contact name", "contact"], "first_name": ["first name", "firstname", "given name", "first"],
+    "full_name": ["name", "full name", "fullname", "contact name", "contact", "naam", "client name", "customer name", "buyer name"], "first_name": ["first name", "firstname", "given name", "first"],
     "last_name": ["last name", "lastname", "surname", "family name", "last"], "email": ["email address", "e-mail", "mail", "email id"],
-    "phone": ["phone number", "mobile", "telephone", "tel", "cell", "contact number"], "company_name": ["company", "organization", "organisation", "account", "employer"],
+    "phone": ["phone number", "mobile", "telephone", "tel", "cell", "contact number", "mobile no", "mobile number", "mob", "mob no", "phone no", "contact no", "whatsapp", "whatsapp number"], "company_name": ["company", "organization", "organisation", "account", "employer"],
     "company": ["company name", "organization", "organisation", "account"], "job_title": ["title", "job", "position", "designation", "role"],
-    "source": ["lead source", "origin", "channel"], "status": ["lead status", "stage"], "location": ["city", "address", "country", "region"],
+    "source": ["lead source", "origin", "channel"], "status": ["lead status", "stage"], "location": ["city", "address", "country", "region", "area", "locality", "preferred location", "sector"],
     "tags": ["labels", "tag"], "description": ["notes", "note", "comments", "description", "remarks"], "name": ["deal name", "deal", "title", "company name", "account name"],
     "website": ["url", "site", "web", "domain"], "industry": ["sector", "vertical"], "size": ["employees", "company size", "team size"],
     "annual_revenue": ["revenue", "turnover"], "value": ["amount", "deal value", "deal amount", "price"], "stage": ["pipeline stage", "deal stage"],
     "expected_close_date": ["close date", "expected close", "closing date"], "contact_email": ["contact", "email"],
+    "intent": ["requirement type", "purpose", "buy or rent", "looking for", "transaction"], "property_type": ["property type", "type", "property"],
+    "bhk": ["configuration", "config", "size", "bhk", "unit type", "bedrooms"], "budget": ["budget", "budget range", "price range", "price"],
+    "budget_min": ["min budget", "budget min", "budget from"], "budget_max": ["max budget", "budget max", "budget to", "budget upto"],
 }
 
 
@@ -125,12 +130,46 @@ def _row_to_data(entity: str, mapping: dict[str, str], row: dict[str, Any]) -> d
             out.setdefault("last_name", parts[1])
     if "tags" in out and isinstance(out["tags"], str):
         out["tags"] = [t.strip() for t in re.split(r"[,;|]", out["tags"]) if t.strip()]
+    if entity == "leads":
+        _real_estate(out)
     if "annual_revenue" in out or "value" in out:
         for k in ("annual_revenue", "value"):
             if k in out and isinstance(out[k], str):
                 cleaned = re.sub(r"[^\d.\-]", "", out[k])
                 out[k] = cleaned or None
     return out
+
+
+def _real_estate(out: dict[str, Any]) -> None:
+    """Clean what brokers' sheets actually contain: '85 lakh', '2bhk', 'Rent', '98765-43210'."""
+    from app.services.ai import extract
+
+    if out.get("phone"):
+        out["phone"] = extract.normalize_phone(str(out["phone"]))
+    if "budget" in out:
+        lo, hi = extract.parse_budget(str(out.pop("budget")))
+        out.setdefault("budget_min", lo)
+        out.setdefault("budget_max", hi)
+    for k in ("budget_min", "budget_max"):
+        if isinstance(out.get(k), str):
+            vals = extract.money_values(out[k])
+            out[k] = vals[0] if vals else None
+        if out.get(k) is None:
+            out.pop(k, None)
+    if out.get("bhk"):
+        out["bhk"] = extract.bhk(str(out["bhk"])) or (f"{out['bhk']} BHK" if str(out["bhk"]).strip().isdigit() else str(out["bhk"])[:20])
+    if out.get("intent"):
+        it = extract.intent(str(out["intent"])) or {"purchase": "buy", "sale": "buy", "resale": "buy", "lease": "rent", "investment": "invest"}.get(str(out["intent"]).lower().strip())
+        if it:
+            out["intent"] = it
+        else:
+            out.pop("intent")
+    if out.get("property_type"):
+        pt = extract.property_type(str(out["property_type"]))
+        if pt:
+            out["property_type"] = pt
+        else:
+            out.pop("property_type")
 
 
 def _schema(entity: str):
