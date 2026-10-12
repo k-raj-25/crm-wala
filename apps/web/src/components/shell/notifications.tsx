@@ -9,6 +9,7 @@ import { Button, EmptyState, Popover, PopoverContent, PopoverTrigger, Skeleton, 
 import { api } from "@/lib/api";
 import { useNotifications } from "@/lib/queries";
 import type { NotificationItem } from "@/lib/types";
+import { navigate } from "./pending-nav";
 
 const ICONS: Record<string, React.ElementType> = { new_lead: UserPlus, task_assigned: CheckSquare, deal_update: Handshake, mention: AtSign, meeting_reminder: CalendarClock, automation: Workflow, payment_issue: AlertCircle, trial_ending: Sparkles, system: Settings2 };
 const TONES: Record<string, string> = { payment_issue: "bg-danger-soft text-danger", trial_ending: "bg-warning-soft text-warning", new_lead: "bg-success-soft text-success", deal_update: "bg-primary-soft text-primary" };
@@ -28,7 +29,7 @@ export function useOpenNotification() {
   const qc = useQueryClient(); const router = useRouter();
   return async (n: NotificationItem) => {
     if (!n.read_at) { api.post(`/api/v1/notifications/${n.id}/read`).then(() => qc.invalidateQueries({ queryKey: ["notifications"] })).catch(() => {}); }
-    if (n.link) router.push(n.link);
+    if (n.link) navigate(router, n.link);
   };
 }
 
