@@ -290,3 +290,22 @@ def test_calls_follow_meetings_permission(app):
         m.role_id = sales.id
         db.session.commit()
     assert cl.post("/api/v1/calls", json={"lead_id": lead["id"], "outcome": "connected"}).status_code == 201
+
+
+def test_key_test_shows_the_providers_reason(client, monkeypatch):
+    reasons = {
+        "sk-ant-broke-0001": (400, {"type": "error", "error": {"type": "invalid_request_error", "message": "Your credit balance is too low to access the Anthropic API."}}, "ai_quota"),
+        "sk-ant-model-0002": (400, {"type": "error", "error": {"type": "invalid_request_error", "message": "model: claude-x not found"}}, "ai_model_missing"),
+        "sk-ant-other-0003": (400, {"type": "error", "error": {"type": "invalid_request_error", "message": "max_tokens: must be greater than thinking budget"}}, "ai_request_rejected"),
+    }
+
+    def fake_post(url, headers=None, json=None, timeout=None, **kw):
+        status, body, _ = reasons[headers["x-api-key"]]
+        return FakeResponse(status, body)
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    for key, (_, body, code) in reasons.items():
+        r = client.put("/api/v1/ai/settings", json={"provider": "anthropic", "api_key": key})
+        err = r.get_json()["error"]
+        assert r.status_code == 400 and err["code"] == code, err
+        assert body["error"]["message"] in err["message"]

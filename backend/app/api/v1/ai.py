@@ -236,7 +236,7 @@ def _ping(provider: str, key: str, model: str | None) -> str:
     spec = ai_settings.PROVIDERS[provider]
     p = AnthropicProvider(key, model or spec["fast"], 20) if provider == "anthropic" else OpenAIProvider(key, model or spec["fast"], spec["base_url"], provider, 20)
     try:
-        res = p.complete("ping", "Reply with the single word OK.", "Say OK", {}, None, 5)
+        res = p.complete("ping", "Reply with the single word OK.", "Say OK", {}, None, 64)
     except ApiError as e:
         raise ApiError(400, e.code, e.message)
     return res.model or ""

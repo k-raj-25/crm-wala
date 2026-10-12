@@ -56,18 +56,40 @@ def _parse_json(text: str) -> dict:
     raise ApiError(502, "ai_bad_output", "The AI returned something we couldn't read. Please try again.")
 
 
+def _provider_message(r: httpx.Response) -> str:
+    """The provider's own explanation, e.g. "Your credit balance is too low…"."""
+    try:
+        body = r.json()
+    except ValueError:
+        return ""
+    if isinstance(body, list) and body:  # Gemini wraps errors in a list
+        body = body[0]
+    err = body.get("error") if isinstance(body, dict) else None
+    msg = err.get("message") if isinstance(err, dict) else err if isinstance(err, str) else None
+    return str(msg or "").strip()[:240]
+
+
 def _fail(provider: str, r: httpx.Response) -> None:
     log.error("%s error %s: %s", provider, r.status_code, r.text[:300])
+    detail = _provider_message(r)
+    low = detail.lower()
     if r.status_code in (401, 403):
         msg = "Your AI key was rejected by the provider. An admin can update it in Settings → AI assistant."
         _note_error(msg)
         raise ApiError(502, "ai_key_invalid", msg)
-    if r.status_code == 429:
+    if r.status_code in (402, 429) or any(w in low for w in ("credit balance", "billing", "quota", "insufficient")):
         msg = "Your AI provider says the key is out of credit or rate-limited. Check your plan with the provider, then try again."
+        if detail:
+            msg += f" (Provider said: {detail})"
         _note_error(msg)
         raise ApiError(502, "ai_quota", msg)
-    if r.status_code == 404:
-        raise ApiError(502, "ai_model_missing", "The AI model set in Settings → AI assistant isn't available on your key. Pick another model.")
+    if r.status_code == 404 or "model" in low and any(w in low for w in ("not found", "does not exist", "not available", "invalid model")):
+        raise ApiError(502, "ai_model_missing", "The AI model set in Settings → AI assistant isn't available on your key. Pick another model."
+                       + (f" (Provider said: {detail})" if detail else ""))
+    if 400 <= r.status_code < 500:
+        msg = "Your AI provider refused the request" + (f": {detail}" if detail else ".")
+        _note_error(msg)
+        raise ApiError(502, "ai_request_rejected", msg)
     raise ApiError(502, "ai_provider_error", "The AI service is temporarily unavailable. Please try again.")
 
 
