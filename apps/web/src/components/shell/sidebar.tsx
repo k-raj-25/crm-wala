@@ -2,7 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Bell, Check, ChevronDown, ChevronsUpDown, HelpCircle, Keyboard, LifeBuoy, LogOut, Moon, PanelLeftClose, PanelLeftOpen, Plus, Settings2, Sun, User } from "lucide-react";
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import * as React from "react";
 import { Avatar, Badge, Button, DropdownContent, DropdownItem, DropdownLabel, DropdownMenu, DropdownSeparator, DropdownTrigger, Logo, LogoMark, Tooltip, cn, humanDuration, useLocalStorage, useTheme } from "@crm/ui";
@@ -93,6 +93,12 @@ export function UserMenu({ collapsed }: { collapsed?: boolean }) {
   );
 }
 
+/** Highlights the clicked item at once if its route hasn't been prefetched yet (slow networks); hidden for fast hops. */
+function NavPending() {
+  const { pending } = useLinkStatus();
+  return <span aria-hidden className={cn("absolute inset-0 rounded-lg bg-primary-soft opacity-0 transition-opacity", pending && "animate-pulse opacity-100 delay-100")} />;
+}
+
 export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
   const pathname = usePathname();
   const items = useNavItems();
@@ -107,6 +113,7 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
     const link = (
       <Link key={n.href} href={n.href} aria-current={a ? "page" : undefined}
         className={cn("group relative flex h-9 items-center gap-3 rounded-lg px-3 text-[13.5px] font-medium transition-colors", a ? "text-primary" : "text-fg-muted hover:bg-surface-hover hover:text-fg", collapsed && "justify-center px-0")}>
+        <NavPending />
         {a && <motion.span layoutId="nav-active" className="absolute inset-0 rounded-lg bg-primary-soft" transition={{ type: "spring", stiffness: 500, damping: 40 }} />}
         <n.icon className="relative size-[18px] shrink-0" />
         {!collapsed && <span className="relative flex-1 truncate">{n.label}</span>}
