@@ -66,7 +66,7 @@ def chat():
     g.ai_page = page
     res, proposals = assistant.ask(history, page)
     now = utcnow().isoformat()
-    # Proposals are kept with the message so a reopened conversation still shows what was offered (not whether it ran).
+    # Proposals are kept with the message; /proposals/outcome stamps their status so a reopened conversation shows what already ran.
     conv.messages = [*conv.messages, {"role": "user", "content": d.message, "at": now},
                      {"role": "assistant", "content": res.text, "sources": res.sources, "charts": res.charts, "proposals": proposals, "at": now}][-60:]
     analytics.track("ai_chat")
@@ -463,6 +463,21 @@ class OutcomeIn(Schema):
     outcome: str = Field(pattern="^(approved|cancelled|undone|failed)$")
     calls: int = Field(default=0, ge=0, le=1000)
     error: str | None = Field(default=None, max_length=300)
+    proposal_id: str | None = Field(default=None, max_length=40)
+    result_url: str | None = Field(default=None, max_length=300)
+
+
+def _remember_outcome(pid: str, outcome: str, result_url: str | None) -> None:
+    """Stamp the card in the saved conversation, so reopening the chat shows it as done instead of asking again."""
+    rows = db.session.query(AiConversation).filter_by(workspace_id=g.workspace.id, user_id=g.user.id).order_by(AiConversation.updated_at.desc()).limit(30).all()
+    for conv in rows:
+        msgs = [dict(m) for m in conv.messages or []]
+        for m in msgs:
+            props = m.get("proposals") or []
+            if any(p.get("id") == pid for p in props):
+                m["proposals"] = [{**p, "status": outcome, **({"result_url": result_url} if result_url else {})} if p.get("id") == pid else p for p in props]
+                conv.messages = msgs  # reassign so the JSON column is saved
+                return
 
 
 @bp.post("/proposals/outcome")
@@ -474,5 +489,7 @@ def proposal_outcome():
     if d.outcome in ("approved", "undone", "failed"):
         audit.record(f"ai.proposal_{d.outcome}", summary=f"{d.title} — {d.outcome} via AI assistant" + (f" ({d.error})" if d.error else ""),
                      after={"kind": d.kind, "calls": d.calls})
+    if d.proposal_id and d.outcome != "failed":
+        _remember_outcome(d.proposal_id, d.outcome, d.result_url if d.result_url and d.result_url.startswith("/app/") else None)
     db.session.commit()
     return no_content()

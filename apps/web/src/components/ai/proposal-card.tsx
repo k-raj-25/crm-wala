@@ -27,9 +27,11 @@ function Editor({ c, value, onChange }: { c: AiChange; value: unknown; onChange:
 /** "Do it for me" card: shows exactly what will change, lets people edit it, and runs it only when they press Approve. */
 export function ProposalCard({ p, onDone, compact }: { p: AiProposal; onDone?: (state: "approved" | "cancelled") => void; compact?: boolean }) {
   const qc = useQueryClient(); const toast = useToast(); const router = useRouter();
-  const [state, setState] = React.useState<"open" | "editing" | "running" | "done" | "cancelled" | "undone">("open");
+  const initial = p.status === "approved" ? "done" : p.status ?? "open";
+  const earlier = React.useRef(!!p.status).current; // settled before this page load, so there's nothing left to undo
+  const [state, setState] = React.useState<"open" | "editing" | "running" | "done" | "cancelled" | "undone">(initial);
   const [vals, setVals] = React.useState<Record<string, unknown>>(() => Object.fromEntries(p.changes.map((c) => [c.key, c.to])));
-  const [err, setErr] = React.useState<string | null>(null); const [result, setResult] = React.useState<string | null>(null);
+  const [err, setErr] = React.useState<string | null>(null); const [result, setResult] = React.useState<string | null>(p.result_url ?? null);
   const editable = p.changes.some((c) => c.input !== "readonly");
   const changed = (c: AiChange) => JSON.stringify(vals[c.key]) !== JSON.stringify(c.to);
   const display = (c: AiChange) => changed(c) ? (c.input === "datetime" ? fmtWhen(vals[c.key]) : c.input === "select" ? c.options?.find((o) => o.value === vals[c.key])?.label ?? show(vals[c.key]) : show(vals[c.key])) : show(c.display_to);
@@ -39,8 +41,8 @@ export function ProposalCard({ p, onDone, compact }: { p: AiProposal; onDone?: (
     setState("running"); setErr(null);
     try {
       const results = await runProposal(p, vals);
-      setState("done"); onDone?.("approved"); reportOutcome(p, "approved"); refresh();
-      const open = p.open_result ? fillText(p.open_result, results) : null; if (open && !open.includes("undefined")) setResult(open);
+      const filled = p.open_result ? fillText(p.open_result, results) : null; const open = filled && !filled.includes("undefined") ? filled : null;
+      setState("done"); onDone?.("approved"); reportOutcome(p, "approved", undefined, open); refresh(); if (open) setResult(open);
       if (p.undo?.length) toast.toast({ tone: "success", title: "Done", description: p.title, duration: 30_000, action: { label: "Undo", onClick: async () => { try { await runUndo(p, results); setState("undone"); reportOutcome(p, "undone"); refresh(); toast.success("Undone"); } catch (e) { toast.error("Couldn't undo", (e as Error).message); } } } });
       else toast.success("Done", p.title);
     } catch (e) { const m = (e as Error).message; setErr(m); setState("open"); reportOutcome(p, "failed", m); refresh(); }
@@ -75,7 +77,7 @@ export function ProposalCard({ p, onDone, compact }: { p: AiProposal; onDone?: (
         </> : state === "done" ? <>
           {result && <Button size="sm" variant="secondary" onClick={() => router.push(result)}>Open <ArrowRight /></Button>}
           {p.url && !result && <Button size="sm" variant="secondary" asChild><Link href={p.url}>Open <ArrowRight /></Link></Button>}
-          <span className="text-xs text-fg-subtle">{p.undo?.length ? <span className="inline-flex items-center gap-1"><Undo2 className="size-3" /> You can undo from the message at the bottom for 30 seconds.</span> : "Saved."}</span>
+          <span className="text-xs text-fg-subtle">{earlier ? "Approved earlier." : p.undo?.length ? <span className="inline-flex items-center gap-1"><Undo2 className="size-3" /> You can undo from the message at the bottom for 30 seconds.</span> : "Saved."}</span>
         </> : <span className="text-xs text-fg-subtle">This change was undone.</span>}
       </div>
     </div>

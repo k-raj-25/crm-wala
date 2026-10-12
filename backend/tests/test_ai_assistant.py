@@ -309,3 +309,17 @@ def test_key_test_shows_the_providers_reason(client, monkeypatch):
         err = r.get_json()["error"]
         assert r.status_code == 400 and err["code"] == code, err
         assert body["error"]["message"] in err["message"]
+
+
+def test_reopened_chat_remembers_what_was_approved(client):
+    lead = _lead(client)
+    r = client.post("/api/v1/ai/chat", json={"message": "Remind me to call this lead tomorrow", "page": {"entity": "lead", "id": lead["id"]}}).get_json()["data"]
+    p = r["proposals"][0]
+    approve(client, p)
+    assert client.post("/api/v1/ai/proposals/outcome", json={"kind": p["kind"], "title": p["title"], "outcome": "approved", "proposal_id": p["id"],
+                                                              "result_url": "/app/tasks"}).status_code == 204
+    saved = client.get(f"/api/v1/ai/conversations/{r['conversation_id']}").get_json()["data"]["messages"][-1]["proposals"][0]
+    assert saved["status"] == "approved" and saved["result_url"] == "/app/tasks"
+    # a later failure report doesn't undo the saved state
+    client.post("/api/v1/ai/proposals/outcome", json={"kind": p["kind"], "title": p["title"], "outcome": "failed", "proposal_id": p["id"]})
+    assert client.get(f"/api/v1/ai/conversations/{r['conversation_id']}").get_json()["data"]["messages"][-1]["proposals"][0]["status"] == "approved"

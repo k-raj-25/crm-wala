@@ -10,6 +10,8 @@ export type AiOp = { method: "POST" | "PATCH" | "PUT" | "DELETE"; path: string; 
 export type AiProposal = {
   id: string; kind: string; title: string; description?: string | null; record?: { type: string; id: string; name: string; url?: string } | null; changes: AiChange[]; ops: AiOp[]; undo?: AiOp[] | null;
   items?: { id: string; name: string; url?: string; hint?: string }[] | null; warning?: string | null; url?: string | null; open_result?: string; duplicates?: { id: string; name: string; type: string; url: string; match?: string }[];
+  /** Set once someone approved, cancelled or undid the card, so a reopened chat doesn't ask again. */
+  status?: "approved" | "cancelled" | "undone"; result_url?: string | null;
 };
 export type AiChart = { type?: "bar" | "line" | "donut"; title?: string; data: Record<string, unknown>[]; x: string; series: { key: string; label: string }[]; format?: string | null };
 export type AiStatus = { mode: "workspace" | "platform" | "basic"; provider: string; provider_label: string; model: string | null; features: Record<string, boolean>; audio_files: boolean; photos: boolean; can_manage: boolean };
@@ -64,8 +66,10 @@ export async function runProposal(p: AiProposal, edits: Record<string, unknown> 
 export async function runUndo(p: AiProposal, results: Results) {
   for (const op of p.undo ?? []) await call({ ...op, path: fill(op.path, {}, results) as string }, fill(op.body, {}, results));
 }
-export const reportOutcome = (p: AiProposal, outcome: "approved" | "cancelled" | "undone" | "failed", error?: string) =>
-  api.post("/api/v1/ai/proposals/outcome", { kind: p.kind, title: p.title.slice(0, 300), outcome, calls: p.ops.length, error: error?.slice(0, 300) }).catch(() => undefined);
+export const reportOutcome = (p: AiProposal, outcome: "approved" | "cancelled" | "undone" | "failed", error?: string, resultUrl?: string | null) => {
+  if (outcome !== "failed") { p.status = outcome; if (resultUrl) p.result_url = resultUrl; } // keeps the card settled if it re-mounts
+  return api.post("/api/v1/ai/proposals/outcome", { kind: p.kind, title: p.title.slice(0, 300), outcome, calls: p.ops.length, error: error?.slice(0, 300), proposal_id: p.id, result_url: resultUrl ?? undefined }).catch(() => undefined);
+};
 
 export const waLink = (phone?: string | null, text?: string) => {
   const d = (phone ?? "").replace(/\D/g, ""); const n = d.length === 10 ? "91" + d : d;
