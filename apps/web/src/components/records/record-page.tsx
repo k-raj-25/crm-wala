@@ -10,6 +10,8 @@ import { celebrate } from "@/lib/confetti";
 import { INTENTS, PRIORITIES, SOURCES, label } from "@/lib/constants";
 import { BHK_OPTIONS } from "@/lib/realestate";
 import { MatchingFlats } from "../projects/matching";
+import { LeadVoiceLog } from "../ai/lead-voice-log";
+import { LeadWhatsApp } from "../ai/lead-whatsapp";
 import { useAccess, useCustomFields, useMe, usePipelines } from "@/lib/queries";
 import type { Company, Contact, Deal, Lead } from "@/lib/types";
 import { AsyncSelect, MemberSelect, TagInput, fromLocalInput, toLocalInput } from "../forms/fields";
@@ -127,6 +129,7 @@ export function RecordPage({ entity }: { entity: Entity }) {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {entity === "lead" && lead.status !== "converted" && can("leads.convert") && <Button onClick={() => setConvert(true)}><UserCheck /> Convert to client</Button>}
+          {entity === "lead" && <><LeadVoiceLog leadId={id} phone={lead.phone} /><LeadWhatsApp leadId={id} phone={lead.phone} /></>}
           {entity === "lead" && lead.converted_contact_id && <Button variant="secondary" asChild><Link href={`/app/contacts/${lead.converted_contact_id}`}>View contact <ChevronRight /></Link></Button>}
           {entity === "deal" && deal.status === "open" && can("deals.close") && <><Button variant="soft" onClick={() => { const w = pipelines.data?.find((p) => p.id === deal.pipeline_id)?.stages.find((s) => s.kind === "won"); w && move(w.id); }}><Trophy /> Won</Button><Button variant="secondary" onClick={() => setLostOpen(true)}><XCircle /> Lost</Button></>}
           {entity === "deal" && deal.status !== "open" && canEdit && <Button variant="secondary" onClick={() => { const s = pipelines.data?.find((p) => p.id === deal.pipeline_id)?.stages.find((x) => x.kind === "open"); s && move(s.id); }}>Reopen</Button>}
@@ -174,7 +177,7 @@ export function RecordPage({ entity }: { entity: Entity }) {
               </div>
             </Card>
           )}
-          {entity === "lead" && lead.status !== "converted" && lead.status !== "lost" && <MatchingFlats leadId={id} hasRequirement={!!(lead.bhk || lead.budget_max || lead.intent)} />}
+          {entity === "lead" && lead.status !== "converted" && lead.status !== "lost" && <MatchingFlats leadId={id} hasRequirement={!!(lead.bhk || lead.budget_max || lead.intent)} firstName={lead.first_name ?? name.split(" ")[0]} phone={lead.phone} />}
           <Section title="Details" actions={canEdit && <Button variant="ghost" size="xs" onClick={() => setEdit(true)}><Pencil /> Edit all</Button>}>
             {entity === "lead" && <>
               <InlineField label="Email" type="email" value={lead.email} onSave={(v) => save({ email: v })} editable={canEdit} />

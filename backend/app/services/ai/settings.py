@@ -186,4 +186,9 @@ def usage_summary(workspace_id, user_id=None) -> dict:
         q = q.filter(AiUsage.user_id == user_id)
     n, tin, tout = q.one()
     by_feature = dict(db.session.query(AiUsage.feature, func.count()).filter(AiUsage.workspace_id == workspace_id, AiUsage.created_at >= month_start()).group_by(AiUsage.feature).all())
-    return {"actions": n, "input_tokens": int(tin), "output_tokens": int(tout), "by_feature": by_feature}
+    from app.models import User
+
+    by_user = [{"user_id": str(uid), "name": name or "Automations", "actions": c} for uid, name, c in db.session.query(AiUsage.user_id, User.name, func.count()).outerjoin(
+        User, User.id == AiUsage.user_id).filter(AiUsage.workspace_id == workspace_id, AiUsage.created_at >= month_start()).group_by(AiUsage.user_id, User.name)
+        .order_by(func.count().desc()).limit(50).all()]
+    return {"actions": n, "input_tokens": int(tin), "output_tokens": int(tout), "by_feature": by_feature, "by_user": by_user}
