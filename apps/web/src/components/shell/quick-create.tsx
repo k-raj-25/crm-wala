@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Button, Drawer, DropdownContent, DropdownItem, DropdownMenu, DropdownTrigger, Tooltip } from "@crm/ui";
 import { FORMS, RecordForm } from "../forms/record-form";
 import type { CreateKind } from "./ui-context";
+import { navigate } from "./pending-nav";
 import { useUI } from "./ui-context";
 import { useAccess } from "@/lib/queries";
 
@@ -26,7 +27,7 @@ export function QuickCreateMenu({ variant = "button" }: { variant?: "button" | "
           {variant === "fab" ? <Button size="icon" className="size-14 rounded-full shadow-lg" aria-label="Quick create"><Plus className="!size-6" /></Button> : <Button aria-label="Quick create"><Plus /> <span className="hidden sm:inline">Create</span><ChevronDown className="hidden !size-3.5 opacity-70 sm:block" /></Button>}
         </DropdownTrigger>
       </Tooltip>
-      <DropdownContent align="end" className="w-56">{items.map((i) => <DropdownItem key={i.label} icon={<i.icon />} onSelect={() => (i.kind === "project" ? router.push("/app/projects?new=1") : ui.openCreate(i.kind, i.defaults))}>{i.label}</DropdownItem>)}</DropdownContent>
+      <DropdownContent align="end" className="w-56">{items.map((i) => <DropdownItem key={i.label} icon={<i.icon />} onSelect={() => (i.kind === "project" ? navigate(router, "/app/projects?new=1") : ui.openCreate(i.kind, i.defaults))}>{i.label}</DropdownItem>)}</DropdownContent>
     </DropdownMenu>
   );
 }
@@ -39,7 +40,7 @@ export function QuickCreateDrawer() {
   return (
     <Drawer open={!!c} onOpenChange={(o) => !o && ui.closeCreate()} title={cfg?.title ?? ""} description={c ? `Quick add — you'll stay right where you are.` : undefined}
       footer={c && <><Button variant="secondary" onClick={ui.closeCreate}>Cancel</Button><Button type="submit" form={`form-${c.kind}`}>{c.kind === "call" ? "Log call" : c.kind === "meeting" ? "Schedule" : c.kind === "note" ? "Add note" : `Create ${cfg!.noun}`}</Button></>}>
-      {c && <RecordForm key={c.kind + JSON.stringify(c.defaults ?? {})} kind={c.kind} defaults={c.defaults} hideActions onView={href[c.kind] ? (rec) => router.push(`/app/${href[c.kind]}/${rec.id}`) : undefined} onSaved={() => ui.closeCreate()} />}
+      {c && <RecordForm key={c.kind + JSON.stringify(c.defaults ?? {})} kind={c.kind} defaults={c.defaults} hideActions onView={href[c.kind] ? (rec) => navigate(router, `/app/${href[c.kind]}/${rec.id}`) : undefined} onSaved={() => ui.closeCreate()} />}
     </Drawer>
   );
 }

@@ -11,6 +11,7 @@ import { useAccess, useMe, useMembers, usePipelines, useTags } from "@/lib/queri
 import type { SavedView } from "@/lib/types";
 import { MemberSelect, TagInput } from "../forms/fields";
 import { PageContainer, PageHeader } from "../shell/page";
+import { navigate } from "../shell/pending-nav";
 import { useUI } from "../shell/ui-context";
 import type { EntityConfig, FilterDef, Row } from "./types";
 
@@ -161,7 +162,7 @@ export function EntityList({ cfg, heading, embedded }: { cfg: EntityConfig; head
                   <THead><TR className="border-b-0"><TH className="w-10 pl-4"><Checkbox checked={allOn ? true : selected.size ? "indeterminate" : false} onCheckedChange={toggleAll} aria-label="Select all" /></TH>
                     {visible.map((c) => <TH key={c.key} sortable={!!c.sort} sortDir={sortDir(c.sort)} onSort={() => toggleSort(c.sort!)} className={c.align === "right" ? "text-right" : undefined}>{c.label}</TH>)}</TR></THead>
                   <tbody>{rows.map((r) => (
-                    <TR key={r.id} className={cn("group cursor-pointer hover:bg-surface-hover", selected.has(r.id) && "bg-primary-soft/40")} onMouseEnter={() => router.prefetch(cfg.href(r))} onClick={(e) => { if ((e.target as HTMLElement).closest("button,a,input,[role=checkbox],[role=combobox],[role=menuitem]")) return; router.push(cfg.href(r)); }}>
+                    <TR key={r.id} className={cn("group cursor-pointer hover:bg-surface-hover", selected.has(r.id) && "bg-primary-soft/40")} onMouseEnter={() => router.prefetch(cfg.href(r))} onClick={(e) => { if ((e.target as HTMLElement).closest("button,a,input,[role=checkbox],[role=combobox],[role=menuitem]")) return; navigate(router, cfg.href(r)); }}>
                       <TD className="pl-4"><Checkbox checked={selected.has(r.id)} onCheckedChange={() => toggle(r.id)} aria-label="Select row" /></TD>
                       {visible.map((c) => <TD key={c.key} className={cn(c.align === "right" && "text-right", c.className)}>{c.render(r, ctx)}</TD>)}
                     </TR>))}</tbody>
