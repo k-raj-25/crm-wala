@@ -1,12 +1,14 @@
 "use client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { CalendarPlus, Handshake, History, Pencil, Phone, Sparkles, UserRound } from "lucide-react";
+import { CalendarPlus, Handshake, History, MessageCircle, Pencil, Phone, Sparkles, UserRound, Wand2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { ApiError, Button, Drawer, Field, Input, NativeSelect, Skeleton, Textarea, cn, formatDate, timeAgo, useTheme, useToast } from "@crm/ui";
+import { ListingWriter } from "@/components/ai/listing-writer";
 import { AsyncSelect, toLocalInput } from "@/components/forms/fields";
+import { useAiFeature, waLink } from "@/lib/ai";
 import { api } from "@/lib/api";
 import { celebrate } from "@/lib/confetti";
 import { BHK_OPTIONS, FACINGS, STATUS, STATUS_ORDER, UNIT_KINDS, holdLeft, money, priceLine } from "@/lib/realestate";
@@ -42,6 +44,11 @@ export function UnitDrawer({ unitId, onClose, canEdit }: { unitId: string | null
   const history = useQuery({ queryKey: ["unit-history", unitId], enabled: !!unitId, queryFn: () => api.get<UnitEvent[]>(`/api/v1/units/${unitId}/history`) });
   const sellable = !!u && ["vacant", "for_sale", "for_rent", "on_hold"].includes(u.status);
   const matches = useQuery({ queryKey: ["unit-matches", unitId, u?.status, u?.sale_price, u?.bhk], enabled: !!unitId && sellable, queryFn: () => api.get<MatchLead[]>(`/api/v1/units/${unitId}/matches`) });
+
+  const matching = useAiFeature("matching"); const writer = useAiFeature("writer"); const [writing, setWriting] = React.useState(false);
+  const aiLeads = useQuery({ queryKey: ["unit-ai-leads", unitId], enabled: !!unitId && sellable && matching, staleTime: 5 * 60_000, retry: false, queryFn: () => api.get<{ unit: string; message: string; leads: { id: string; name: string; phone?: string | null; intent?: string | null; bhk?: string | null; budget_max?: number | null; url: string; why: string }[] }>(`/api/v1/ai/units/${unitId}/lead-matches`) });
+  const [pitch, setPitch] = React.useState("");
+  React.useEffect(() => { setPitch(aiLeads.data?.message ?? ""); }, [aiLeads.data?.message]);
 
   const refresh = () => { ["unit", "unit-history", "unit-matches", "building", "project", "projects", "units"].forEach((k) => qc.invalidateQueries({ queryKey: [k] })); };
   const fail = (e: unknown) => toast.error(e instanceof ApiError ? e.message : "Something went wrong. Please try again.");
@@ -164,8 +171,10 @@ export function UnitDrawer({ unitId, onClose, canEdit }: { unitId: string | null
             <section className="flex flex-wrap gap-2" aria-label="Actions">
               <Button variant="secondary" size="sm" onClick={() => setVisit({ lead: null, at: toLocalInput(new Date(Date.now() + 864e5).toISOString().replace(/T.*/, "T11:00:00")) })}><CalendarPlus /> Schedule site visit</Button>
               <Button variant="secondary" size="sm" loading={busy} onClick={startDeal}><Handshake /> Start a deal</Button>
+              {writer && <Button variant="secondary" size="sm" onClick={() => setWriting(true)}><Wand2 /> Write listing</Button>}
             </section>
           )}
+          {!canEdit && writer && <Button variant="secondary" size="sm" onClick={() => setWriting(true)}><Wand2 /> Write listing</Button>}
           {visit && (
             <div className="space-y-3 rounded-xl border border-border bg-surface p-4">
               <Field label="Who is visiting?"><AsyncSelect value={visit.lead} onChange={(id) => setVisit({ ...visit, lead: id })} endpoint="/api/v1/leads" placeholder="Search your leads…" /></Field>
@@ -193,6 +202,25 @@ export function UnitDrawer({ unitId, onClose, canEdit }: { unitId: string | null
             </section>
           )}
 
+          {sellable && matching && (aiLeads.isLoading || (aiLeads.data?.leads.length ?? 0) > 0) && (
+            <section aria-label="Interested leads">
+              <h3 className="mb-2 flex items-center gap-1.5 text-sm font-semibold"><Sparkles className="size-4 text-primary" /> Interested leads</h3>
+              {aiLeads.isLoading ? <Skeleton className="h-32 w-full" /> : (
+                <div className="space-y-2">
+                  <Field label="WhatsApp message" hint="{first_name} becomes each lead's first name"><Textarea rows={3} value={pitch} onChange={(e) => setPitch(e.target.value)} /></Field>
+                  <ul className="divide-y divide-border rounded-xl border border-border">
+                    {aiLeads.data!.leads.map((l) => (
+                      <li key={l.id} className="flex items-center gap-3 px-3 py-2.5">
+                        <div className="min-w-0 flex-1"><Link href={l.url} className="block truncate text-sm font-medium hover:text-primary">{l.name}</Link><p className="truncate text-xs text-fg-muted">{l.why}</p></div>
+                        {l.phone && <Button asChild variant="secondary" size="sm"><a href={waLink(l.phone, pitch.replace(/\{first_name\}/g, l.name.split(" ")[0]))} target="_blank" rel="noreferrer noopener"><MessageCircle /> WhatsApp</a></Button>}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </section>
+          )}
+
           <section aria-label="History">
             <h3 className="mb-2 flex items-center gap-1.5 text-sm font-semibold"><History className="size-4 text-fg-muted" /> History</h3>
             {history.isLoading ? <Skeleton className="h-20 w-full" /> : !(history.data?.length) ? <p className="text-sm text-fg-muted">Nothing yet.</p> : (
@@ -210,6 +238,7 @@ export function UnitDrawer({ unitId, onClose, canEdit }: { unitId: string | null
           </section>
         </div>
       )}
+      {writer && u && <ListingWriter open={writing} onOpenChange={setWriting} unitId={u.id} projectId={u.project_id} label={`${u.name}${u.tower_name ? `, ${u.tower_name}` : ""}`} />}
     </Drawer>
   );
 }

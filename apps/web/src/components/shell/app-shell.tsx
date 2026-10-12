@@ -10,6 +10,7 @@ import { api } from "@/lib/api";
 import { MOBILE_PRIMARY, NAV } from "@/lib/nav";
 import { useAccess, useMe } from "@/lib/queries";
 import { ComposeEmail } from "../forms/compose-email";
+import { AiDock } from "../ai/ai-dock";
 import { CommandPalette } from "./command-palette";
 import { QuickCreateDrawer, QuickCreateMenu } from "./quick-create";
 import { Sidebar, UserMenu, WorkspaceSwitcher, useNavItems } from "./sidebar";
@@ -75,7 +76,7 @@ function RestrictedScreen() {
   );
 }
 
-const SHORTCUTS = [["⌘ K", "Command palette / search"], ["C", "Quick create menu"], ["G then B/L/C/P/K/T…", "Go to Projects, Leads, Clients, Pipeline, Calendar, Daily plan…"], ["[", "Collapse / expand sidebar"], ["?", "Show this help"], ["Esc", "Close dialogs"]];
+const SHORTCUTS = [["⌘ K", "Command palette / search"], ["⌘ J", "Open the AI assistant"], ["C", "Quick create menu"], ["G then B/L/C/P/K/T…", "Go to Projects, Leads, Clients, Pipeline, Calendar, Daily plan…"], ["[", "Collapse / expand sidebar"], ["?", "Show this help"], ["Esc", "Close dialogs"]];
 function ShortcutsDialog() {
   const ui = useUI();
   return <Dialog open={ui.shortcuts} onOpenChange={ui.setShortcuts}><DialogContent size="sm" title="Keyboard shortcuts"><ul className="divide-y divide-border">{SHORTCUTS.map(([k, d]) => <li key={k} className="flex items-center justify-between gap-4 py-2.5 text-sm"><span className="text-fg-muted">{d}</span><span className="flex shrink-0 gap-1">{k.split(" ").map((p, i) => <Kbd key={i}>{p}</Kbd>)}</span></li>)}</ul></DialogContent></Dialog>;
@@ -168,7 +169,7 @@ function Shell({ children }: { children: React.ReactNode }) {
       </div>
       <MobileNav />
       <div className="fixed bottom-20 right-4 z-30 md:hidden"><QuickCreateMenu variant="fab" /></div>
-      <CommandPalette /><QuickCreateDrawer /><ShortcutsDialog />
+      <CommandPalette /><AiDock /><QuickCreateDrawer /><ShortcutsDialog />
       <ComposeEmail open={!!ui.compose} onOpenChange={(o) => !o && ui.closeCompose()} defaults={ui.compose?.defaults} />
     </div>
   );

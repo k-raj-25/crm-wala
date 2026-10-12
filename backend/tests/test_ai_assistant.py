@@ -223,7 +223,7 @@ def test_whatsapp_helper_reads_chat_and_proposes_fields(client):
 
 
 def test_my_day_search_automation_import_and_insights(client):
-    lead = _lead(client, bhk="3 BHK", budget_max=14000000, location="Sector 62", next_follow_up_at=dt.datetime.now(dt.timezone.utc).isoformat())
+    lead = _lead(client, intent="buy", bhk="3 BHK", budget_max=14000000, location="Sector 62", next_follow_up_at=dt.datetime.now(dt.timezone.utc).isoformat())
     _lead(client, first_name="Rohan", phone="9822222222", bhk="2 BHK", budget_max=6000000)
     day = client.get("/api/v1/ai/my-day").get_json()["data"]
     assert day["counts"]["follow_ups"] == 1 and day["sections"][1]["items"][0]["whatsapp"].startswith("https://wa.me/91")

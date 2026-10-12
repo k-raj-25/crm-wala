@@ -101,15 +101,15 @@ def bhk(text: str) -> str | None:
 
 def intent(text: str) -> str | None:
     t = (text or "").lower()
-    if re.search(r"\b(rent|rental|on lease|tenant|kiraye|kiraya|pg)\b", t):
+    if re.search(r"\b(rent|rental|renters?|on lease|tenants?|kiraye|kiraya|pg)\b", t):
         return "rent"
     if re.search(r"\b(lease out|give on rent|let out)\b", t):
         return "lease"
     if re.search(r"\b(sell|selling|resale of my|want to sell|bechna)\b", t):
         return "sell"
-    if re.search(r"\b(invest|investment|roi|rental yield)\b", t):
+    if re.search(r"\b(invest|investors?|investment|roi|rental yield)\b", t):
         return "invest"
-    if re.search(r"\b(buy|purchase|looking for|need a|want a|wants?|needs?|kharidna|lena)\b", t):
+    if re.search(r"\b(buy|buyers?|purchase|purchasers?|looking for|need a|want a|wants?|needs?|kharidna|lena)\b", t):
         return "buy"
     return None
 

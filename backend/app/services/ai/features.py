@@ -426,6 +426,11 @@ def _maps(project: Project | None, location: str | None) -> str | None:
     return f"https://www.google.com/maps/search/?api=1&query={quote(where)}" if where else None
 
 
+def _came_in(d: dt.timedelta) -> str:
+    h = max(1, int(d.total_seconds() // 3600))
+    return f"Came in {h}h ago" if h < 48 else f"Came in {h // 24} days ago"
+
+
 def my_day(team: bool = False) -> dict:
     assistant.require_feature("briefing")
     ws, uid = g.workspace.id, (None if team else g.user.id)
@@ -468,7 +473,7 @@ def my_day(team: bool = False) -> dict:
             "maps": _maps(projects.get(m.project_id), m.location)} for m in visits]},
         {"key": "follow_ups", "title": "Follow-ups due", "items": [lead_item(l, ("Overdue since " if l.next_follow_up_at < start else "Due ") + actions.when_label(l.next_follow_up_at))
                                                                    for l in follow]},
-        {"key": "new", "title": "New enquiries not called yet", "items": [lead_item(l, f"Came in {max(1, int((now - l.created_at).total_seconds() // 3600))}h ago" + (f" from {l.source}" if l.source else ""))
+        {"key": "new", "title": "New enquiries not called yet", "items": [lead_item(l, _came_in(now - l.created_at) + (f" from {l.source}" if l.source else ""))
                                                                           for l in fresh]},
         {"key": "cooling", "title": "Hot leads going cold", "items": [lead_item(l, f"Score {l.score}, " + (f"no contact for {(now - l.last_contacted_at).days} days" if l.last_contacted_at else "never contacted"))
                                                                       for l in cooling]},
@@ -858,7 +863,7 @@ def loss_analysis(days: int = 180) -> dict:
              "sample_notes": [((x.lost_reason or "") + " | " + (x.description or "")[:200]) for x in lost_leads[:25] if x.lost_reason or x.description]}
     top = reasons.most_common(1)[0] if reasons else None
     fb = f"**{total} leads and deals were lost in the last {days} days.**" + (f"\n\n- The most common reason is **{top[0]}** ({top[1]})." if top else "") + \
-        ("\n- Most losses are on **" + by_project.most_common(1)[0][0] + "**." if by_project else "") + \
+        ("\n- Most losses are on **" + top_project + "**." if (top_project := next((k for k, _ in by_project.most_common() if k != "No project"), None)) else "") + \
         ("\n- **" + by_bhk.most_common(1)[0][0] + "** enquiries are lost most often." if by_bhk else "") + \
         ("\n- Ask your team to always fill a lost reason; " + str(reasons.get("No reason given", 0)) + " have none." if reasons.get("No reason given") else "")
     res = assistant.generate("loss_analysis", "Explain why this real-estate team is losing leads and deals, in 3-5 markdown bullets, each with a number and a concrete fix. "
@@ -920,7 +925,7 @@ def coaching(days: int = 7) -> dict:
         if r["overdue_follow_ups"]:
             t.append(f"{r['overdue_follow_ups']} overdue follow-up{'s' if r['overdue_follow_ups'] != 1 else ''}")
         if r["median_response_hours"] and r["median_response_hours"] > 4:
-            t.append(f"takes ~{r['median_response_hours']}h to first contact (aim for under 1h)")
+            t.append(f"takes ~{r['median_response_hours']:g}h to first contact (aim for under 1h)")
         if r["visits"] == 0 and r["new_leads"] >= 3:
             t.append("no site visits this week despite new leads")
         tips.append(f"- **{r['name']}**: " + ("; ".join(t) if t else f"on track — {r['visits']} visits, {r['won']} closed") + ".")

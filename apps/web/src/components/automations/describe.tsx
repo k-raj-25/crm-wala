@@ -37,7 +37,7 @@ export function DescribeAutomation() {
       <div className="flex items-center gap-2"><Sparkles className="size-4 text-primary" /><h2 className="text-sm font-semibold">Describe it</h2><span className="text-xs text-fg-subtle">The assistant builds the steps. You review before anything is created.</span></div>
       {!draft ? (
         <div className="mt-3 space-y-3">
-          <Textarea rows={3} maxLength={1000} value={text} onChange={(e) => setText(e.target.value)} placeholder="Describe what should happen, e.g. When a 99acres lead comes in, assign it round robin, send a WhatsApp welcome and create a call task for 10 minutes later" aria-label="Describe the automation" />
+          <Textarea rows={3} maxLength={1000} value={text} onChange={(e) => setText(e.target.value)} placeholder="Describe what should happen, e.g. When a 99acres lead comes in, assign it round robin, create a call task and remind the owner after 2 days" aria-label="Describe the automation" />
           <div className="flex flex-wrap gap-1.5">{EXAMPLES.map((x) => <button key={x} type="button" onClick={() => setText(x)} className="rounded-full border border-border bg-surface-2 px-3 py-1 text-xs text-fg-muted hover:border-primary/40 hover:text-fg">{x}</button>)}</div>
           {err && <p role="alert" className="text-sm text-danger">{err}</p>}
           <div className="flex justify-end"><Button onClick={run} loading={busy} disabled={text.trim().length < 8}><Sparkles /> Draft it</Button></div>

@@ -211,8 +211,24 @@ class MockProvider:
 
         m = re.match(r"\s*(?:please\s+)?(?:remind me to|create (?:a )?task(?: to)?|add (?:a )?task(?: to)?)\s+(.+)", q)
         if m:
-            title = re.sub(r"\s+(today|tomorrow|kal|next week|on \w+day|in \d+ days?)\s*$", "", m.group(1)).strip(" .")
+            title = m.group(1)
+            for _ in range(3):  # "call Priya tomorrow at 11am" -> "call Priya"
+                title = re.sub(r"\s+(?:at\s+)?(?:\d{1,2}(?::\d{2})?\s*(?:am|pm)|today|tomorrow|kal|day after tomorrow|next week|(?:this |on |next )?(?:mon|tues|wednes|thurs|fri|satur|sun)day|in \d+ days?)\s*$", "", title, flags=re.I).strip(" .,")
             when = extract.follow_up_hint(q, utcnow()) or (utcnow() + dt.timedelta(hours=3) if "today" in q else utcnow().replace(hour=5, minute=30) + dt.timedelta(days=1))
+            tm = re.search(r"\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b", q, re.I)
+            if tm:
+                from app.services.ai.actions import _tz
+
+                h = int(tm.group(1)) % 12 + (12 if tm.group(3).lower() == "pm" else 0)
+                local = when.astimezone(_tz()).replace(hour=h, minute=int(tm.group(2) or 0))
+                when = local.astimezone(dt.timezone.utc)
+            if page.get("entity") == "lead" and page.get("id"):
+                from app.extensions import db
+                from app.models import Lead
+
+                lead = db.session.get(Lead, page["id"]) if re.fullmatch(r"[0-9a-f-]{36}", str(page["id"])) else None
+                if lead:
+                    title = re.sub(r"\b(this lead|this client|them|him|her)\b", lead.name, title, flags=re.I)
             args = {"title": title[:1].upper() + title[1:], "due_at": when.isoformat()}
             if page.get("entity") in ("lead", "contact", "deal") and page.get("id"):
                 args["record"] = {"type": page["entity"], "id": page["id"]}
