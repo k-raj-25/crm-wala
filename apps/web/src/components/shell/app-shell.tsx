@@ -116,7 +116,7 @@ function MobileNav() {
 function Topbar() {
   const ui = useUI();
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-bg/80 px-4 backdrop-blur-xl sm:px-8">
+    <header className="sticky top-0 z-30 flex h-[calc(3.5rem+env(safe-area-inset-top))] items-center pt-[env(safe-area-inset-top)] gap-3 border-b border-border bg-bg/80 px-4 backdrop-blur-xl sm:px-8">
       <div className="md:hidden"><Link href="/app"><Logo collapsed /></Link></div>
       <button onClick={() => ui.openCommand()} className="group flex h-9 max-w-md flex-1 items-center gap-2.5 rounded-lg border border-border bg-surface px-3 text-sm text-fg-subtle shadow-xs transition-colors hover:border-border-strong" aria-label="Search or run a command">
         <Search className="size-4" /><span className="flex-1 text-left">Search or jump to…</span><span className="hidden gap-1 sm:flex"><Kbd>⌘</Kbd><Kbd>K</Kbd></span>
@@ -162,7 +162,7 @@ function Shell({ children }: { children: React.ReactNode }) {
       <div className="flex min-w-0 flex-1 flex-col">
         <ImpersonationBanner /><VerifyBanner /><TrialBanner />
         <Topbar />
-        <main className="flex-1 pb-24 md:pb-0" id="main">
+        <main className="min-w-0 flex-1 overflow-x-clip pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-0" id="main">
           <AnimatePresence mode="wait" initial={false}>
             <motion.div key={pathname.split("/").slice(0, 3).join("/")} hidden={!!pendingPath} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18, ease: "easeOut" }}>
               {restricted && !allowedWhenRestricted ? <RestrictedScreen /> : children}
@@ -174,7 +174,7 @@ function Shell({ children }: { children: React.ReactNode }) {
       </div>
       <MobileNav />
       <CompareTray />
-      <div className="fixed bottom-20 right-4 z-30 md:hidden"><QuickCreateMenu variant="fab" /></div>
+      <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 z-30 md:hidden"><QuickCreateMenu variant="fab" /></div>
       <PendingNavigation /><CommandPalette /><QuickCreateDrawer /><ShortcutsDialog />
       <ComposeEmail open={!!ui.compose} onOpenChange={(o) => !o && ui.closeCompose()} defaults={ui.compose?.defaults} />
     </div>

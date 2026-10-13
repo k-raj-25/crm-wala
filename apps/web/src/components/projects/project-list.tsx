@@ -59,10 +59,10 @@ export function ProjectList() {
           {items.length > 0 && <p className="text-sm text-fg-muted"><b className="text-fg">{items.length}</b> projects · <b className="text-fg">{totals.units}</b> flats · <b className="text-success">{totals.avail}</b> available · <b className="text-fg">{totals.closed}</b> sold or rented</p>}
         </div>
       )}
-      {list.isLoading ? <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-[380px] rounded-2xl" />)}</div>
+      {list.isLoading ? <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-[380px] rounded-2xl" />)}</div>
         : list.isError ? <ErrorState kind="unavailable" onRetry={() => list.refetch()} />
         : !items.length ? <Card><EmptyState icon={<Building2 />} title={dq ? "No projects match" : "Add your first project"} description={dq ? "Try a different name or area." : "Create a project, tell us how many floors and flats it has, and we'll draw the building for you."} action={!dq && can("projects.create") ? <Button onClick={() => setOpen(true)}><Plus /> New project</Button> : undefined} /></Card>
-        : <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">{items.map((p, i) => <ProjectCard key={p.id} p={p} i={i} />)}</div>}
+        : <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">{items.map((p, i) => <ProjectCard key={p.id} p={p} i={i} />)}</div>}
       <NewProjectDialog open={open} onOpenChange={setOpen} />
     </PageContainer>
   );
