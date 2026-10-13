@@ -114,7 +114,7 @@ const UnitTile = React.memo(function UnitTile({ u, dark, dim, hit, compact, dela
       data-dim={dim ? "1" : undefined}
       style={{ ...tileStyle(u.status, dark), ...(animate ? { ["--d" as string]: `${delay + 0.35}s` } : null) }}
       className={cn("unit-tile @container/tile relative flex min-w-0 flex-col justify-between overflow-hidden rounded-[7px] text-left outline-none focus-visible:ring-2 focus-visible:ring-primary",
-        `unit-${u.status}`, compact ? "h-10 px-1.5 py-1" : "h-[60px] px-1 py-1.5 sm:px-2", animate && "tile-wave", u.status === "on_hold" && "unit-hold", hit && "tile-hit z-10",
+        `unit-${u.status}`, compact ? "h-10 px-1.5 py-1" : "h-[60px] px-2 py-1.5", animate && "tile-wave", u.status === "on_hold" && "unit-hold", hit && "tile-hit z-10",
         picking && !picked && "opacity-80", picked && "tile-picked z-10")}>
       {/* On a narrow tile (phones) the tick takes the status icon's corner, so the size below it keeps its room. */}
       {picked && <span aria-hidden className={cn("pick-badge absolute bottom-0 right-0 z-10 grid place-items-center rounded-tl-[7px] bg-primary text-primary-fg", compact ? "size-4" : "size-5 @max-[56px]/tile:top-0 @max-[56px]/tile:bottom-auto @max-[56px]/tile:size-4 @max-[56px]/tile:rounded-tl-none @max-[56px]/tile:rounded-bl-[7px]")}><Check className={compact ? "size-2.5" : "size-3.5 @max-[56px]/tile:size-2.5"} strokeWidth={3} /></span>}
@@ -124,7 +124,7 @@ const UnitTile = React.memo(function UnitTile({ u, dark, dim, hit, compact, dela
       </span>
       {!compact && (
         <span className={cn("flex items-end justify-between gap-1 text-[10.5px] font-medium leading-none opacity-90", picked && "pr-4 @max-[56px]/tile:pr-0")}>
-          <span className="truncate">{left ? <>{left.replace(" left", "")}<span className="@max-[56px]/tile:hidden"> left</span></> : u.bhk?.replace(" BHK", "BHK") ?? ""}</span>
+          <span className="truncate">{left ? <>{left.replace(" left", "")}<span className="@max-[100px]/tile:hidden"> left</span></> : u.bhk?.replace(" BHK", "BHK") ?? ""}</span>
           <span className="truncate @max-[80px]/tile:hidden">{u.status === "vacant" ? "" : priceLine(u).replace("/mo", "")}</span>
         </span>
       )}
@@ -144,8 +144,8 @@ function Roof({ name, building }: { name: string; building: boolean }) {
         <circle cx="136" cy="5" r="3.2" fill="#ef4444" style={{ animation: "beacon 1.8s ease-in-out infinite" }} />
         <line x1="92" y1="30" x2="92" y2="10" stroke="var(--slab-edge)" strokeWidth="1.6" strokeLinecap="round" /><path className="flag" d="M92 10 L108 13 L92 17 Z" fill="#f97316" />
       </svg>
-      <div className="relative -mt-px flex h-7 items-center justify-center rounded-t-lg border border-b-0 border-[var(--frame-edge)] bg-[var(--slab)]">
-        <span className="rounded-full bg-[var(--frame)] px-3 py-0.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--facade-ink)]">{name}</span>
+      <div className="relative -mt-px flex h-7 items-center justify-center rounded-t-lg max-sm:justify-start border border-b-0 border-[var(--frame-edge)] bg-[var(--slab)]">
+        <span className="rounded-full bg-[var(--frame)] px-3 py-0.5 text-[11px] max-sm:sticky max-sm:left-9 max-sm:ml-9 font-semibold uppercase tracking-[0.18em] text-[color:var(--facade-ink)]">{name}</span>
       </div>
     </div>
   );
@@ -165,9 +165,9 @@ function Crane() {
   );
 }
 
-function StreetScene({ viewBox, className }: { viewBox: string; className?: string }) {
+function StreetScene() {
   return (
-    <svg aria-hidden viewBox={viewBox} preserveAspectRatio="xMidYMax slice" className={cn("block h-10 w-full", className)}>
+    <svg aria-hidden viewBox="0 0 600 40" preserveAspectRatio="xMidYMax slice" className="block h-10 w-full">
       <g className="sway"><circle cx="70" cy="22" r="11" fill="#16a34a" /><circle cx="84" cy="25" r="9" fill="#15803d" /></g><rect x="68" y="28" width="4" height="10" fill="#7c4a24" />
       <g className="sway" style={{ animationDelay: "-2s" }}><circle cx="530" cy="22" r="11" fill="#16a34a" /><circle cx="516" cy="25" r="9" fill="#15803d" /></g><rect x="528" y="28" width="4" height="10" fill="#7c4a24" />
       <g className="sway" style={{ animationDelay: "-1s" }}><circle cx="130" cy="27" r="7" fill="#22c55e" /></g><g className="sway" style={{ animationDelay: "-3s" }}><circle cx="470" cy="27" r="7" fill="#22c55e" /></g>
@@ -179,9 +179,7 @@ function StreetScene({ viewBox, className }: { viewBox: string; className?: stri
 function Street() {
   return (
     <div className="relative overflow-hidden rounded-b-xl bg-[var(--ground)] pb-3 pt-2">
-      {/* Phones get the middle of the street (the near trees and the lamps) rather than the big trees cut in half at the edges. */}
-      <StreetScene viewBox="96 0 408 40" className="sm:hidden" />
-      <StreetScene viewBox="0 0 600 40" className="max-sm:hidden" />
+      <StreetScene />
       <div className="walker pointer-events-none absolute bottom-[19px] z-[1]" aria-hidden>
         <svg viewBox="0 0 10 16" className="h-[14px] w-[9px]"><circle cx="5" cy="3" r="2.4" fill="#f4c7a1" /><rect x="3" y="5.5" width="4" height="6" rx="1.5" fill="#6366f1" /><path d="M4 11 L3 15 M6 11 L7 15" stroke="#334155" strokeWidth="1.3" strokeLinecap="round" /></svg>
       </div>
@@ -248,23 +246,26 @@ export function BuildingView({ data, spot, onOpen, flashFloor, registerFloor, pi
     centres.current = null;
   };
   const maxW = Math.min(1120, 104 + cols * (compact ? 84 : 132));
+  // Phones don't squeeze the flats to fit: each keeps its desktop size and details, and the tower scrolls sideways (floor numbers stay pinned).
+  const minW = 26 + 8 + cols * (compact ? 60 : 96) + (cols - 1) * (compact ? 6 : 8) + 18;
 
   return (
     <div ref={wrap} className="relative" onPointerLeave={calm}>
-      <div className="mx-auto w-full" style={{ maxWidth: maxW }}>
+      <div className="mx-auto w-full max-sm:overflow-x-auto max-sm:overscroll-x-contain" style={{ maxWidth: maxW }}>
+      <div className="max-sm:min-w-[var(--tower-min)]" style={{ ["--tower-min" as string]: `${minW}px` }}>
         <Roof name={data.tower.name} building={data.project.stage !== "ready"} />
-        <div ref={frame} onPointerMove={magnify} className="@container relative overflow-hidden border-x border-[var(--frame-edge)] bg-[var(--frame)] px-2 py-2 sm:px-4 sm:py-3" role="list" aria-label={`${data.tower.name}, ${rows} floors`}>
+        <div ref={frame} onPointerMove={magnify} className="@container relative overflow-clip border-x border-[var(--frame-edge)] bg-[var(--frame)] px-2 py-2 sm:px-4 sm:py-3" role="list" aria-label={`${data.tower.name}, ${rows} floors`}>
           {!reduce && <div aria-hidden className="glare pointer-events-none absolute inset-y-0 left-0 z-20 w-[40%]" />}
           {data.floors.map((f, ri) => {
             const fromBottom = rows - 1 - ri;
             const anyHit = !spotting || f.units.some((u) => fitsSpot(u, spot));
             return (
               <div key={f.floor} ref={(el) => registerFloor?.(f.floor, el)} role="listitem" data-floor={f.floor}
-                className={cn("grid grid-cols-[26px_1fr] items-center gap-1.5 rounded-md border-b-[5px] border-[var(--slab)] sm:grid-cols-[62px_1fr] sm:gap-3", compact ? "py-1" : "py-2.5 sm:py-3", flashFloor === f.floor && "floor-flash", !anyHit && "opacity-60")}>
-                <div className="pr-1 text-right leading-tight text-[color:var(--facade-ink)]">
+                className={cn("grid grid-cols-[26px_1fr] items-center gap-2 rounded-md border-b-[5px] border-[var(--slab)] sm:grid-cols-[62px_1fr] sm:gap-3", compact ? "py-1" : "py-2.5 sm:py-3", flashFloor === f.floor && "floor-flash", !anyHit && "opacity-60")}>
+                <div className="z-[5] pr-1 text-right leading-tight text-[color:var(--facade-ink)] max-sm:sticky max-sm:left-0 max-sm:self-stretch max-sm:bg-[var(--frame)] max-sm:flex max-sm:items-center max-sm:justify-end">
                   <div className="text-[11px] font-semibold sm:text-xs"><span className="sm:hidden">{f.floor === 0 ? "G" : String(f.floor).padStart(2, "0")}</span><span className="hidden sm:inline">{floorLabel(f.floor)}</span></div>
                 </div>
-                <div className={cn("grid", compact ? "gap-1.5" : "gap-1.5 sm:gap-2 @2xl:gap-3")} style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+                <div className={cn("grid", compact ? "gap-1.5" : "gap-2 @2xl:gap-3")} style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
                   {f.units.map((u) => {
                     const hit = spotting && fitsSpot(u, spot);
                     return <UnitTile key={u.id} u={u} dark={dark} dim={spotting && !hit} hit={hit} compact={compact} animate={animateTiles} delay={Math.min(fromBottom * 0.045 + (u.position - 1) * 0.02, 1.5)} picking={!!picked} picked={!!picked?.has(u.id)} onOpen={onOpen} onHover={onHover} />;
@@ -276,6 +277,7 @@ export function BuildingView({ data, spot, onOpen, flashFloor, registerFloor, pi
           })}
         </div>
         <Street />
+      </div>
       </div>
 
       <AnimatePresence>
