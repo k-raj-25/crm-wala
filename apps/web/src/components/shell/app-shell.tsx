@@ -172,7 +172,6 @@ function Shell({ children }: { children: React.ReactNode }) {
         </main>
       </div>
       <MobileNav />
-      <div className="fixed bottom-20 right-4 z-30 md:hidden"><QuickCreateMenu variant="fab" /></div>
       <PendingNavigation /><CommandPalette /><QuickCreateDrawer /><ShortcutsDialog />
       <ComposeEmail open={!!ui.compose} onOpenChange={(o) => !o && ui.closeCompose()} defaults={ui.compose?.defaults} />
     </div>

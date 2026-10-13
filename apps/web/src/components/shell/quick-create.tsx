@@ -16,7 +16,7 @@ export const CREATE_ITEMS: { kind: CreateKind | "project"; label: string; icon: 
   { kind: "company", label: "New Builder", icon: Landmark, perm: "companies.create" },
 ];
 
-export function QuickCreateMenu({ variant = "button" }: { variant?: "button" | "fab" }) {
+export function QuickCreateMenu() {
   const ui = useUI(); const { can } = useAccess(); const router = useRouter();
   const items = CREATE_ITEMS.filter((i) => can(i.perm));
   if (!items.length) return null;
@@ -24,7 +24,7 @@ export function QuickCreateMenu({ variant = "button" }: { variant?: "button" | "
     <DropdownMenu>
       <Tooltip content="Quick create" shortcut="C" side="bottom">
         <DropdownTrigger asChild>
-          {variant === "fab" ? <Button size="icon" className="size-14 rounded-full shadow-lg" aria-label="Quick create"><Plus className="!size-6" /></Button> : <Button aria-label="Quick create"><Plus /> <span className="hidden sm:inline">Create</span><ChevronDown className="hidden !size-3.5 opacity-70 sm:block" /></Button>}
+          <Button aria-label="Quick create"><Plus /> <span className="hidden sm:inline">Create</span><ChevronDown className="hidden !size-3.5 opacity-70 sm:block" /></Button>
         </DropdownTrigger>
       </Tooltip>
       <DropdownContent align="end" className="w-56">{items.map((i) => <DropdownItem key={i.label} icon={<i.icon />} onSelect={() => (i.kind === "project" ? navigate(router, "/app/projects?new=1") : ui.openCreate(i.kind, i.defaults))}>{i.label}</DropdownItem>)}</DropdownContent>
