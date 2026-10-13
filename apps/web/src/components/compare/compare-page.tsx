@@ -84,7 +84,7 @@ export function ComparePage() {
               <button type="button" onClick={() => compare.clear()} className="inline-flex items-center gap-1.5 text-sm text-fg-muted hover:text-danger"><Trash2 className="size-4" /> Clear all</button>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[calc(88px+var(--n)*132px)] table-fixed border-separate border-spacing-0 text-sm sm:min-w-[calc(140px+var(--n)*170px)] [&_td]:break-words" style={{ ["--n" as string]: list.length }}>
+              <table className="w-full min-w-[calc(88px+var(--n)*132px)] table-fixed border-separate border-spacing-0 text-sm sm:min-w-[calc(140px+var(--n)*170px)]" style={{ ["--n" as string]: list.length }}>
                 <thead>
                   <tr>
                     <th scope="col" className="sticky left-0 z-10 w-[88px] border-b sm:w-[140px] border-border bg-surface px-4 py-3 text-left align-bottom text-xs font-medium uppercase tracking-wide text-fg-subtle">Flat</th>
@@ -113,7 +113,7 @@ export function ComparePage() {
                         <th scope="row" className="sticky left-0 z-10 border-t border-border bg-surface px-3 py-2.5 sm:px-4 text-left text-[13px] font-normal text-fg-muted">{r.label}</th>
                         {r.cells.map((c, i) => (
                           <td key={list[i].id} className={cn("border-l border-t border-border px-3 py-2.5 sm:px-4 align-top", c?.best && "font-semibold text-success", r.key === "price" && "text-[15px] font-semibold")}>
-                            {c ? <span className="inline-flex items-start gap-1">{c.v}{c.best && <Check className="mt-0.5 size-3.5 shrink-0" aria-label="best" />}</span> : <Skeleton className="h-4 w-20" />}</td>
+                            {c ? <span className="inline-flex max-w-full items-start gap-1"><span className="min-w-0 [overflow-wrap:anywhere]">{c.v}</span>{c.best && <Check className="mt-0.5 size-3.5 shrink-0" aria-label="best" />}</span> : <Skeleton className="h-4 w-20" />}</td>
                         ))}
                       </tr>
                     ))}
