@@ -38,10 +38,10 @@
 .trolley { animation: trolley 9s ease-in-out infinite alternate; }
 
 /* the flats */
-.unit-tile { box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.18); scale: var(--mag, 1); transition: scale 140ms ease-out, box-shadow 400ms; }
+.unit-tile { scale: var(--mag, 1); transition: scale 140ms ease-out, box-shadow 400ms; }
 .unit-tile.tile-wave { animation: tile-wave 1100ms ease-out backwards; animation-delay: var(--d, 0s); }
-.facade-sky[data-sky="night"] .unit-tile:not(.unit-vacant) { box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.18), 0 0 18px -3px var(--st); }
-.facade-sky[data-sky="dusk"] .unit-tile:not(.unit-vacant) { box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.18), 0 0 12px -4px var(--st); }
+.facade-sky[data-sky="night"] .unit-tile:not(.unit-vacant) { box-shadow: 0 0 18px -3px var(--st); }
+.facade-sky[data-sky="dusk"] .unit-tile:not(.unit-vacant) { box-shadow: 0 0 12px -4px var(--st); }
 .unit-tile.tile-hit { animation: hit-glow 1.6s ease-in-out infinite; }
 .unit-hold { animation: hold-pulse 2.2s ease-in-out infinite; }
 .ico-for_sale { transform-origin: 50% 0; animation: tag-swing 2.8s ease-in-out infinite alternate; }
@@ -61,8 +61,8 @@
 @keyframes flag { from { transform: scaleX(1) skewY(0deg); } to { transform: scaleX(0.82) skewY(6deg); } }
 @keyframes hook { from { transform: rotate(-6deg); } to { transform: rotate(6deg); } }
 @keyframes trolley { from { transform: translateX(0); } to { transform: translateX(34px); } }
-@keyframes hold-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.55), inset 0 -5px 0 rgba(0, 0, 0, 0.18); } 50% { box-shadow: 0 0 0 7px rgba(124, 58, 237, 0), inset 0 -5px 0 rgba(0, 0, 0, 0.18); } }
-@keyframes hit-glow { 0%, 100% { box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.18), 0 0 0 2px #fff, 0 0 10px 0 var(--st); } 50% { box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.18), 0 0 0 2px #fff, 0 0 26px 4px var(--st); } }
+@keyframes hold-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.55); } 50% { box-shadow: 0 0 0 7px rgba(124, 58, 237, 0); } }
+@keyframes hit-glow { 0%, 100% { box-shadow: 0 0 0 2px #fff, 0 0 10px 0 var(--st); } 50% { box-shadow: 0 0 0 2px #fff, 0 0 26px 4px var(--st); } }
 @keyframes tile-wave { 0% { filter: brightness(2.2) saturate(0.3); } 100% { filter: brightness(1) saturate(1); } }
 @keyframes tag-swing { from { transform: rotate(-14deg); } to { transform: rotate(14deg); } }
 @keyframes hour-flip { 0%, 70% { transform: rotate(0deg); } 85%, 100% { transform: rotate(180deg); } }
