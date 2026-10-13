@@ -109,7 +109,7 @@ export function ProjectView() {
         : (
           <div className="grid items-start gap-5 lg:grid-cols-[250px_minmax(0,1fr)_290px]">
             {/* left: the tower as a picture */}
-            <div className="order-2 space-y-4 lg:order-1 lg:sticky lg:top-6">
+            <div className="order-2 space-y-4 lg:order-1 lg:sticky lg:top-20">
               <Card className="overflow-hidden">
                 <div className="relative"><TowerArt data={b} spot={spot} onPickFloor={view === "building" ? pickFloor : undefined} />
                   <span className="absolute left-3 top-3 rounded-full bg-surface/90 px-2.5 py-1 text-xs font-semibold shadow-sm backdrop-blur">{b.tower.name}</span></div>
@@ -150,7 +150,7 @@ export function ProjectView() {
             </div>
 
             {/* right: numbers */}
-            <div className="order-3 space-y-4 lg:sticky lg:top-6">
+            <div className="order-3 space-y-4 lg:sticky lg:top-20">
               <Card className="p-4">
                 <h2 className="mb-3 text-sm font-semibold">Flats by status</h2>
                 <div className="grid grid-cols-2 gap-2">

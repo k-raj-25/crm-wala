@@ -3,18 +3,13 @@
 @source "../../../../packages/ui/src";
 
 /* ---- Real estate: the building facade -------------------------------------------------------------------------------- */
-/* Three skies: day, dusk, night. `data-sky` on .facade-sky switches every colour below, and the transitions make it glide. */
+/* Two skies: day (light theme) and night (dark theme). `data-sky` on .facade-sky switches every colour below, and the transitions make it glide. */
 .facade-sky {
   --sky-top: #7cc4ff; --sky-bot: #eaf6ff; --slab: #c4cad8; --slab-edge: #a9b0c2; --frame: #e9ecf3; --frame-edge: #cfd4e0; --ground: #d9dee9;
   --facade-ink: #565a72; --cloud: #ffffff; --sun: #fde047; --lamp: 0; --stars: 0; --haze: rgba(255, 255, 255, 0.0);
   background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-bot) 78%);
   overflow: clip; /* clouds drift past the edge; `clip` (unlike `hidden`) can never be scrolled into view by focus */
   transition: --sky-top 600ms;
-}
-.facade-sky[data-sky="dusk"] {
-  --sky-top: #4a3f8f; --sky-bot: #ffc08a; --slab: #b9a9a6; --slab-edge: #9a8a8c; --frame: #e8d6cf; --frame-edge: #c9b3ad; --ground: #cdb7b0;
-  --facade-ink: #5a4a52; --cloud: #ffd7c2; --sun: #ff8a3d; --lamp: 1; --stars: 0.25; --haze: rgba(255, 150, 90, 0.18);
-  background: linear-gradient(180deg, var(--sky-top) 0%, #c9627c 38%, var(--sky-bot) 82%);
 }
 .facade-sky[data-sky="night"] {
   --sky-top: #060a1d; --sky-bot: #1b2352; --slab: #2d3450; --slab-edge: #3b4466; --frame: #151a2c; --frame-edge: #262d48; --ground: #11141f;
@@ -40,8 +35,8 @@
 /* the flats */
 .unit-tile { scale: var(--mag, 1); transition: scale 140ms ease-out, box-shadow 400ms; }
 .unit-tile.tile-wave { animation: tile-wave 1100ms ease-out backwards; animation-delay: var(--d, 0s); }
-.facade-sky[data-sky="night"] .unit-tile:not(.unit-vacant) { box-shadow: 0 0 18px -3px var(--st); }
 .facade-sky[data-sky="dusk"] .unit-tile:not(.unit-vacant) { box-shadow: 0 0 12px -4px var(--st); }
+.facade-sky[data-sky="night"] .unit-tile:not(.unit-vacant) { box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.18), 0 0 18px -3px var(--st); }
 .unit-tile.tile-hit { animation: hit-glow 1.6s ease-in-out infinite; }
 .unit-hold { animation: hold-pulse 2.2s ease-in-out infinite; }
 .ico-for_sale { transform-origin: 50% 0; animation: tag-swing 2.8s ease-in-out infinite alternate; }
