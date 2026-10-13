@@ -1,13 +1,14 @@
 "use client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { CalendarPlus, Handshake, History, Pencil, Phone, Sparkles, UserRound } from "lucide-react";
+import { CalendarPlus, Check, Handshake, History, Pencil, Phone, Scale, Sparkles, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { ApiError, Button, Drawer, Field, Input, NativeSelect, Skeleton, Textarea, cn, formatDate, timeAgo, useTheme, useToast } from "@crm/ui";
 import { AsyncSelect, toLocalInput } from "@/components/forms/fields";
 import { api } from "@/lib/api";
+import { MAX_COMPARE, compare, useCompare } from "@/lib/compare";
 import { celebrate } from "@/lib/confetti";
 import { BHK_OPTIONS, FACINGS, STATUS, STATUS_ORDER, UNIT_KINDS, holdLeft, money, priceLine } from "@/lib/realestate";
 import type { MatchLead, Unit, UnitEvent, UnitStatus } from "@/lib/realestate";
@@ -160,12 +161,11 @@ export function UnitDrawer({ unitId, onClose, canEdit }: { unitId: string | null
             </section>
           )}
 
-          {canEdit && (
-            <section className="flex flex-wrap gap-2" aria-label="Actions">
-              <Button variant="secondary" size="sm" onClick={() => setVisit({ lead: null, at: toLocalInput(new Date(Date.now() + 864e5).toISOString().replace(/T.*/, "T11:00:00")) })}><CalendarPlus /> Schedule site visit</Button>
-              <Button variant="secondary" size="sm" loading={busy} onClick={startDeal}><Handshake /> Start a deal</Button>
-            </section>
-          )}
+          <section className="flex flex-wrap gap-2" aria-label="Actions">
+            {canEdit && <Button variant="secondary" size="sm" onClick={() => setVisit({ lead: null, at: toLocalInput(new Date(Date.now() + 864e5).toISOString().replace(/T.*/, "T11:00:00")) })}><CalendarPlus /> Schedule site visit</Button>}
+            {canEdit && <Button variant="secondary" size="sm" loading={busy} onClick={startDeal}><Handshake /> Start a deal</Button>}
+            <CompareButton u={u} />
+          </section>
           {visit && (
             <div className="space-y-3 rounded-xl border border-border bg-surface p-4">
               <Field label="Who is visiting?"><AsyncSelect value={visit.lead} onChange={(id) => setVisit({ ...visit, lead: id })} endpoint="/api/v1/leads" placeholder="Search your leads…" /></Field>
@@ -211,6 +211,21 @@ export function UnitDrawer({ unitId, onClose, canEdit }: { unitId: string | null
         </div>
       )}
     </Drawer>
+  );
+}
+
+function CompareButton({ u }: { u: Unit }) {
+  const list = useCompare(); const toast = useToast(); const router = useRouter();
+  const inList = list.some((f) => f.id === u.id);
+  const toggle = () => {
+    const r = compare.toggle({ id: u.id, number: u.number, where: [u.tower_name, u.project_name].filter(Boolean).join(" · ") });
+    if (r === "full") toast.error(`You can compare up to ${MAX_COMPARE} flats`, "Remove one to add another.");
+  };
+  return (
+    <>
+      <Button variant={inList ? "soft" : "secondary"} size="sm" onClick={toggle} aria-pressed={inList}>{inList ? <Check /> : <Scale />} {inList ? "In comparison" : "Add to comparison"}</Button>
+      {inList && list.length > 1 && <Button variant="ghost" size="sm" onClick={() => router.push("/app/compare")}>Compare {list.length} flats</Button>}
+    </>
   );
 }
 

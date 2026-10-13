@@ -1,6 +1,7 @@
 """Transactional email: template rendering + swappable providers (console | smtp | resend)."""
 from __future__ import annotations
 
+import base64
 import logging
 import smtplib
 from email.message import EmailMessage
@@ -18,24 +19,28 @@ log = logging.getLogger("app.email")
 _env = SandboxedEnvironment(autoescape=True)
 
 
+# (filename, mime type, content)
+Attachment = tuple[str, str, bytes]
+
+
 class EmailProvider(Protocol):
     name: str
 
-    def send(self, to: str, subject: str, html: str, *, from_addr: str, reply_to: str | None = None) -> str | None: ...
+    def send(self, to: str, subject: str, html: str, *, from_addr: str, reply_to: str | None = None, attachments: list[Attachment] | None = None) -> str | None: ...
 
 
 class ConsoleProvider:
     name = "console"
 
-    def send(self, to, subject, html, *, from_addr, reply_to=None):
-        log.info("EMAIL to=%s subject=%s\n%s", to, subject, html)
+    def send(self, to, subject, html, *, from_addr, reply_to=None, attachments=None):
+        log.info("EMAIL to=%s subject=%s attachments=%s\n%s", to, subject, [a[0] for a in attachments or []], html)
         return None
 
 
 class SmtpProvider:
     name = "smtp"
 
-    def send(self, to, subject, html, *, from_addr, reply_to=None):
+    def send(self, to, subject, html, *, from_addr, reply_to=None, attachments=None):
         cfg = current_app.config
         msg = EmailMessage()
         msg["From"], msg["To"], msg["Subject"] = from_addr, to, subject
@@ -43,6 +48,7 @@ class SmtpProvider:
             msg["Reply-To"] = reply_to
         msg.set_content("Please view this email in an HTML-capable client.")
         msg.add_alternative(html, subtype="html")
+        add_attachments(msg, attachments)
         with smtplib.SMTP(cfg["SMTP_HOST"], cfg["SMTP_PORT"], timeout=15) as s:
             s.starttls()
             if cfg["SMTP_USER"]:
@@ -54,15 +60,22 @@ class SmtpProvider:
 class ResendProvider:
     name = "resend"
 
-    def send(self, to, subject, html, *, from_addr, reply_to=None):
+    def send(self, to, subject, html, *, from_addr, reply_to=None, attachments=None):
+        files = [{"filename": n, "content": base64.b64encode(b).decode()} for n, _, b in attachments or []]
         r = httpx.post(
             "https://api.resend.com/emails",
             headers={"Authorization": f"Bearer {current_app.config['RESEND_API_KEY']}"},
-            json={"from": from_addr, "to": [to], "subject": subject, "html": html, **({"reply_to": reply_to} if reply_to else {})},
+            json={"from": from_addr, "to": [to], "subject": subject, "html": html, **({"reply_to": reply_to} if reply_to else {}), **({"attachments": files} if files else {})},
             timeout=15,
         )
         r.raise_for_status()
         return r.json().get("id")
+
+
+def add_attachments(msg: EmailMessage, attachments: list[Attachment] | None) -> None:
+    for name, mime, content in attachments or []:
+        main, _, sub = (mime or "application/octet-stream").partition("/")
+        msg.add_attachment(content, maintype=main, subtype=sub or "octet-stream", filename=name)
 
 
 def get_provider() -> EmailProvider:
@@ -84,7 +97,7 @@ def render_template(key: str, ctx: dict) -> tuple[str, str]:
 
 
 def send_raw(to: str, subject: str, html: str, *, workspace_id=None, template_key: str | None = None,
-             reply_to: str | None = None, from_name: str | None = None) -> bool:
+             reply_to: str | None = None, from_name: str | None = None, attachments: list[Attachment] | None = None) -> bool:
     provider = get_provider()
     status, error = "sent", None
     from_addr = current_app.config["EMAIL_FROM"]
@@ -94,7 +107,7 @@ def send_raw(to: str, subject: str, html: str, *, workspace_id=None, template_ke
 
         from_addr = formataddr((f"{from_name.replace(chr(34), '').replace(chr(10), ' ')[:60]} via CRM Wala", parseaddr(from_addr)[1]))
     try:
-        provider.send(to, subject, html, from_addr=from_addr, reply_to=reply_to)
+        provider.send(to, subject, html, from_addr=from_addr, reply_to=reply_to, attachments=attachments)
     except Exception as e:  # delivery failure must never break the caller
         status, error = "failed", str(e)[:400]
         log.exception("email send failed")
