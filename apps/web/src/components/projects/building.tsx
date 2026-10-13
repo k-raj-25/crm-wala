@@ -121,7 +121,7 @@ const UnitTile = React.memo(function UnitTile({ u, dark, dim, hit, compact, dela
       </span>
       {!compact && (
         <span className="flex items-end justify-between gap-1 text-[10.5px] font-medium leading-none opacity-90">
-          <span className="truncate">{left ?? u.bhk?.replace(" BHK", "B") ?? ""}</span>
+          <span className="truncate">{left ?? u.bhk?.replace(" BHK", "BHK") ?? ""}</span>
           <span className="truncate max-sm:hidden">{u.status === "vacant" ? "" : priceLine(u).replace("/mo", "")}</span>
         </span>
       )}
