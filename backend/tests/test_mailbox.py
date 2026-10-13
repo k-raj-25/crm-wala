@@ -30,7 +30,7 @@ def test_platform_path_uses_senders_name_and_reply_to(app, monkeypatch):
     _verify(app, me["user"]["email"])
     sent = {}
 
-    def fake_send(self, to, subject, html, *, from_addr, reply_to=None):
+    def fake_send(self, to, subject, html, *, from_addr, reply_to=None, attachments=None):
         sent.update(to=to, from_addr=from_addr, reply_to=reply_to)
 
     from app.services.email import ConsoleProvider

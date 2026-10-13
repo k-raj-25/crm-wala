@@ -12,6 +12,7 @@ import { useAccess, useMe } from "@/lib/queries";
 import { ComposeEmail } from "../forms/compose-email";
 import { CommandPalette } from "./command-palette";
 import { QuickCreateDrawer, QuickCreateMenu } from "./quick-create";
+import { CompareTray } from "@/components/compare/compare-tray";
 import { Sidebar, UserMenu, WorkspaceSwitcher, useNavItems } from "./sidebar";
 import { UIProvider, useUI } from "./ui-context";
 import { NotificationsPopover } from "./notifications";
@@ -172,6 +173,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         </main>
       </div>
       <MobileNav />
+      <CompareTray />
       <div className="fixed bottom-20 right-4 z-30 md:hidden"><QuickCreateMenu variant="fab" /></div>
       <PendingNavigation /><CommandPalette /><QuickCreateDrawer /><ShortcutsDialog />
       <ComposeEmail open={!!ui.compose} onOpenChange={(o) => !o && ui.closeCompose()} defaults={ui.compose?.defaults} />
