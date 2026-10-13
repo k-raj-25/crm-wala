@@ -1,7 +1,7 @@
 "use client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { animate, motion, useReducedMotion } from "framer-motion";
-import { BarChart3, ArrowDownRight, ArrowUpRight, Bookmark, Building2, CalendarClock, CalendarCheck, Download, FileText, Filter, Gauge, Handshake, IndianRupee, Landmark, Lock, Magnet, Minus, Sparkles, Table2, Target, TrendingUp, Trash2, UserPlus, Users, Zap } from "lucide-react";
+import { BarChart3, ArrowDownRight, ChevronLeft, ChevronRight, ArrowUpRight, Bookmark, Building2, CalendarClock, CalendarCheck, Download, FileText, Filter, Gauge, Handshake, IndianRupee, Landmark, Lock, Magnet, Minus, Sparkles, Table2, Target, TrendingUp, Trash2, UserPlus, Users, Zap } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
@@ -66,6 +66,24 @@ function Trend({ s, compare }: { s: Report["summary"][number]; compare?: Report[
   return <span title={title} className={cn("inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-xs font-semibold", good == null ? "bg-bg-subtle text-fg-muted" : good ? "bg-success-soft text-success" : "bg-danger-soft text-danger")}><Icon className="size-3.5" />{text}</span>;
 }
 
+/** One line of report tabs that scrolls sideways, with small arrow buttons at each end. */
+function ScrollRow({ label, active, children }: { label: string; active: string; children: React.ReactNode }) {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const [edge, setEdge] = React.useState({ start: true, end: true });
+  const update = React.useCallback(() => { const el = ref.current; if (el) setEdge({ start: el.scrollLeft <= 1, end: el.scrollLeft + el.clientWidth >= el.scrollWidth - 1 }); }, []);
+  React.useEffect(() => { update(); const el = ref.current; if (!el) return; const ro = new ResizeObserver(update); ro.observe(el); return () => ro.disconnect(); }, [update]);
+  React.useEffect(() => { ref.current?.querySelector<HTMLElement>(`[data-key="${active}"]`)?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" }); }, [active]);
+  const by = (dir: 1 | -1) => ref.current?.scrollBy({ left: dir * ref.current.clientWidth * 0.7, behavior: "smooth" });
+  const arrow = "grid size-8 shrink-0 place-items-center rounded-full border border-border bg-surface text-fg-muted shadow-xs transition-opacity hover:text-fg disabled:pointer-events-none disabled:opacity-30";
+  return (
+    <div className="flex items-center gap-2">
+      <button type="button" aria-label="Scroll left" className={arrow} disabled={edge.start} onClick={() => by(-1)}><ChevronLeft className="size-4" /></button>
+      <nav ref={ref} aria-label={label} onScroll={update} className="hide-scrollbar flex min-w-0 flex-1 gap-2 overflow-x-auto px-0.5 py-1">{children}</nav>
+      <button type="button" aria-label="Scroll right" className={arrow} disabled={edge.end} onClick={() => by(1)}><ChevronRight className="size-4" /></button>
+    </div>
+  );
+}
+
 export default function ReportsPage() {
   const { can, has, me } = useAccess(); const toast = useToast(); const qc = useQueryClient(); const pipelines = usePipelines(); const { resolved } = useTheme();
   const [type, setType] = React.useState("revenue"); const [days, setDays] = React.useState("30"); const [from, setFrom] = React.useState(""); const [to, setTo] = React.useState("");
@@ -93,19 +111,19 @@ export default function ReportsPage() {
         actions={<>{can("data.export") && <><Button variant="secondary" onClick={() => download("csv")} disabled={!r}><Download /> CSV</Button><Button variant="secondary" onClick={() => download("pdf")} disabled={!r}><FileText /> PDF</Button></>}{can("reports.manage") && <Button onClick={() => setSaveOpen(true)} disabled={!r}><Bookmark /> Save / schedule</Button>}</>} />
 
       {/* 1 — what do you want to know? */}
-      <nav aria-label="Report types" className="flex flex-wrap gap-2">
+      <ScrollRow label="Report types" active={type}>
         {ORDER.map((k) => {
           const m = META[k]; const on = type === k; const Icon = m.icon; const lockedTile = ADVANCED.has(k) && !has("advanced_reports");
           return (
-            <button key={k} onClick={() => setType(k)} aria-pressed={on} title={m.ask}
-              className={cn("inline-flex items-center gap-2 rounded-full border py-1.5 pl-1.5 pr-3.5 text-[13.5px] font-medium transition-all", on ? "border-transparent text-fg shadow-md" : "border-border bg-surface text-fg-muted hover:-translate-y-px hover:border-border-strong hover:text-fg hover:shadow-sm")}
+            <button key={k} onClick={() => setType(k)} aria-pressed={on} title={m.ask} data-key={k}
+              className={cn("inline-flex shrink-0 items-center whitespace-nowrap gap-2 rounded-full border py-1.5 pl-1.5 pr-3.5 text-[13.5px] font-medium transition-all", on ? "border-transparent text-fg shadow-md" : "border-border bg-surface text-fg-muted hover:-translate-y-px hover:border-border-strong hover:text-fg hover:shadow-sm")}
               style={on ? { background: tint(m.tone, 16), boxShadow: `inset 0 0 0 1.5px var(--series-${m.tone})` } : undefined}>
               <span className="grid size-7 place-items-center rounded-full" style={{ background: on ? "var(--surface)" : tint(m.tone, 14), color: `var(--series-${m.tone})` }}><Icon className="size-4" /></span>
               {m.label}{lockedTile && <Lock className="size-3 opacity-60" />}
             </button>
           );
         })}
-      </nav>
+      </ScrollRow>
       {(saved.data?.length ?? 0) > 0 && (
         <section aria-label="Saved reports" className="mt-3 flex flex-wrap items-center gap-2">
           <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-fg-subtle"><Bookmark className="size-3.5" /> Saved</span>

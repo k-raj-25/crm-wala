@@ -16,6 +16,8 @@ import { QuickCreateDrawer, QuickCreateMenu } from "./quick-create";
 import { Sidebar, UserMenu, WorkspaceSwitcher, useNavItems } from "./sidebar";
 import { UIProvider, useUI } from "./ui-context";
 import { NotificationsPopover } from "./notifications";
+import { PendingNavigation, startNavigation, usePendingPath } from "./pending-nav";
+import { RouteSkeleton } from "./route-skeleton";
 
 function TrialBanner() {
   const { data: me } = useMe();
@@ -83,7 +85,7 @@ function ShortcutsDialog() {
 }
 
 function MobileNav() {
-  const pathname = usePathname(); const items = useNavItems(); const [more, setMore] = React.useState(false);
+  const current = usePathname(); const pathname = usePendingPath() ?? current; const items = useNavItems(); const [more, setMore] = React.useState(false);
   const primary = items.filter((i) => MOBILE_PRIMARY.includes(i.href)); const rest = items.filter((i) => !MOBILE_PRIMARY.includes(i.href));
   const act = (h: string) => (h === "/app" ? pathname === "/app" : pathname.startsWith(h));
   React.useEffect(() => setMore(false), [pathname]);
@@ -126,6 +128,7 @@ function Topbar() {
 
 function Shell({ children }: { children: React.ReactNode }) {
   const router = useRouter(); const pathname = usePathname(); const ui = useUI();
+  const pendingPath = usePendingPath();
   const [collapsed, setCollapsed] = useLocalStorage("sidebar-collapsed", false);
   const { data: me, isLoading, error } = useMe();
   const { restricted } = useAccess();
@@ -135,7 +138,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   useHotkey("[", () => setCollapsed((c) => !c));
   useHotkey("?", () => ui.openShortcuts());
   useHotkey("c", (e) => { e.preventDefault(); ui.openCommand("Create "); }, [items.length]);
-  useChord("g", Object.fromEntries(NAV.filter((n) => n.chord).map((n) => [n.chord!, () => router.push(n.href)])));
+  useChord("g", Object.fromEntries(NAV.filter((n) => n.chord).map((n) => [n.chord!, () => { startNavigation(n.href); router.push(n.href); }])));
 
   React.useEffect(() => {
     if (!me) return;
@@ -161,15 +164,17 @@ function Shell({ children }: { children: React.ReactNode }) {
         <Topbar />
         <main className="flex-1 pb-24 md:pb-0" id="main">
           <AnimatePresence mode="wait" initial={false}>
-            <motion.div key={pathname.split("/").slice(0, 3).join("/")} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18, ease: "easeOut" }}>
+            <motion.div key={pathname.split("/").slice(0, 3).join("/")} hidden={!!pendingPath} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18, ease: "easeOut" }}>
               {restricted && !allowedWhenRestricted ? <RestrictedScreen /> : children}
             </motion.div>
           </AnimatePresence>
+          {/* The clicked page's skeleton, shown at once while the route itself is still on its way. */}
+          {pendingPath && <RouteSkeleton path={pendingPath} />}
         </main>
       </div>
       <MobileNav />
       <div className="fixed bottom-20 right-4 z-30 md:hidden"><QuickCreateMenu variant="fab" /></div>
-      <CommandPalette /><AiDock /><QuickCreateDrawer /><ShortcutsDialog />
+      <PendingNavigation /><CommandPalette /><AiDock /><QuickCreateDrawer /><ShortcutsDialog />
       <ComposeEmail open={!!ui.compose} onOpenChange={(o) => !o && ui.closeCompose()} defaults={ui.compose?.defaults} />
     </div>
   );
