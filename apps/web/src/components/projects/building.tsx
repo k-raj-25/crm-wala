@@ -82,8 +82,8 @@ function tileStyle(status: UnitStatus, dark: boolean): React.CSSProperties {
   return {
     color: dark ? s.inkDark : s.ink,
     backgroundColor: bg,
-    // glass: a window mullion, a light-to-dark wash, and (for lived-in flats) a lamp glowing in the corner
-    backgroundImage: `linear-gradient(to right, transparent calc(50% - .5px), rgba(255,255,255,.28) calc(50% - .5px) calc(50% + .5px), transparent calc(50% + .5px)), linear-gradient(160deg, rgba(255,255,255,${status === "vacant" ? 0.45 : 0.22}) 0%, rgba(255,255,255,0) 48%, rgba(0,0,0,.14) 100%)${lamp}`,
+    // glass: a light-to-dark wash, and (for lived-in flats) a lamp glowing in the corner
+    backgroundImage: `linear-gradient(160deg, rgba(255,255,255,${status === "vacant" ? 0.45 : 0.22}) 0%, rgba(255,255,255,0) 48%, rgba(0,0,0,.14) 100%)${lamp}`,
     ["--st" as string]: bg,
   };
 }
@@ -119,7 +119,7 @@ const UnitTile = React.memo(function UnitTile({ u, dark, dim, hit, compact, dela
       </span>
       {!compact && (
         <span className="flex items-end justify-between gap-1 text-[10.5px] font-medium leading-none opacity-90">
-          <span className="truncate">{left ?? u.bhk?.replace(" BHK", "B") ?? ""}</span>
+          <span className="truncate">{left ?? u.bhk?.replace(" BHK", "BHK") ?? ""}</span>
           <span className="truncate max-sm:hidden">{u.status === "vacant" ? "" : priceLine(u).replace("/mo", "")}</span>
         </span>
       )}
