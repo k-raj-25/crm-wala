@@ -113,18 +113,19 @@ const UnitTile = React.memo(function UnitTile({ u, dark, dim, hit, compact, dela
       data-unit={u.id}
       data-dim={dim ? "1" : undefined}
       style={{ ...tileStyle(u.status, dark), ...(animate ? { ["--d" as string]: `${delay + 0.35}s` } : null) }}
-      className={cn("unit-tile relative flex min-w-0 flex-col justify-between overflow-hidden rounded-[7px] text-left outline-none focus-visible:ring-2 focus-visible:ring-primary",
-        `unit-${u.status}`, compact ? "h-10 px-1.5 py-1" : "h-[60px] px-2 py-1.5", animate && "tile-wave", u.status === "on_hold" && "unit-hold", hit && "tile-hit z-10",
+      className={cn("unit-tile @container/tile relative flex min-w-0 flex-col justify-between overflow-hidden rounded-[7px] text-left outline-none focus-visible:ring-2 focus-visible:ring-primary",
+        `unit-${u.status}`, compact ? "h-10 px-1.5 py-1" : "h-[60px] px-1 py-1.5 sm:px-2", animate && "tile-wave", u.status === "on_hold" && "unit-hold", hit && "tile-hit z-10",
         picking && !picked && "opacity-80", picked && "tile-picked z-10")}>
-      {picked && <span aria-hidden className={cn("pick-badge absolute bottom-0 right-0 z-10 grid place-items-center rounded-tl-[7px] bg-primary text-primary-fg", compact ? "size-4" : "size-5")}><Check className={compact ? "size-2.5" : "size-3.5"} strokeWidth={3} /></span>}
-      <span className="flex items-start justify-between gap-1">
+      {/* On a narrow tile (phones) the tick takes the status icon's corner, so the size below it keeps its room. */}
+      {picked && <span aria-hidden className={cn("pick-badge absolute bottom-0 right-0 z-10 grid place-items-center rounded-tl-[7px] bg-primary text-primary-fg", compact ? "size-4" : "size-5 @max-[56px]/tile:top-0 @max-[56px]/tile:bottom-auto @max-[56px]/tile:size-4 @max-[56px]/tile:rounded-tl-none @max-[56px]/tile:rounded-bl-[7px]")}><Check className={compact ? "size-2.5" : "size-3.5 @max-[56px]/tile:size-2.5"} strokeWidth={3} /></span>}
+      <span className="flex items-start justify-between gap-1 @max-[56px]/tile:gap-0.5">
         <span className={cn("font-semibold tabular-nums leading-none", compact ? "text-[11px]" : "text-[13px]")}>{u.number}</span>
-        <Icon className={cn("shrink-0 opacity-90", `ico-${u.status}`, compact ? "size-3" : "size-3.5")} aria-hidden />
+        <Icon className={cn("shrink-0 opacity-90", `ico-${u.status}`, compact ? "size-3" : "size-3.5 @max-[56px]/tile:size-2.5", picked && !compact && "@max-[56px]/tile:invisible")} aria-hidden />
       </span>
       {!compact && (
-        <span className={cn("flex items-end justify-between gap-1 text-[10.5px] font-medium leading-none opacity-90", picked && "pr-4")}>
-          <span className="truncate">{left ?? u.bhk?.replace(" BHK", "BHK") ?? ""}</span>
-          <span className="truncate max-sm:hidden">{u.status === "vacant" ? "" : priceLine(u).replace("/mo", "")}</span>
+        <span className={cn("flex items-end justify-between gap-1 text-[10.5px] font-medium leading-none opacity-90", picked && "pr-4 @max-[56px]/tile:pr-0")}>
+          <span className="truncate">{left ? <>{left.replace(" left", "")}<span className="@max-[56px]/tile:hidden"> left</span></> : u.bhk?.replace(" BHK", "BHK") ?? ""}</span>
+          <span className="truncate @max-[80px]/tile:hidden">{u.status === "vacant" ? "" : priceLine(u).replace("/mo", "")}</span>
         </span>
       )}
     </motion.button>
@@ -164,15 +165,23 @@ function Crane() {
   );
 }
 
+function StreetScene({ viewBox, className }: { viewBox: string; className?: string }) {
+  return (
+    <svg aria-hidden viewBox={viewBox} preserveAspectRatio="xMidYMax slice" className={cn("block h-10 w-full", className)}>
+      <g className="sway"><circle cx="70" cy="22" r="11" fill="#16a34a" /><circle cx="84" cy="25" r="9" fill="#15803d" /></g><rect x="68" y="28" width="4" height="10" fill="#7c4a24" />
+      <g className="sway" style={{ animationDelay: "-2s" }}><circle cx="530" cy="22" r="11" fill="#16a34a" /><circle cx="516" cy="25" r="9" fill="#15803d" /></g><rect x="528" y="28" width="4" height="10" fill="#7c4a24" />
+      <g className="sway" style={{ animationDelay: "-1s" }}><circle cx="130" cy="27" r="7" fill="#22c55e" /></g><g className="sway" style={{ animationDelay: "-3s" }}><circle cx="470" cy="27" r="7" fill="#22c55e" /></g>
+      {[200, 300, 400].map((x) => (<g key={x}><rect x={x - 1} y="16" width="2" height="22" fill="var(--slab-edge)" /><rect x={x - 5} y="14" width="10" height="3" rx="1.5" fill="var(--slab-edge)" /><circle className="lamp-glow" cx={x} cy="20" r="14" fill="#fde68a" opacity="0.35" /><circle className="lamp-glow" cx={x} cy="17" r="2.2" fill="#fef08a" /></g>))}
+    </svg>
+  );
+}
+
 function Street() {
   return (
     <div className="relative overflow-hidden rounded-b-xl bg-[var(--ground)] pb-3 pt-2">
-      <svg aria-hidden viewBox="0 0 600 40" preserveAspectRatio="xMidYMax slice" className="block h-10 w-full">
-        <g className="sway"><circle cx="70" cy="22" r="11" fill="#16a34a" /><circle cx="84" cy="25" r="9" fill="#15803d" /></g><rect x="68" y="28" width="4" height="10" fill="#7c4a24" />
-        <g className="sway" style={{ animationDelay: "-2s" }}><circle cx="530" cy="22" r="11" fill="#16a34a" /><circle cx="516" cy="25" r="9" fill="#15803d" /></g><rect x="528" y="28" width="4" height="10" fill="#7c4a24" />
-        <g className="sway" style={{ animationDelay: "-1s" }}><circle cx="130" cy="27" r="7" fill="#22c55e" /></g><g className="sway" style={{ animationDelay: "-3s" }}><circle cx="470" cy="27" r="7" fill="#22c55e" /></g>
-        {[200, 300, 400].map((x) => (<g key={x}><rect x={x - 1} y="16" width="2" height="22" fill="var(--slab-edge)" /><rect x={x - 5} y="14" width="10" height="3" rx="1.5" fill="var(--slab-edge)" /><circle className="lamp-glow" cx={x} cy="20" r="14" fill="#fde68a" opacity="0.35" /><circle className="lamp-glow" cx={x} cy="17" r="2.2" fill="#fef08a" /></g>))}
-      </svg>
+      {/* Phones get the middle of the street (the near trees and the lamps) rather than the big trees cut in half at the edges. */}
+      <StreetScene viewBox="96 0 408 40" className="sm:hidden" />
+      <StreetScene viewBox="0 0 600 40" className="max-sm:hidden" />
       <div className="walker pointer-events-none absolute bottom-[19px] z-[1]" aria-hidden>
         <svg viewBox="0 0 10 16" className="h-[14px] w-[9px]"><circle cx="5" cy="3" r="2.4" fill="#f4c7a1" /><rect x="3" y="5.5" width="4" height="6" rx="1.5" fill="#6366f1" /><path d="M4 11 L3 15 M6 11 L7 15" stroke="#334155" strokeWidth="1.3" strokeLinecap="round" /></svg>
       </div>
@@ -251,11 +260,11 @@ export function BuildingView({ data, spot, onOpen, flashFloor, registerFloor, pi
             const anyHit = !spotting || f.units.some((u) => fitsSpot(u, spot));
             return (
               <div key={f.floor} ref={(el) => registerFloor?.(f.floor, el)} role="listitem" data-floor={f.floor}
-                className={cn("grid grid-cols-[44px_1fr] items-center gap-2 rounded-md border-b-[5px] border-[var(--slab)] sm:grid-cols-[62px_1fr] sm:gap-3", compact ? "py-1" : "py-2.5 sm:py-3", flashFloor === f.floor && "floor-flash", !anyHit && "opacity-60")}>
+                className={cn("grid grid-cols-[26px_1fr] items-center gap-1.5 rounded-md border-b-[5px] border-[var(--slab)] sm:grid-cols-[62px_1fr] sm:gap-3", compact ? "py-1" : "py-2.5 sm:py-3", flashFloor === f.floor && "floor-flash", !anyHit && "opacity-60")}>
                 <div className="pr-1 text-right leading-tight text-[color:var(--facade-ink)]">
                   <div className="text-[11px] font-semibold sm:text-xs"><span className="sm:hidden">{f.floor === 0 ? "G" : String(f.floor).padStart(2, "0")}</span><span className="hidden sm:inline">{floorLabel(f.floor)}</span></div>
                 </div>
-                <div className={cn("grid", compact ? "gap-1.5" : "gap-2 @2xl:gap-3")} style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+                <div className={cn("grid", compact ? "gap-1.5" : "gap-1.5 sm:gap-2 @2xl:gap-3")} style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
                   {f.units.map((u) => {
                     const hit = spotting && fitsSpot(u, spot);
                     return <UnitTile key={u.id} u={u} dark={dark} dim={spotting && !hit} hit={hit} compact={compact} animate={animateTiles} delay={Math.min(fromBottom * 0.045 + (u.position - 1) * 0.02, 1.5)} picking={!!picked} picked={!!picked?.has(u.id)} onOpen={onOpen} onHover={onHover} />;
