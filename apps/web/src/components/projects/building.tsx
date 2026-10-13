@@ -16,16 +16,14 @@ export const fitsSpot = (u: UnitMini, s: Spot) => {
   return !q || u.number.toLowerCase().includes(q) || (u.bhk ?? "").toLowerCase().includes(q) || (u.facing ?? "").toLowerCase().includes(q);
 };
 
-/* ---- time of day ------------------------------------------------------------------------------------------------------ */
-// The sky follows the device clock: night 19:00-05:00, dusk/dawn 05:00-07:00 and 17:00-19:00, otherwise day.
-type Sky3 = "day" | "dusk" | "night";
-const byHour = (h: number): Sky3 => (h >= 19 || h < 5 ? "night" : h >= 17 || h < 7 ? "dusk" : "day");
+/* ---- sky ------------------------------------------------------------------------------------------------------------ */
+// The sky follows the app theme: light shows the day scene, dark shows the night scene.
+type SkyMode = "day" | "night";
 
-/** The sky for the current local time. Unknown on the server, so the first paint is "day" and it settles right after mount. */
-export function useSkyNow(): Sky3 {
-  const [hour, setHour] = React.useState<number | null>(null);
-  React.useEffect(() => { setHour(new Date().getHours()); const t = setInterval(() => setHour(new Date().getHours()), 60_000); return () => clearInterval(t); }, []);
-  return hour == null ? "day" : byHour(hour);
+/** The sky for the current theme. */
+export function useSky(): SkyMode {
+  const { resolved } = useTheme();
+  return resolved === "dark" ? "night" : "day";
 }
 
 const STARS = Array.from({ length: 22 }, (_, i) => { const r = (n: number) => { const x = Math.sin(i * 91.7 + n * 12.3) * 10000; return x - Math.floor(x); }; const f = (n: number) => Math.round(n * 10) / 10; /* rounded so server and browser print identical numbers */ return { x: f(r(1) * 100), y: f(r(2) * 60), s: f(0.8 + r(3) * 1.4), d: f(r(4) * 3) }; });
@@ -47,7 +45,7 @@ function Bird({ top, delay, scale = 1 }: { top: string; delay: number; scale?: n
 
 /** Sky, sun/moon, clouds, birds and stars behind whatever you put in it. The content leans toward the pointer a little. */
 export function Sky({ children, className, tilt = true }: { children: React.ReactNode; className?: string; tilt?: boolean }) {
-  const sky = useSkyNow();
+  const sky = useSky();
   const reduce = useReducedMotion();
   const px = useMotionValue(0), py = useMotionValue(0);
   const sx = useSpring(px, { stiffness: 60, damping: 16 }), sy = useSpring(py, { stiffness: 60, damping: 16 });
@@ -62,7 +60,7 @@ export function Sky({ children, className, tilt = true }: { children: React.Reac
         <div className="sky-stars absolute inset-6">{STARS.map((s, i) => <span key={i} className="twinkle absolute rounded-full bg-white" style={{ left: `${s.x}%`, top: `${s.y}%`, width: s.s, height: s.s, animationDelay: `${s.d}s` }} />)}</div>
         <Cloud top="14%" size={150} delay={0} opacity={0.9} /><Cloud top="30%" size={100} delay={-35} opacity={0.7} /><Cloud top="20%" size={120} delay={-62} opacity={0.8} />
         <div className="sky-body absolute inset-6 text-slate-700/70" style={{ opacity: sky === "night" ? 0 : 1 }}><Bird top="16%" delay={0} /><Bird top="22%" delay={-0.6} scale={0.75} /><Bird top="12%" delay={-1.3} scale={0.6} /></div>
-        <motion.svg viewBox="0 0 64 64" className="absolute size-16" animate={{ left: sky === "dusk" ? "78%" : "84%", top: sky === "dusk" ? "58%" : "12%", opacity: sky === "night" ? 0 : 1, scale: sky === "dusk" ? 1.35 : 1 }} transition={{ type: "spring", stiffness: 50, damping: 15 }}>
+        <motion.svg viewBox="0 0 64 64" className="absolute size-16" animate={{ left: "84%", top: "12%", opacity: sky === "night" ? 0 : 1 }} transition={{ type: "spring", stiffness: 50, damping: 15 }}>
           <defs><radialGradient id="sg"><stop offset="0" stopColor="var(--sun)" stopOpacity="0.9" /><stop offset="1" stopColor="var(--sun)" stopOpacity="0" /></radialGradient></defs>
           <circle cx="32" cy="32" r="31" fill="url(#sg)" style={{ animation: "sun-breathe 6s ease-in-out infinite" }} /><circle cx="32" cy="32" r="12" fill="var(--sun)" />
         </motion.svg>
@@ -190,9 +188,7 @@ type Hover = { u: UnitMini; x: number; y: number; w: number } | null;
 export function BuildingView({ data, spot, onOpen, flashFloor, registerFloor }: {
   data: Building; spot: Spot; onOpen: (id: string) => void; flashFloor?: number | null; registerFloor?: (floor: number, el: HTMLElement | null) => void;
 }) {
-  const { resolved } = useTheme();
-  const night = useSkyNow() === "night";
-  const dark = resolved === "dark" || night; // at night the empty flats go dark; lit ones glow
+  const dark = useSky() === "night"; // at night the empty flats go dark; lit ones glow
   const reduce = useReducedMotion();
   const wrap = React.useRef<HTMLDivElement>(null);
   const frame = React.useRef<HTMLDivElement>(null);
