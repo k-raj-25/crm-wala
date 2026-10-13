@@ -16,7 +16,7 @@ export function CompareTray() {
     <AnimatePresence>
       {show && (
         <motion.div key="tray" initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }} transition={{ type: "spring", stiffness: 420, damping: 34 }}
-          className="fixed bottom-[calc(88px+env(safe-area-inset-bottom))] left-4 right-[84px] z-30 md:bottom-6 md:left-1/2 md:right-auto md:w-auto md:-translate-x-1/2" role="region" aria-label="Flats to compare">
+          className="fixed inset-x-4 bottom-[calc(88px+env(safe-area-inset-bottom))] z-30 mx-auto max-w-md md:inset-x-auto md:bottom-6 md:left-1/2 md:mx-0 md:w-auto md:max-w-none md:-translate-x-1/2" role="region" aria-label="Flats to compare">
           <div className="flex items-center gap-2 rounded-2xl border border-border bg-surface/95 p-2 pl-3 shadow-lg backdrop-blur">
             <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary-soft text-primary"><Scale className="size-4" /></span>
             <div className="min-w-0 flex-1 md:flex-none">
