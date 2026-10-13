@@ -114,20 +114,19 @@ const UnitTile = React.memo(function UnitTile({ u, dark, dim, hit, compact, dela
       data-dim={dim ? "1" : undefined}
       style={{ ...tileStyle(u.status, dark), ...(animate ? { ["--d" as string]: `${delay + 0.35}s` } : null) }}
       className={cn("unit-tile @container/tile relative flex min-w-0 flex-col justify-between overflow-hidden rounded-[7px] text-left outline-none focus-visible:ring-2 focus-visible:ring-primary",
-        `unit-${u.status}`, compact ? "h-10 px-1.5 py-1" : "h-[60px] px-2 py-1.5", animate && "tile-wave", u.status === "on_hold" && "unit-hold", hit && "tile-hit z-10",
+        `unit-${u.status}`, compact ? "h-[60px] px-2 py-1.5 sm:h-10 sm:px-1.5 sm:py-1" : "h-[60px] px-2 py-1.5", animate && "tile-wave", u.status === "on_hold" && "unit-hold", hit && "tile-hit z-10",
         picking && !picked && "opacity-80", picked && "tile-picked z-10")}>
       {/* On a narrow tile (phones) the tick takes the status icon's corner, so the size below it keeps its room. */}
-      {picked && <span aria-hidden className={cn("pick-badge absolute bottom-0 right-0 z-10 grid place-items-center rounded-tl-[7px] bg-primary text-primary-fg", compact ? "size-4" : "size-5 @max-[56px]/tile:top-0 @max-[56px]/tile:bottom-auto @max-[56px]/tile:size-4 @max-[56px]/tile:rounded-tl-none @max-[56px]/tile:rounded-bl-[7px]")}><Check className={compact ? "size-2.5" : "size-3.5 @max-[56px]/tile:size-2.5"} strokeWidth={3} /></span>}
+      {picked && <span aria-hidden className={cn("pick-badge absolute bottom-0 right-0 z-10 grid place-items-center rounded-tl-[7px] bg-primary text-primary-fg", compact ? "size-5 sm:size-4" : "size-5 @max-[56px]/tile:top-0 @max-[56px]/tile:bottom-auto @max-[56px]/tile:size-4 @max-[56px]/tile:rounded-tl-none @max-[56px]/tile:rounded-bl-[7px]")}><Check className={compact ? "size-3.5 sm:size-2.5" : "size-3.5 @max-[56px]/tile:size-2.5"} strokeWidth={3} /></span>}
       <span className="flex items-start justify-between gap-1 @max-[56px]/tile:gap-0.5">
-        <span className={cn("font-semibold tabular-nums leading-none", compact ? "text-[11px]" : "text-[13px]")}>{u.number}</span>
-        <Icon className={cn("shrink-0 opacity-90", `ico-${u.status}`, compact ? "size-3" : "size-3.5 @max-[56px]/tile:size-2.5", picked && !compact && "@max-[56px]/tile:invisible")} aria-hidden />
+        <span className={cn("font-semibold tabular-nums leading-none", compact ? "text-[13px] sm:text-[11px]" : "text-[13px]")}>{u.number}</span>
+        <Icon className={cn("shrink-0 opacity-90", `ico-${u.status}`, compact ? "size-3.5 sm:size-3" : "size-3.5 @max-[56px]/tile:size-2.5", picked && !compact && "@max-[56px]/tile:invisible", compact && "@max-[34px]/tile:hidden")} aria-hidden />
       </span>
-      {!compact && (
-        <span className={cn("flex items-end justify-between gap-1 text-[10.5px] font-medium leading-none opacity-90", picked && "pr-4 @max-[56px]/tile:pr-0")}>
-          <span className="truncate">{left ? <>{left.replace(" left", "")}<span className="@max-[100px]/tile:hidden"> left</span></> : u.bhk?.replace(" BHK", "BHK") ?? ""}</span>
-          <span className="truncate @max-[80px]/tile:hidden">{u.status === "vacant" ? "" : priceLine(u).replace("/mo", "")}</span>
-        </span>
-      )}
+      {/* Compact towers (lots of floors or flats) drop this line on bigger screens; phones scroll sideways, so they always keep it. */}
+      <span className={cn("flex items-end justify-between gap-1 text-[10.5px] font-medium leading-none opacity-90", picked && "pr-4 @max-[56px]/tile:pr-0", compact && "sm:hidden")}>
+        <span className="truncate">{left ? <>{left.replace(" left", "")}<span className="@max-[100px]/tile:hidden"> left</span></> : u.bhk?.replace(" BHK", "BHK") ?? ""}</span>
+        <span className="truncate @max-[80px]/tile:hidden">{u.status === "vacant" ? "" : priceLine(u).replace("/mo", "")}</span>
+      </span>
     </motion.button>
   );
 });
@@ -247,7 +246,7 @@ export function BuildingView({ data, spot, onOpen, flashFloor, registerFloor, pi
   };
   const maxW = Math.min(1120, 104 + cols * (compact ? 84 : 132));
   // Phones don't squeeze the flats to fit: each keeps its desktop size and details, and the tower scrolls sideways (floor numbers stay pinned).
-  const minW = 26 + 8 + cols * (compact ? 60 : 96) + (cols - 1) * (compact ? 6 : 8) + 18;
+  const minW = 26 + 8 + cols * 96 + (cols - 1) * 8 + 18;
 
   return (
     <div ref={wrap} className="relative" onPointerLeave={calm}>
@@ -261,11 +260,11 @@ export function BuildingView({ data, spot, onOpen, flashFloor, registerFloor, pi
             const anyHit = !spotting || f.units.some((u) => fitsSpot(u, spot));
             return (
               <div key={f.floor} ref={(el) => registerFloor?.(f.floor, el)} role="listitem" data-floor={f.floor}
-                className={cn("grid grid-cols-[26px_1fr] items-center gap-2 rounded-md border-b-[5px] border-[var(--slab)] sm:grid-cols-[62px_1fr] sm:gap-3", compact ? "py-1" : "py-2.5 sm:py-3", flashFloor === f.floor && "floor-flash", !anyHit && "opacity-60")}>
+                className={cn("grid grid-cols-[26px_1fr] items-center gap-2 rounded-md border-b-[5px] border-[var(--slab)] sm:grid-cols-[62px_1fr] sm:gap-3", compact ? "py-2.5 sm:py-1" : "py-2.5 sm:py-3", flashFloor === f.floor && "floor-flash", !anyHit && "opacity-60")}>
                 <div className="z-[5] pr-1 text-right leading-tight text-[color:var(--facade-ink)] max-sm:sticky max-sm:left-0 max-sm:self-stretch max-sm:bg-[var(--frame)] max-sm:flex max-sm:items-center max-sm:justify-end">
                   <div className="text-[11px] font-semibold sm:text-xs"><span className="sm:hidden">{f.floor === 0 ? "G" : String(f.floor).padStart(2, "0")}</span><span className="hidden sm:inline">{floorLabel(f.floor)}</span></div>
                 </div>
-                <div className={cn("grid", compact ? "gap-1.5" : "gap-2 @2xl:gap-3")} style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+                <div className={cn("grid", compact ? "gap-2 sm:gap-1.5" : "gap-2 @2xl:gap-3")} style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
                   {f.units.map((u) => {
                     const hit = spotting && fitsSpot(u, spot);
                     return <UnitTile key={u.id} u={u} dark={dark} dim={spotting && !hit} hit={hit} compact={compact} animate={animateTiles} delay={Math.min(fromBottom * 0.045 + (u.position - 1) * 0.02, 1.5)} picking={!!picked} picked={!!picked?.has(u.id)} onOpen={onOpen} onHover={onHover} />;
