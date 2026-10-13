@@ -1,5 +1,6 @@
 "use client";
 import { AnimatePresence, motion, useMotionValue, useReducedMotion, useSpring, useTransform } from "framer-motion";
+import { Check } from "lucide-react";
 import * as React from "react";
 import { cn, useTheme } from "@crm/ui";
 import { STATUS, STATUS_ORDER, floorLabel, holdLeft, money, priceLine } from "@/lib/realestate";
@@ -88,8 +89,8 @@ function tileStyle(status: UnitStatus, dark: boolean): React.CSSProperties {
   };
 }
 
-const UnitTile = React.memo(function UnitTile({ u, dark, dim, hit, compact, delay, animate, onOpen, onHover }: {
-  u: UnitMini; dark: boolean; dim: boolean; hit: boolean; compact: boolean; delay: number; animate: boolean; onOpen: (id: string) => void; onHover: (u: UnitMini | null, el: HTMLElement | null) => void;
+const UnitTile = React.memo(function UnitTile({ u, dark, dim, hit, compact, delay, animate, picking, picked, onOpen, onHover }: {
+  u: UnitMini; dark: boolean; dim: boolean; hit: boolean; compact: boolean; delay: number; animate: boolean; picking: boolean; picked: boolean; onOpen: (id: string) => void; onHover: (u: UnitMini | null, el: HTMLElement | null) => void;
 }) {
   const s = STATUS[u.status];
   const Icon = s.icon;
@@ -105,20 +106,23 @@ const UnitTile = React.memo(function UnitTile({ u, dark, dim, hit, compact, dela
       onClick={() => onOpen(u.id)}
       onPointerEnter={(e) => e.pointerType === "mouse" && !dim && onHover(u, e.currentTarget)}
       onPointerLeave={() => onHover(null, null)}
-      onFocus={(e) => onHover(u, e.currentTarget)}
+      onFocus={(e) => (!picking || e.currentTarget.matches(":focus-visible")) && onHover(u, e.currentTarget)}
       onBlur={() => onHover(null, null)}
       aria-label={`Unit ${u.number}${u.bhk ? `, ${u.bhk}` : ""}, ${s.label}${u.sale_price ? `, ${money(u.sale_price)}` : ""}`}
+      aria-pressed={picking ? picked : undefined}
       data-unit={u.id}
       data-dim={dim ? "1" : undefined}
       style={{ ...tileStyle(u.status, dark), ...(animate ? { ["--d" as string]: `${delay + 0.35}s` } : null) }}
       className={cn("unit-tile relative flex min-w-0 flex-col justify-between overflow-hidden rounded-[7px] text-left outline-none focus-visible:ring-2 focus-visible:ring-primary",
-        `unit-${u.status}`, compact ? "h-10 px-1.5 py-1" : "h-[60px] px-2 py-1.5", animate && "tile-wave", u.status === "on_hold" && "unit-hold", hit && "tile-hit z-10")}>
+        `unit-${u.status}`, compact ? "h-10 px-1.5 py-1" : "h-[60px] px-2 py-1.5", animate && "tile-wave", u.status === "on_hold" && "unit-hold", hit && "tile-hit z-10",
+        picking && !picked && "opacity-80", picked && "tile-picked z-10")}>
+      {picked && <span aria-hidden className={cn("pick-badge absolute bottom-0 right-0 z-10 grid place-items-center rounded-tl-[7px] bg-primary text-primary-fg", compact ? "size-4" : "size-5")}><Check className={compact ? "size-2.5" : "size-3.5"} strokeWidth={3} /></span>}
       <span className="flex items-start justify-between gap-1">
         <span className={cn("font-semibold tabular-nums leading-none", compact ? "text-[11px]" : "text-[13px]")}>{u.number}</span>
         <Icon className={cn("shrink-0 opacity-90", `ico-${u.status}`, compact ? "size-3" : "size-3.5")} aria-hidden />
       </span>
       {!compact && (
-        <span className="flex items-end justify-between gap-1 text-[10.5px] font-medium leading-none opacity-90">
+        <span className={cn("flex items-end justify-between gap-1 text-[10.5px] font-medium leading-none opacity-90", picked && "pr-4")}>
           <span className="truncate">{left ?? u.bhk?.replace(" BHK", "BHK") ?? ""}</span>
           <span className="truncate max-sm:hidden">{u.status === "vacant" ? "" : priceLine(u).replace("/mo", "")}</span>
         </span>
@@ -185,8 +189,10 @@ type Hover = { u: UnitMini; x: number; y: number; w: number } | null;
 
 /** The hero: the tower as you'd see it from the street. Floors stack bottom-to-top, each flat is a lit window coloured by its status.
  *  Move the pointer over it and the flats swell toward you; a glint of sunlight sweeps across the glass every few seconds. */
-export function BuildingView({ data, spot, onOpen, flashFloor, registerFloor }: {
+export function BuildingView({ data, spot, onOpen, flashFloor, registerFloor, picked }: {
   data: Building; spot: Spot; onOpen: (id: string) => void; flashFloor?: number | null; registerFloor?: (floor: number, el: HTMLElement | null) => void;
+  /** Compare mode: the flats already picked. Tapping a flat then picks it instead of opening it. */
+  picked?: Set<string> | null;
 }) {
   const dark = useSky() === "night"; // at night the empty flats go dark; lit ones glow
   const reduce = useReducedMotion();
@@ -252,7 +258,7 @@ export function BuildingView({ data, spot, onOpen, flashFloor, registerFloor }: 
                 <div className={cn("grid", compact ? "gap-1.5" : "gap-2 @2xl:gap-3")} style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
                   {f.units.map((u) => {
                     const hit = spotting && fitsSpot(u, spot);
-                    return <UnitTile key={u.id} u={u} dark={dark} dim={spotting && !hit} hit={hit} compact={compact} animate={animateTiles} delay={Math.min(fromBottom * 0.045 + (u.position - 1) * 0.02, 1.5)} onOpen={onOpen} onHover={onHover} />;
+                    return <UnitTile key={u.id} u={u} dark={dark} dim={spotting && !hit} hit={hit} compact={compact} animate={animateTiles} delay={Math.min(fromBottom * 0.045 + (u.position - 1) * 0.02, 1.5)} picking={!!picked} picked={!!picked?.has(u.id)} onOpen={onOpen} onHover={onHover} />;
                   })}
                   {f.units.length === 0 && <div className="col-span-full rounded-md border border-dashed border-border-strong py-3 text-center text-xs text-fg-subtle">No flats on this floor yet</div>}
                 </div>
@@ -268,7 +274,7 @@ export function BuildingView({ data, spot, onOpen, flashFloor, registerFloor }: 
           <motion.div key="hc" initial={{ opacity: 0, y: 6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, transition: { duration: 0.08 } }} transition={{ type: "spring", stiffness: 500, damping: 34 }}
             className="pointer-events-none absolute z-30 w-[236px] rounded-xl border border-border bg-surface p-3.5 shadow-lg"
             style={{ left: Math.min(Math.max(hover.x - 118, 4), Math.max(hover.w - 240, 4)), top: Math.max(hover.y - 8, 0), transform: "translateY(-100%)" }}>
-            <HoverCard u={hover.u} />
+            <HoverCard u={hover.u} hint={picked ? (picked.has(hover.u.id) ? "Click to remove from comparison" : "Click to add to comparison") : "Click to open"} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -276,7 +282,7 @@ export function BuildingView({ data, spot, onOpen, flashFloor, registerFloor }: 
   );
 }
 
-function HoverCard({ u }: { u: UnitMini }) {
+function HoverCard({ u, hint }: { u: UnitMini; hint: string }) {
   const s = STATUS[u.status];
   const Icon = s.icon;
   const left = u.status === "on_hold" ? holdLeft(u.hold_until) : null;
@@ -291,7 +297,7 @@ function HoverCard({ u }: { u: UnitMini }) {
         <span className="text-fg-muted">{u.status === "for_rent" || u.status === "rented" ? "Rent" : "Price"}</span><span className="font-semibold tabular-nums">{priceLine(u)}</span>
       </div>
       {left && <p className="mt-1 text-xs font-medium text-[#7c3aed] dark:text-[#a78bfa]">Hold · {left}</p>}
-      <p className="mt-1.5 text-[11px] text-fg-subtle">Click to open</p>
+      <p className="mt-1.5 text-[11px] text-fg-subtle">{hint}</p>
     </div>
   );
 }

@@ -10,7 +10,7 @@ from flask import current_app, g
 
 from app.core import crypto
 from app.extensions import db
-from app.models import Contact, Email, Integration, Lead, User
+from app.models import Contact, Email, FileAsset, Integration, Lead, User
 from app.models.base import utcnow
 from app.services import activities
 from app.services import email as email_service
@@ -62,6 +62,18 @@ def sender_info(user: User) -> dict:
             "platform_from": current_app.config["EMAIL_FROM"]}
 
 
+def load_attachments(email: Email) -> list[tuple[str, str, bytes]]:
+    """The files picked for this email, read from storage. Only this workspace's live files."""
+    if not email.attachment_file_ids:
+        return []
+    from app.services import storage
+
+    ids = [uuid.UUID(str(i)) for i in email.attachment_file_ids]
+    rows = db.session.query(FileAsset).filter(FileAsset.id.in_(ids), FileAsset.workspace_id == email.workspace_id, FileAsset.deleted_at.is_(None)).all()
+    st = storage.get_storage()
+    return [(f.filename, f.mime_type or "application/octet-stream", st.read(f.storage_key)) for f in rows]
+
+
 def deliver(email: Email, sender: User) -> None:
     """Actually send an Email row. Marks it sent/failed; never raises."""
     integ = _mailbox_integration(email.workspace_id, sender.id)
@@ -69,16 +81,17 @@ def deliver(email: Email, sender: User) -> None:
     if email.tracking_id:
         body_html += f"<img src='{current_app.config['WEB_ORIGIN']}/api/v1/public/t/{email.tracking_id}.gif' width='1' height='1' alt='' style='display:none'>"
     try:
+        files = load_attachments(email)
         for to in email.to_addresses:
             if integ is not None and integ.mode == "live":
                 from app.services.integrations import send_via_integration
 
-                email.provider_message_id = send_via_integration(integ, to, email.cc_addresses, email.subject, body_html, email.from_address)
+                email.provider_message_id = send_via_integration(integ, to, email.cc_addresses, email.subject, body_html, email.from_address, attachments=files)
                 email.provider = integ.provider
             else:
                 # Sandbox/platform path: send as platform address with the rep as Reply-To.
                 email.provider = f"{integ.provider}:sandbox" if integ else "platform"
-                email_service.send_raw(to, email.subject, body_html, workspace_id=email.workspace_id, reply_to=sender.email, template_key="crm_email", from_name=sender.name)
+                email_service.send_raw(to, email.subject, body_html, workspace_id=email.workspace_id, reply_to=sender.email, template_key="crm_email", from_name=sender.name, attachments=files)
         email.status, email.sent_at, email.error = "sent", utcnow(), None
     except Exception as e:
         log.exception("crm email failed")
