@@ -4,7 +4,7 @@ import * as React from "react";
 import { useTheme } from "@crm/ui";
 import { STATUS, STATUS_ORDER } from "@/lib/realestate";
 import type { Building, CountMap, TowerLite, UnitStatus } from "@/lib/realestate";
-import { Sky, fitsSpot, isSpotting, useSkyNow } from "./building";
+import { Sky, fitsSpot, isSpotting } from "./building";
 import type { Spot } from "./building";
 
 const fill = (s: UnitStatus, dark: boolean) => (dark ? STATUS[s].bgDark : STATUS[s].bg);
@@ -12,8 +12,7 @@ const fill = (s: UnitStatus, dark: boolean) => (dark ? STATUS[s].bgDark : STATUS
 /** A little drawing of the tower with every flat as a lit window. Doubles as a map: tap a floor to jump to it. */
 export function TowerArt({ data, spot, onPickFloor, className }: { data: Building; spot: Spot; onPickFloor?: (floor: number) => void; className?: string }) {
   const { resolved } = useTheme();
-  const night = useSkyNow() === "night";
-  const dark = resolved === "dark" || night;
+  const dark = resolved === "dark";
   const [hot, setHot] = React.useState<number | null>(null);
   const rows = data.floors.length;
   const cols = Math.max(data.summary.units_per_floor ?? 4, 1);
