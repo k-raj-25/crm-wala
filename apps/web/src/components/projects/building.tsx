@@ -242,14 +242,12 @@ export function BuildingView({ data, spot, onOpen, flashFloor, registerFloor }: 
           {!reduce && <div aria-hidden className="glare pointer-events-none absolute inset-y-0 left-0 z-20 w-[40%]" />}
           {data.floors.map((f, ri) => {
             const fromBottom = rows - 1 - ri;
-            const free = f.units.filter((u) => ["vacant", "for_sale", "for_rent"].includes(u.status)).length;
             const anyHit = !spotting || f.units.some((u) => fitsSpot(u, spot));
             return (
               <div key={f.floor} ref={(el) => registerFloor?.(f.floor, el)} role="listitem" data-floor={f.floor}
                 className={cn("grid grid-cols-[44px_1fr] items-center gap-2 rounded-md border-b-[5px] border-[var(--slab)] sm:grid-cols-[62px_1fr] sm:gap-3", compact ? "py-1" : "py-2.5 sm:py-3", flashFloor === f.floor && "floor-flash", !anyHit && "opacity-60")}>
                 <div className="pr-1 text-right leading-tight text-[color:var(--facade-ink)]">
                   <div className="text-[11px] font-semibold sm:text-xs"><span className="sm:hidden">{f.floor === 0 ? "G" : String(f.floor).padStart(2, "0")}</span><span className="hidden sm:inline">{floorLabel(f.floor)}</span></div>
-                  {free > 0 && !compact && <div className="hidden text-[10px] opacity-70 sm:block">{free} free</div>}
                 </div>
                 <div className={cn("grid", compact ? "gap-1.5" : "gap-2 @2xl:gap-3")} style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
                   {f.units.map((u) => {
