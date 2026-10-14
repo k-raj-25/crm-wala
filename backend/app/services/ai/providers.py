@@ -84,7 +84,7 @@ def _fail(provider: str, r: httpx.Response) -> None:
             msg += f" (Provider said: {detail})"
         _note_error(msg)
         raise ApiError(502, "ai_quota", msg)
-    if r.status_code == 404 or "model" in low and any(w in low for w in ("not found", "does not exist", "not available", "invalid model")):
+    if r.status_code == 404 or "model" in low and any(w in low for w in ("not found", "does not exist", "not available", "invalid model", "not a valid model")):
         raise ApiError(502, "ai_model_missing", "The AI model set in Settings → AI assistant isn't available on your key. Pick another model."
                        + (f" (Provider said: {detail})" if detail else ""))
     if 400 <= r.status_code < 500:

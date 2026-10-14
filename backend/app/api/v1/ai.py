@@ -230,18 +230,31 @@ class SettingsIn(Schema):
     instructions: str | None = Field(default=None, max_length=1000)
 
 
-def _ping(provider: str, key: str, model: str | None) -> str:
+def _ping(provider: str, key: str, model: str | None) -> tuple[str, str | None]:
+    """Sends a tiny test message. Returns (model that answered, fallback model to save or None).
+
+    When nobody typed a model and the recommended one has been retired, the provider's fallback is tried, so a stale default
+    never blocks a valid key."""
     from app.services.ai.providers import AnthropicProvider, OpenAIProvider
 
     spec = ai_settings.PROVIDERS[provider]
-    p = AnthropicProvider(key, model or spec["fast"], 20) if provider == "anthropic" else OpenAIProvider(key, model or spec["fast"], spec["base_url"], provider, 20)
+
+    def send(m: str):
+        p = AnthropicProvider(key, m, 20) if provider == "anthropic" else OpenAIProvider(key, m, spec["base_url"], provider, 20)
+        return p.complete("ping", "Reply with the single word OK.", "Say OK", {}, None, 64)
+
+    tried = model or spec["fast"]
     try:
-        res = p.complete("ping", "Reply with the single word OK.", "Say OK", {}, None, 64)
+        return send(tried).model or "", None
     except ApiError as e:
+        if e.code == "ai_model_missing" and not model and spec.get("fallback"):
+            try:
+                return send(spec["fallback"]).model or "", spec["fallback"]
+            except ApiError as e2:
+                e = e2
         if e.code == "ai_model_missing":
-            raise ApiError(400, e.code, f"{spec['label']} doesn't offer the model \"{p.model}\" on this key. Type a model your account can use under Models, or leave it blank for the recommended one.")
+            raise ApiError(400, e.code, f"{spec['label']} doesn't offer the model \"{tried}\" on this key. Type a model your account can use under Models, or leave it blank for the recommended one.")
         raise ApiError(400, e.code, e.message)
-    return res.model or ""
 
 
 @bp.put("/settings")
@@ -254,10 +267,15 @@ def put_settings():
     provider = d.provider or ((row.config or {}).get("provider") if row else None)
     if d.api_key and not provider:
         raise bad_request("Choose which AI provider the key is for.", "provider_required")
+    fast_model, smart_model = d.fast_model, d.smart_model
     if d.api_key:
-        _ping(provider, d.api_key.strip(), d.fast_model or None)
+        conf = (row.config or {}) if row and (not d.provider or (row.config or {}).get("provider") == d.provider) else {}
+        _, fallback = _ping(provider, d.api_key.strip(), (d.fast_model if "fast_model" in sent else conf.get("fast_model")) or None)
+        if fallback:  # the recommended models are retired on this key; save the one that answered
+            fast_model = fallback
+            smart_model = smart_model or conf.get("smart_model") or fallback
     before = ai_settings.public_view(g.workspace.id)
-    ai_settings.save(g.workspace.id, provider=d.provider, api_key=d.api_key, fast_model=d.fast_model, smart_model=d.smart_model, features=d.features,
+    ai_settings.save(g.workspace.id, provider=d.provider, api_key=d.api_key, fast_model=fast_model, smart_model=smart_model, features=d.features,
                      mask_pii=d.mask_pii, monthly_limit=d.monthly_limit if "monthly_limit" in sent else "keep", user_limit=d.user_limit if "user_limit" in sent else "keep",
                      instructions=d.instructions)
     db.session.flush()
@@ -276,8 +294,10 @@ def test_settings():
     cfg = ai_settings.resolve()
     if cfg.source != "workspace":
         raise bad_request("Connect a key first.", "not_connected")
-    model = _ping(cfg.provider, cfg.key, cfg.fast_model)
     row = ai_settings._row(g.workspace.id)
+    model, fallback = _ping(cfg.provider, cfg.key, (row.config or {}).get("fast_model") or None)
+    if fallback:
+        ai_settings.save(g.workspace.id, fast_model=fallback, smart_model=(row.config or {}).get("smart_model") or fallback)
     row.last_error = None
     db.session.commit()
     return ok({"ok": True, "model": model})
