@@ -4,7 +4,7 @@ import * as React from "react";
 import { useTheme } from "@crm/ui";
 import { STATUS, STATUS_ORDER } from "@/lib/realestate";
 import type { Building, CountMap, TowerLite, UnitStatus } from "@/lib/realestate";
-import { Sky, fitsSpot, isSpotting, useSkyNow } from "./building";
+import { Sky, fitsSpot, isSpotting } from "./building";
 import type { Spot } from "./building";
 
 const fill = (s: UnitStatus, dark: boolean) => (dark ? STATUS[s].bgDark : STATUS[s].bg);
@@ -12,8 +12,7 @@ const fill = (s: UnitStatus, dark: boolean) => (dark ? STATUS[s].bgDark : STATUS
 /** A little drawing of the tower with every flat as a lit window. Doubles as a map: tap a floor to jump to it. */
 export function TowerArt({ data, spot, onPickFloor, className }: { data: Building; spot: Spot; onPickFloor?: (floor: number) => void; className?: string }) {
   const { resolved } = useTheme();
-  const night = useSkyNow() === "night";
-  const dark = resolved === "dark" || night;
+  const dark = resolved === "dark";
   const [hot, setHot] = React.useState<number | null>(null);
   const rows = data.floors.length;
   const cols = Math.max(data.summary.units_per_floor ?? 4, 1);
@@ -23,7 +22,8 @@ export function TowerArt({ data, spot, onPickFloor, className }: { data: Buildin
   const bw = Math.min(Math.max(cols * 26 + 16, 96), 176);
   const x0 = (240 - bw) / 2;
   const ground = 300;
-  const top = ground - bodyH;
+  const lobby = 13; // ground-level strip under the flats that holds the entrance
+  const top = ground - lobby - bodyH;
   const gap = cols > 8 ? 1 : 2.5;
   const ww = (bw - 14 - gap * (cols - 1)) / cols;
   return (
@@ -32,7 +32,7 @@ export function TowerArt({ data, spot, onPickFloor, className }: { data: Buildin
         <rect x="0" y={ground} width="240" height="30" fill="var(--ground)" />
         <g fill="#16a34a"><g className="sway"><circle cx="24" cy={ground - 6} r="13" /><circle cx="40" cy={ground - 2} r="10" /></g><g className="sway" style={{ animationDelay: "-2s" }}><circle cx="214" cy={ground - 6} r="13" /><circle cx="198" cy={ground - 2} r="10" /></g></g>
         <g fill="#7c4a24"><rect x="22" y={ground} width="4" height="9" /><rect x="212" y={ground} width="4" height="9" /></g>
-        <rect x={x0 - 3} y={top - 8} width={bw + 6} height={bodyH + 8} rx="4" fill="var(--frame)" stroke="var(--frame-edge)" />
+        <rect x={x0 - 3} y={top - 8} width={bw + 6} height={bodyH + lobby + 8} rx="4" fill="var(--frame)" stroke="var(--frame-edge)" />
         <rect x={x0 + bw * 0.18} y={top - 20} width={bw * 0.22} height="12" rx="2" fill="var(--slab)" />
         <line x1={x0 + bw * 0.78} y1={top - 8} x2={x0 + bw * 0.78} y2={top - 32} stroke="var(--slab-edge)" strokeWidth="2" strokeLinecap="round" />
         <circle cx={x0 + bw * 0.78} cy={top - 33} r="2.6" fill="#ef4444" style={{ animation: "beacon 1.8s ease-in-out infinite" }} />
@@ -50,7 +50,7 @@ export function TowerArt({ data, spot, onPickFloor, className }: { data: Buildin
             </motion.g>
           );
         })}
-        <rect x={x0 + bw / 2 - 9} y={ground - 14} width="18" height="14" rx="2" fill="#0f172a" opacity="0.55" />
+        <rect x={x0 + bw / 2 - 8} y={ground - lobby + 2} width="16" height={lobby - 2} rx="2" fill="#0f172a" opacity="0.55" />
       </svg>
     </Sky>
   );

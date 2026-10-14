@@ -15,6 +15,8 @@ def test_ai_assistant_answers_from_data_and_meters(app):
     assert r2["usage"]["used"] == 2
     d = cl.post("/api/v1/ai/email-draft", json={"entity": "lead", "id": cl.get("/api/v1/leads").get_json()["data"][0]["id"], "goal": "intro"}).get_json()["data"]
     assert d["subject"] and "Hi Old" in d["body"]
+    s = cl.post("/api/v1/ai/summarize", json={"entity": "lead", "id": cl.get("/api/v1/leads").get_json()["data"][0]["id"]}).get_json()["data"]
+    assert s["summary"] and s["ai"] is False  # no provider key in tests, so the rule-based text must not be labelled AI
     assert cl.get("/api/v1/ai/next-best-actions").status_code == 200
     assert cl.get("/api/v1/ai/data-cleanup").status_code == 200
     assert cl.get("/api/v1/ai/pipeline-diagnosis").status_code == 200

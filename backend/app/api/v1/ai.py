@@ -140,7 +140,7 @@ def summarize():
         raise not_found("Record")
     res = assistant.generate("summary", f"Summarize this CRM record for a salesperson in 4-6 short lines, ending with a suggested next step.\n\n{assistant.ctx(ctx)}", ctx, "summary")
     db.session.commit()
-    return ok({"summary": res.text, "usage": _usage()})
+    return ok({"summary": res.text, "ai": res.provider != "mock", "usage": _usage()})
 
 
 class MeetingSummaryIn(Schema):
@@ -160,7 +160,7 @@ def meeting_summary():
         raise bad_request("Add meeting notes first so there's something to summarize.", "no_notes")
     res = assistant.generate("meeting_summary", f"Summarize these meeting notes and list action items:\n\n{notes}", {"notes": notes}, "meeting_summary")
     db.session.commit()
-    return ok({"summary": res.text, "usage": _usage()})
+    return ok({"summary": res.text, "ai": res.provider != "mock", "usage": _usage()})
 
 
 @bp.get("/next-best-actions")

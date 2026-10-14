@@ -77,7 +77,7 @@ export default function Home() {
             <Metric icon={Target} label="Open deals" loading={loading} value={formatNumber(m?.active_deals.value)} href="/app/deals" sub="open right now" />
             <Metric icon={ListChecks} label="To-dos today" loading={loading} value={formatNumber(m?.tasks_due_today.value)} href="/app/tasks" sub="across the team" />
           </div></StaggerItem>)}
-        <div className="grid gap-4 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
           {dayOn && <StaggerItem><MyDayCard /></StaggerItem>}
           {show("revenue") && <StaggerItem className="xl:col-span-2"><Card className="h-full"><CardHeader title="Sales over time" description="Value of deals closed" /><CardBody>{loading ? <div className="skeleton h-[260px]" /> : <AreaTrend data={d!.revenue_series} xKey="period" series={[{ key: "revenue", label: "Revenue" }]} format={(v) => formatMoneyCompact(v, cur)} xFormat={d!.range.bucket === "month" ? fmtMonth : fmtDay} height={260} />}</CardBody></Card></StaggerItem>}
           {show("pipeline") && <StaggerItem><Card className="h-full"><CardHeader title="Deals in progress" description="Open deals by stage" /><CardBody>{loading ? <div className="skeleton h-[260px]" /> : d!.pipeline_by_stage.every((s) => !s.deals) ? <p className="py-20 text-center text-sm text-fg-muted">No open deals yet</p> : <BarsChart horizontal data={d!.pipeline_by_stage} xKey="stage" series={[{ key: "value", label: "Value" }, { key: "weighted", label: "Weighted" }]} format={(v) => formatMoneyCompact(v, cur)} height={260} />}</CardBody></Card></StaggerItem>}

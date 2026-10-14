@@ -68,6 +68,7 @@ def generate(kind: str, prompt: str, context: dict, feature: str, *, tier: str =
     meter(feature)
     p = get_provider(tier)
     res = p.complete(kind, _system(), prompt, context, images, max_tokens)
+    res.provider = p.name
     record_usage(feature, res, p.name)
     return res
 

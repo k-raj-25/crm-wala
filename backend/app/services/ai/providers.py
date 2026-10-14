@@ -28,6 +28,7 @@ class AIResult:
     sources: list[dict] = field(default_factory=list)
     model: str | None = None
     charts: list[dict] = field(default_factory=list)
+    provider: str = ""
 
 
 class AIProvider(Protocol):

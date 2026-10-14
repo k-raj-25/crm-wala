@@ -12,6 +12,7 @@ import type { SavedView } from "@/lib/types";
 import { AskAiSearch } from "../ai/lead-ask-search";
 import { MemberSelect, TagInput } from "../forms/fields";
 import { PageContainer, PageHeader } from "../shell/page";
+import { navigate } from "../shell/pending-nav";
 import { useUI } from "../shell/ui-context";
 import type { EntityConfig, FilterDef, Row } from "./types";
 
@@ -175,7 +176,7 @@ export function EntityList({ cfg, heading, embedded, actions }: { cfg: EntityCon
                   <THead><TR className="border-b-0"><TH className="w-10 pl-4"><Checkbox checked={allOn ? true : selected.size ? "indeterminate" : false} onCheckedChange={toggleAll} aria-label="Select all" /></TH>
                     {visible.map((c) => <TH key={c.key} sortable={!!c.sort} sortDir={sortDir(c.sort)} onSort={() => toggleSort(c.sort!)} className={c.align === "right" ? "text-right" : undefined}>{c.label}</TH>)}</TR></THead>
                   <tbody>{rows.map((r) => (
-                    <TR key={r.id} className={cn("group cursor-pointer hover:bg-surface-hover", selected.has(r.id) && "bg-primary-soft/40")} onMouseEnter={() => router.prefetch(cfg.href(r))} onClick={(e) => { if ((e.target as HTMLElement).closest("button,a,input,[role=checkbox],[role=combobox],[role=menuitem]")) return; router.push(cfg.href(r)); }}>
+                    <TR key={r.id} className={cn("group cursor-pointer hover:bg-surface-hover", selected.has(r.id) && "bg-primary-soft/40")} onMouseEnter={() => router.prefetch(cfg.href(r))} onClick={(e) => { if ((e.target as HTMLElement).closest("button,a,input,[role=checkbox],[role=combobox],[role=menuitem]")) return; navigate(router, cfg.href(r)); }}>
                       <TD className="pl-4"><Checkbox checked={selected.has(r.id)} onCheckedChange={() => toggle(r.id)} aria-label="Select row" /></TD>
                       {visible.map((c) => <TD key={c.key} className={cn(c.align === "right" && "text-right", c.className)}>{c.render(r, ctx)}</TD>)}
                     </TR>))}</tbody>
@@ -195,7 +196,7 @@ export function EntityList({ cfg, heading, embedded, actions }: { cfg: EntityCon
 
       <AnimatePresence>
         {selected.size > 0 && (
-          <motion.div initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }} transition={{ type: "spring", stiffness: 420, damping: 36 }} className="fixed inset-x-0 bottom-24 z-40 flex justify-center px-4 md:bottom-6">
+          <motion.div initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }} transition={{ type: "spring", stiffness: 420, damping: 36 }} className="fixed inset-x-0 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-40 flex justify-center px-4 md:bottom-6">
             <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-fg px-3 py-2.5 text-bg shadow-lg">
               <span className="px-2 text-sm font-medium">{selected.size} selected</span>
               {cfg.bulk.includes("assign") && can(`${cfg.key}.update`) && (

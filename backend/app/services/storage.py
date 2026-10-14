@@ -20,6 +20,7 @@ class Storage(Protocol):
     def delete(self, key: str) -> None: ...
     def signed_url(self, key: str, filename: str, expires: int = 300) -> str: ...
     def open(self, key: str) -> Path: ...
+    def read(self, key: str) -> bytes: ...
 
 
 class LocalStorage:
@@ -54,6 +55,9 @@ class LocalStorage:
     def open(self, key):
         return self._path(key)
 
+    def read(self, key):
+        return self._path(key).read_bytes()
+
 
 class S3Storage:
     def __init__(self) -> None:
@@ -77,6 +81,9 @@ class S3Storage:
 
     def open(self, key):  # pragma: no cover
         raise NotImplementedError
+
+    def read(self, key):  # pragma: no cover
+        return self.client.get_object(Bucket=self.bucket, Key=key)["Body"].read()
 
 
 def get_storage() -> Storage:

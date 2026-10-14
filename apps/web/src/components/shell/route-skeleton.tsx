@@ -3,9 +3,9 @@ import { Skeleton, SkeletonRows } from "@crm/ui";
 import { PageContainer } from "./page";
 
 /**
- * Instant placeholders rendered by the route `loading.tsx` files. Next.js prefetches these with each <Link>, so a
- * click swaps to the new page's skeleton straight away instead of leaving the old page on screen until the route
- * arrives. Shapes mirror each page's own data-loading state so nothing jumps when the real page takes over.
+ * Instant placeholders, shown by the shell the moment a link is clicked (see pending-nav.tsx) and by the route
+ * `loading.tsx` files while the page streams in. Shapes mirror each page's own data-loading state so nothing jumps
+ * when the real page takes over.
  */
 function Header({ actions = 2 }: { actions?: number }) {
   return (
@@ -90,4 +90,15 @@ export function PageSkeleton({ wide }: { wide?: boolean }) {
 /** Settings sections render inside the settings layout, which stays on screen. */
 export function SectionSkeleton() {
   return <Status><div className="space-y-4"><Skeleton className="h-7 w-48" /><Skeleton className="h-96 rounded-2xl" /></div></Status>;
+}
+
+/** The skeleton for any /app path, matching the route's own loading.tsx — used while a click is still in flight. */
+export function RouteSkeleton({ path }: { path: string }) {
+  const [, , section, id] = path.split("/");
+  if (!section) return <DashboardSkeleton />;
+  if (id && ["leads", "contacts", "companies", "deals"].includes(section)) return <RecordSkeleton />;
+  if (["leads", "contacts", "companies"].includes(section)) return <ListSkeleton />;
+  if (section === "pipeline" || section === "deals") return <BoardSkeleton />;
+  if (section === "projects") return id ? <ProjectSkeleton /> : <CardsSkeleton />;
+  return <PageSkeleton wide={["tasks", "calendar", "inbox", "reports", "ai", "compare"].includes(section)} />;
 }
