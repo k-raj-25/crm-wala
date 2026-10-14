@@ -18,6 +18,7 @@ import { Markdown } from "../markdown";
 import { PageContainer } from "../shell/page";
 import { useUI } from "../shell/ui-context";
 import { InlineField } from "./inline-field";
+import { PhoneField, isMasked } from "./phone-field";
 import { CallsTab, ContactsTab, DealsTab, EmailsTab, FilesTab, MeetingsTab, NotesTab, TasksTab, type Scope } from "./related";
 import { Timeline } from "./timeline";
 import { WA_GREEN, WhatsAppTab } from "../whatsapp/whatsapp";
@@ -182,7 +183,7 @@ export function RecordPage({ entity }: { entity: Entity }) {
           <Section title="Details" actions={canEdit && <Button variant="ghost" size="xs" onClick={() => setEdit(true)}><Pencil /> Edit all</Button>}>
             {entity === "lead" && <>
               <InlineField label="Email" type="email" value={lead.email} onSave={(v) => save({ email: v })} editable={canEdit} />
-              <InlineField label="Phone" type="tel" value={lead.phone} onSave={(v) => save({ phone: v })} editable={canEdit} />
+              <PhoneField plural="leads" id={id} value={lead.phone} onSave={(v) => save({ phone: v })} editable={canEdit} />
               <InlineField label="Looking to" value={lead.intent} display={lead.intent && INTENTS.find((i) => i[0] === lead.intent)?.[1].replace("Wants to ", "")} options={INTENTS.map(([k, l]) => [k, l.replace("Wants to ", "").replace(/^\w/, (c) => c.toUpperCase())])} onSave={(v) => save({ intent: v })} editable={canEdit} placeholder="Buy, rent, invest…" />
               <InlineField label="Size" value={lead.bhk} options={BHK_OPTIONS.map((b) => [b, b])} onSave={(v) => save({ bhk: v })} editable={canEdit} placeholder="3 BHK…" />
               <InlineField label="Budget from" type="number" value={lead.budget_min} display={lead.budget_min ? formatMoney(lead.budget_min) : undefined} onSave={(v) => save({ budget_min: v === null ? null : Number(v) })} editable={canEdit} mono placeholder="Add minimum" />
@@ -197,7 +198,7 @@ export function RecordPage({ entity }: { entity: Entity }) {
             </>}
             {entity === "contact" && <>
               <InlineField label="Email" type="email" value={contact.email} onSave={(v) => save({ email: v })} editable={canEdit} />
-              <InlineField label="Phone" type="tel" value={contact.phone} onSave={(v) => save({ phone: v })} editable={canEdit} />
+              <PhoneField plural="contacts" id={id} value={contact.phone} onSave={(v) => save({ phone: v })} editable={canEdit} />
               <InlineField label="Job title" value={contact.job_title} onSave={(v) => save({ job_title: v })} editable={canEdit} />
               <Row label="Company"><AsyncSelect endpoint="/api/v1/companies" value={contact.company_id} initialLabel={contact.company?.name} onChange={(c) => save({ company_id: c })} /></Row>
               <InlineField label="Location" value={contact.location} onSave={(v) => save({ location: v })} editable={canEdit} />
@@ -210,7 +211,7 @@ export function RecordPage({ entity }: { entity: Entity }) {
               <InlineField label="Size" value={company.size} onSave={(v) => save({ size: v })} editable={canEdit} />
               <InlineField label="Location" value={company.location} onSave={(v) => save({ location: v })} editable={canEdit} />
               <InlineField label="Revenue" type="number" value={company.annual_revenue} display={company.annual_revenue ? formatMoney(company.annual_revenue) : undefined} onSave={(v) => save({ annual_revenue: v === null ? null : Number(v) })} editable={canEdit} mono />
-              <InlineField label="Phone" type="tel" value={company.phone} onSave={(v) => save({ phone: v })} editable={canEdit} />
+              <PhoneField plural="companies" id={id} value={company.phone} onSave={(v) => save({ phone: v })} editable={canEdit} />
               <Row label="Contacts">{company.contacts_count}</Row><Row label="Open deals">{company.open_deals_count} · {formatMoney(company.open_deals_value)}</Row>
             </>}
             {entity === "deal" && <>
@@ -260,6 +261,6 @@ function CustomRow({ def, value, canEdit, onSave }: { def: { label: string; fiel
   if (t === "checkbox") return <Row label={def.label}><Switch checked={!!value} onCheckedChange={(c) => onSave(c)} disabled={!canEdit} aria-label={def.label} /></Row>;
   if (t === "multi_select") { const cur = (value as string[]) ?? []; return <Row label={def.label}><div className="flex flex-wrap gap-1.5">{def.options.map((o) => <button key={o} disabled={!canEdit} onClick={() => onSave(cur.includes(o) ? cur.filter((x) => x !== o) : [...cur, o])} className={cn("rounded-full border px-2.5 py-0.5 text-xs", cur.includes(o) ? "border-primary bg-primary-soft text-primary" : "border-border text-fg-subtle")}>{o}</button>)}</div></Row>; }
   const type = { number: "number", currency: "number", date: "date", url: "url", email: "email", phone: "tel" }[t] ?? "text";
-  return <InlineField label={def.label} type={type} value={value as string} options={t === "dropdown" ? def.options.map((o) => [o, o]) : undefined} onSave={(v) => onSave(v === null ? null : type === "number" ? Number(v) : v)} editable={canEdit} />;
+  return <InlineField label={def.label} type={type} value={value as string} options={t === "dropdown" ? def.options.map((o) => [o, o]) : undefined} onSave={(v) => onSave(v === null ? null : type === "number" ? Number(v) : v)} editable={canEdit && !(t === "phone" && isMasked(value))} />;
 }
 export { Building2, Handshake, FORMS };

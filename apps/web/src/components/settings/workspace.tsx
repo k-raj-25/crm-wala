@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Copy, Lock, MailPlus, Plus, Trash2, UserX } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
-import { Avatar, Badge, Button, Checkbox, ConfirmDialog, Dialog, DialogContent, DialogFooter, DropdownContent, DropdownItem, DropdownMenu, DropdownSeparator, DropdownTrigger, Field, Input, NativeSelect, Select, Skeleton, Table, TD, TH, THead, TR, Textarea, cn, formatDate, timeAgo, useToast } from "@crm/ui";
+import { Avatar, Badge, Button, Checkbox, ConfirmDialog, Dialog, DialogContent, DialogFooter, DropdownContent, DropdownItem, DropdownMenu, DropdownSeparator, DropdownTrigger, Field, Input, NativeSelect, Select, Skeleton, Switch, Table, TD, TH, THead, TR, Textarea, cn, formatDate, timeAgo, useToast } from "@crm/ui";
 import { MoreHorizontal } from "lucide-react";
 import { api } from "@/lib/api";
 import { INDUSTRIES, COMPANY_SIZES } from "@/lib/constants";
@@ -33,9 +33,23 @@ export function WorkspaceSettings() {
         <FieldRow label="Logo URL" hint="Square image, hosted on https."><div className="flex items-center gap-3"><Avatar name={f.name} src={f.logo_url || undefined} size={40} square /><Input value={f.logo_url} onChange={(e) => setF({ ...f, logo_url: e.target.value })} placeholder="https://…/logo.png" disabled={ro} /></div></FieldRow>
         <FieldRow label="Brand color"><div className="flex items-center gap-3"><input type="color" value={f.brand_color} onChange={(e) => setF({ ...f, brand_color: e.target.value })} disabled={ro} className="size-9 cursor-pointer rounded-md border border-border bg-surface p-1" aria-label="Brand color" /><code className="text-xs text-fg-muted">{f.brand_color}</code></div></FieldRow></Divided>
         <p className="mt-2 text-xs text-fg-subtle">Save changes above to apply branding.</p></SettingsSection>
+      <PhonePrivacy />
       {me?.role?.key === "owner" && <SettingsSection title="Danger zone" description="These actions are permanent."><div className="flex items-center justify-between gap-4"><div><p className="text-sm font-medium">Delete this workspace</p><p className="text-xs text-fg-muted">Everyone loses access. Export your data first from Data settings.</p></div><Button variant="danger-soft" onClick={() => setDel(true)}>Delete workspace</Button></div></SettingsSection>}
       <ConfirmDialog open={del} onOpenChange={setDel} title="Delete workspace?" typeToConfirm={w.name} confirmLabel="Delete workspace" description="All members will lose access. The data is retained for a short recovery window, then purged." onConfirm={async () => { await api.raw("DELETE", "/api/v1/workspace", { confirm_name: w.name }).then(async (r) => { if (!r.ok) throw new Error((await r.json()).error?.message); }); window.location.href = "/login"; }} />
     </div>
+  );
+}
+
+/** Owner-only switch: hide clients' phone numbers from everyone without the "See phone numbers" permission. */
+function PhonePrivacy() {
+  const { data: me } = useMe(); const qc = useQueryClient(); const toast = useToast(); const [busy, setBusy] = React.useState(false);
+  const w = me?.workspace; if (!w) return null;
+  const on = w.hide_phones !== false; const owner = me?.role?.key === "owner";
+  const set = async (hide: boolean) => { setBusy(true); try { const nw = await api.patch<Me["workspace"]>("/api/v1/workspace", { hide_phones: hide }); qc.setQueryData<Me>(keys.me, (m) => (m ? { ...m, workspace: nw } : m)); toast.success(hide ? "Phone numbers hidden from employees" : "Phone numbers shown to everyone"); } catch (e) { toast.error("Couldn't save", (e as Error).message); } finally { setBusy(false); } };
+  return (
+    <SettingsSection title="Client phone numbers" description="Stop leads leaving with your employees. They still call and WhatsApp clients from the CRM, without seeing the number.">
+      <div className="flex items-start justify-between gap-4"><div><p className="text-sm font-medium">Hide phone numbers from employees</p><p className="mt-0.5 text-xs text-fg-muted">Only roles with <b>See phone numbers</b> (Owner and Admin) see full numbers, in screens and CSV exports. Roles with <b>Reveal phone numbers</b> (Manager) can show one when needed, and every reveal goes in the audit log. Everyone else sees <span className="tabular">+91 ••••• •••10</span>.{!owner && " Only the workspace owner can change this."}</p></div><Switch checked={on} onCheckedChange={set} disabled={!owner || busy} aria-label="Hide phone numbers from employees" /></div>
+    </SettingsSection>
   );
 }
 

@@ -72,7 +72,7 @@ export function WhatsAppTab({ entity, id, firstName }: { entity: "lead" | "conta
   const windowOpen = c.window_open; const tab = windowOpen ? mode : "template";
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2 text-xs text-fg-muted"><span className="font-medium text-fg">+{c.phone}</span><span className="ml-auto">{windowOpen ? "Replied in the last 24 hours: free messages allowed" : "Outside the 24-hour window: templates only"}</span></div>
+      <div className="flex flex-wrap items-center gap-2 text-xs text-fg-muted"><span className="font-medium text-fg">{c.phone}</span><span className="ml-auto">{windowOpen ? "Replied in the last 24 hours: free messages allowed" : "Outside the 24-hour window: templates only"}</span></div>
       <div className="max-h-[420px] space-y-2 overflow-y-auto rounded-xl border border-border bg-bg-subtle p-3">
         {!c.messages.length ? <p className="py-6 text-center text-sm text-fg-muted">No WhatsApp messages yet.</p> : c.messages.map((m) => (
           <div key={m.id} className={cn("flex", m.direction === "outbound" ? "justify-end" : "justify-start")}>

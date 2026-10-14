@@ -1,8 +1,9 @@
-import { Mail, Phone } from "lucide-react";
+import { Mail } from "lucide-react";
 import Link from "next/link";
 import { Badge, formatMoney, formatMoneyCompact } from "@crm/ui";
 import { Ago, DueCell, InlineOwner, LeadStatus, Muted, NameCell, ScorePill, StageSelect, TagList } from "@/components/list/cells";
 import type { EntityConfig } from "@/components/list/types";
+import { PhoneText } from "@/components/records/phone-field";
 import { INTENTS, SOURCES, label } from "./constants";
 import { money } from "./realestate";
 
@@ -52,7 +53,7 @@ export const CONTACTS: EntityConfig = {
     { key: "name", label: "Name", sort: "name", render: (r) => <NameCell name={r.name} sub={r.job_title} avatar={r.avatar_url} href={`/app/contacts/${r.id}`} /> },
     { key: "company", label: "Company", defaultVisible: false, render: (r) => r.company ? <Link href={`/app/companies/${r.company.id}`} className="text-[13px] hover:text-primary">{r.company.name}</Link> : <Muted /> },
     { key: "email", label: "Email", sort: "email", render: (r) => r.email ? <a href={`mailto:${r.email}`} className="inline-flex items-center gap-1.5 text-[13px] text-fg-muted hover:text-primary"><Mail className="size-3.5" />{r.email}</a> : <Muted /> },
-    { key: "phone", label: "Phone", render: (r) => r.phone ? <a href={`tel:${r.phone}`} className="inline-flex items-center gap-1.5 text-[13px] text-fg-muted hover:text-primary"><Phone className="size-3.5" />{r.phone}</a> : <Muted /> },
+    { key: "phone", label: "Phone", render: (r) => r.phone ? <PhoneText value={r.phone} className="inline-flex items-center text-[13px] text-fg-muted hover:text-primary" /> : <Muted /> },
     owner, { key: "tags", label: "Tags", render: (r) => <TagList tags={r.tags} /> },
     { key: "last_activity_at", label: "Last activity", sort: "last_activity_at", render: (r) => <Ago iso={r.last_activity_at} /> }, created,
   ],

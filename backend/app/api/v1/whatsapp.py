@@ -13,7 +13,7 @@ from app.core.tenant import bypass_scope, set_tenant
 from app.extensions import db, limiter
 from app.models import Contact, FileAsset, Integration, Lead, Unit, WhatsAppMessage
 from app.schemas.common import Schema, parse
-from app.services import audit, integrations, whatsapp as svc
+from app.services import audit, integrations, privacy, whatsapp as svc
 
 bp = Blueprint("whatsapp", __name__, url_prefix="/api/v1/whatsapp")
 inbound_bp = Blueprint("whatsapp_inbound", __name__, url_prefix="/api/v1/inbound/whatsapp")
@@ -126,8 +126,14 @@ def conversation():
         .order_by(WhatsAppMessage.created_at.desc()).limit(100).all()
     phone = svc.normalize_phone(e.phone)
     i = integrations.get(g.workspace.id, "whatsapp")
-    return ok({"phone": phone, "connected": bool(i and i.status in ("connected", "error")),
-               "window_open": bool(phone) and svc.window_open(g.workspace.id, phone), "messages": [m.to_dict() for m in reversed(rows)]})
+    return ok({"phone": privacy.mask_value(phone and f"+{phone}"), "connected": bool(i and i.status in ("connected", "error")),
+               "window_open": bool(phone) and svc.window_open(g.workspace.id, phone), "messages": [_message(m) for m in reversed(rows)]})
+
+
+def _message(m: WhatsAppMessage) -> dict:
+    d = m.to_dict()
+    d["phone"] = privacy.mask_value(f"+{m.phone}")
+    return d
 
 
 class TemplateIn(Schema):
@@ -183,7 +189,7 @@ def send():
         template = {**t, "params": d.template.params}
     m = svc.send(i, etype, e, text=d.text, template=template, file=file, caption=d.caption, unit=unit)
     db.session.commit()
-    return created(m.to_dict())
+    return created(_message(m))
 
 
 # ---- Meta webhook ------------------------------------------------------------------------------------------------

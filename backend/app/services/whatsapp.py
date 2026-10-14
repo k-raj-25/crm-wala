@@ -398,7 +398,8 @@ def _receive(i: Integration, m: dict, profile_name: str | None) -> bool:
     if found is None:
         from app.services import audit
 
-        first, _, last = (profile_name or f"WhatsApp +{phone}").partition(" ")
+        # Never put the number in the name: names are shown to everyone, numbers only to those allowed to see them.
+        first, _, last = (profile_name or f"WhatsApp {phone[-4:]}").partition(" ")
         lead = Lead(workspace_id=ws_id, first_name=first[:100], last_name=last[:100] or None, phone=f"+{phone}", source="whatsapp", status="new", tags=["whatsapp"])
         db.session.add(lead)
         db.session.flush()
