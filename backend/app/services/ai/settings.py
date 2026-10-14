@@ -23,8 +23,10 @@ PROVIDERS: dict[str, dict] = {
                   "key_hint": "Starts with sk-ant-…", "key_url": "https://console.anthropic.com/settings/keys"},
     "gemini": {"label": "Google Gemini", "base_url": "https://generativelanguage.googleapis.com/v1beta/openai", "fast": "gemini-3.5-flash-lite", "smart": "gemini-3.8-flash",
                "audio": False, "key_hint": "From Google AI Studio", "key_url": "https://aistudio.google.com/app/apikey"},
-    "openrouter": {"label": "OpenRouter (any model)", "base_url": "https://openrouter.ai/api/v1", "fast": "openai/gpt-4.1-mini", "smart": "anthropic/claude-sonnet-5-5",
-                   "audio": False, "key_hint": "Starts with sk-or-…", "key_url": "https://openrouter.ai/keys"},
+    # OpenRouter slugs use dots (claude-sonnet-5.5), not the native ids. "fallback" is tried when a default model has been retired,
+    # so a stale default can't block a valid key.
+    "openrouter": {"label": "OpenRouter (any model)", "base_url": "https://openrouter.ai/api/v1", "fast": "anthropic/claude-haiku-5.5", "smart": "anthropic/claude-sonnet-5.5",
+                   "fallback": "openrouter/auto", "audio": False, "key_hint": "Starts with sk-or-…", "key_url": "https://openrouter.ai/keys"},
 }
 
 # Every switch defaults on; admins can turn any of them off for the whole workspace.

@@ -323,3 +323,26 @@ def test_reopened_chat_remembers_what_was_approved(client):
     # a later failure report doesn't undo the saved state
     client.post("/api/v1/ai/proposals/outcome", json={"kind": p["kind"], "title": p["title"], "outcome": "failed", "proposal_id": p["id"]})
     assert client.get(f"/api/v1/ai/conversations/{r['conversation_id']}").get_json()["data"]["messages"][-1]["proposals"][0]["status"] == "approved"
+
+
+def test_openrouter_retired_default_falls_back(client, monkeypatch):
+    sent = []
+
+    def fake_post(url, headers=None, json=None, timeout=None, **kw):
+        sent.append(json["model"])
+        if json["model"] == "anthropic/claude-haiku-5.5":
+            return FakeResponse(400, {"error": {"code": 400, "message": "anthropic/claude-haiku-5.5 is not a valid model ID"}})
+        return FakeResponse(200, {"choices": [{"message": {"content": "OK"}}], "usage": {"prompt_tokens": 5, "completion_tokens": 1}, "model": json["model"]})
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    r = client.put("/api/v1/ai/settings", json={"provider": "openrouter", "api_key": "sk-or-v1-test-0001"})
+    assert r.status_code == 200, r.get_json()
+    d = r.get_json()["data"]
+    assert sent == ["anthropic/claude-haiku-5.5", "openrouter/auto"]
+    assert d["connected"] and d["fast_model"] == "openrouter/auto" and d["smart_model"] == "openrouter/auto"
+
+    # a model the admin typed is never swapped out behind their back
+    sent.clear()
+    r = client.put("/api/v1/ai/settings", json={"provider": "openrouter", "api_key": "sk-or-v1-test-0002", "fast_model": "anthropic/claude-haiku-5.5"})
+    assert r.status_code == 400 and r.get_json()["error"]["code"] == "ai_model_missing"
+    assert sent == ["anthropic/claude-haiku-5.5"]
