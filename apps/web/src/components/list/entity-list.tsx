@@ -182,7 +182,7 @@ export function EntityList({ cfg, heading, embedded }: { cfg: EntityConfig; head
 
       <AnimatePresence>
         {selected.size > 0 && (
-          <motion.div initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }} transition={{ type: "spring", stiffness: 420, damping: 36 }} className="fixed inset-x-0 bottom-24 z-40 flex justify-center px-4 md:bottom-6">
+          <motion.div initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }} transition={{ type: "spring", stiffness: 420, damping: 36 }} className="fixed inset-x-0 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-40 flex justify-center px-4 md:bottom-6">
             <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-fg px-3 py-2.5 text-bg shadow-lg">
               <span className="px-2 text-sm font-medium">{selected.size} selected</span>
               {cfg.bulk.includes("assign") && can(`${cfg.key}.update`) && (
