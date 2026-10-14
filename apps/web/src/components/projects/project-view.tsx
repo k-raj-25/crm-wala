@@ -1,12 +1,14 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { ArrowRight, BarChart3, Building2, Check, ChevronRight, Download, Layers, LayoutGrid, List, MapPin, MoreHorizontal, Plus, Rows3, Scale, Search, Trash2 } from "lucide-react";
+import { ArrowRight, BarChart3, Building2, Check, ChevronRight, Download, Layers, LayoutGrid, List, MapPin, MoreHorizontal, Plus, Rows3, Scale, Search, Trash2, Wand2 } from "lucide-react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import * as React from "react";
 import { Badge, BarsChart, Button, Card, ConfirmDialog, DonutChart, DropdownContent, DropdownItem, DropdownMenu, DropdownTrigger, EmptyState, ErrorState, Input, NativeSelect, Segmented, Skeleton, Tooltip, cn, formatMoneyCompact, useTheme, useToast } from "@crm/ui";
+import { ListingWriter } from "@/components/ai/listing-writer";
 import { PageContainer } from "@/components/shell/page";
+import { useAiFeature } from "@/lib/ai";
 import { api } from "@/lib/api";
 import { MAX_COMPARE, compare, useCompare } from "@/lib/compare";
 import { navigate } from "@/components/shell/pending-nav";
@@ -33,6 +35,7 @@ export function ProjectView() {
   const [unitId, setUnitId] = React.useState<string | null>(sp.get("unit"));
   const [dialog, setDialog] = React.useState<null | "tower" | "floors" | "unit" | "delete">(null);
   const [flash, setFlash] = React.useState<number | null>(null);
+  const writer = useAiFeature("writer"); const [writing, setWriting] = React.useState(false);
   const floorEls = React.useRef(new Map<number, HTMLElement>());
   const [picking, setPicking] = React.useState(false);
   const cmpList = useCompare();
@@ -91,8 +94,10 @@ export function ProjectView() {
           {p ? <h1 className="flex flex-wrap items-center gap-3 text-2xl font-semibold tracking-tight sm:text-[28px]">{p.name}<Badge tone={p.stage === "ready" ? "success" : p.stage === "under_construction" ? "warning" : "info"}>{PROJECT_STAGES.find((s) => s[0] === p.stage)?.[1]}</Badge></h1> : <Skeleton className="h-9 w-72" />}
           {p && <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[15px] text-fg-muted"><span className="inline-flex items-center gap-1"><MapPin className="size-4" />{where(p) || "No address yet"}</span>{p.developer && <span>by {p.developer}</span>}<span>{PROJECT_KINDS.find((k) => k[0] === p.kind)?.[1]}</span>{p.rera_id && <span className="text-xs">RERA {p.rera_id}</span>}</p>}
         </div>
+        {p && !canEdit && writer && <Button variant="secondary" onClick={() => setWriting(true)}><Wand2 /> Write listing</Button>}
         {canEdit && p && (
           <div className="flex items-center gap-2">
+            {writer && <Button variant="secondary" aria-label="Write listing" onClick={() => setWriting(true)}><Wand2 /> <span className="hidden sm:inline">Write listing</span></Button>}
             {towerId && <Button variant="secondary" onClick={() => setDialog("unit")}><Plus /> Add flat</Button>}
             <Button onClick={() => setDialog("tower")}><Building2 /> Add tower</Button>
             <DropdownMenu>
@@ -192,6 +197,7 @@ export function ProjectView() {
         )}
 
       <UnitDrawer unitId={unitId} onClose={() => setUnitId(null)} canEdit={canEdit} />
+      {writer && p && <ListingWriter open={writing} onOpenChange={setWriting} projectId={p.id} label={p.name} />}
       {p && <AddTowerDialog open={dialog === "tower"} onOpenChange={(o) => !o && setDialog(null)} projectId={p.id} projectKind={p.kind} onCreated={(tid) => { setSpot(NO_SPOT); nav({ tower: tid, view: null }); }} />}
       {p && tower && towerId && <AddFloorsDialog open={dialog === "floors"} onOpenChange={(o) => !o && setDialog(null)} projectId={p.id} towerId={towerId} perFloor={b?.summary.units_per_floor ?? 4} />}
       {tower && towerId && <AddUnitDialog open={dialog === "unit"} onOpenChange={(o) => !o && setDialog(null)} towerId={towerId} floors={tower.floors} hasGround={tower.has_ground} />}

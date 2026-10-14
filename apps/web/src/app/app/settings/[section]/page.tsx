@@ -3,6 +3,7 @@ import { useParams } from "next/navigation";
 import { Suspense } from "react";
 import { ErrorState } from "@crm/ui";
 import { CustomFieldSettings, EmailSettings, LeadStatusSettings, PipelineSettings, TagSettings } from "@/components/settings/config";
+import { AiSettings } from "@/components/settings/ai";
 import { AuditSettings, DataSettings } from "@/components/settings/data";
 import { NotificationSettings, ProfileSettings, SecuritySettings } from "@/components/settings/personal";
 import { RolesSettings, TeamSettings, WorkspaceSettings } from "@/components/settings/workspace";
@@ -11,7 +12,7 @@ import { useAccess } from "@/lib/queries";
 const SECTIONS: Record<string, () => React.ReactNode> = {
   profile: () => <ProfileSettings />, notifications: () => <NotificationSettings />, security: () => <SecuritySettings />, workspace: () => <WorkspaceSettings />,
   team: () => <TeamSettings />, roles: () => <RolesSettings />, pipelines: () => <PipelineSettings />, "lead-statuses": () => <LeadStatusSettings />, "custom-fields": () => <CustomFieldSettings />,
-  tags: () => <TagSettings />, email: () => <EmailSettings />, data: () => <DataSettings />, audit: () => <AuditSettings />,
+  tags: () => <TagSettings />, email: () => <EmailSettings />, data: () => <DataSettings />, audit: () => <AuditSettings />, ai: () => <AiSettings />,
 };
 export default function Page() {
   const { section } = useParams<{ section: string }>(); const { can } = useAccess();

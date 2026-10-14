@@ -12,7 +12,8 @@ import { api } from "@/lib/api";
 import { useAccess } from "@/lib/queries";
 import { MemberSelect } from "../forms/fields";
 import { PageContainer } from "../shell/page";
-import { ACTION_COLORS, ACTION_ICONS, TRIGGER_ICON, TEMPLATES, fromGraph, toGraph, uid, type Field, type Graph, type Meta, type Step } from "./meta";
+import { useAiFeature } from "@/lib/ai";
+import { ACTION_COLORS, ACTION_ICONS, AI_ACTIONS, CHANNEL_LABEL, TRIGGER_ICON, TEMPLATES, fromGraph, toGraph, uid, type Field, type Graph, type Meta, type Step } from "./meta";
 
 type Auto = { id: string; name: string; description: string | null; trigger_type: string; trigger_config: Record<string, unknown>; graph: Graph; is_active: boolean; run_count: number };
 type Run = { id: string; status: string; created_at: string; steps: { node_id: string; type: string; status: string; detail: string }[]; error: string | null; trigger_payload: Record<string, unknown> };
@@ -37,13 +38,13 @@ function ConfigField({ f, value, onChange }: { f: Field; value: unknown; onChang
   const v = value ?? f.default ?? "";
   if (f.type === "textarea") return <Textarea rows={5} value={v as string} onChange={(e) => onChange(e.target.value)} />;
   if (f.type === "number") return <Input type="number" min={0} value={v as number} onChange={(e) => onChange(e.target.value === "" ? "" : Number(e.target.value))} />;
-  if (f.type === "select") return <NativeSelect value={v as string} onChange={(e) => onChange(e.target.value)}>{f.options!.map((o) => <option key={o} value={o}>{o.replace(/_/g, " ")}</option>)}</NativeSelect>;
+  if (f.type === "select") return <NativeSelect value={v as string} onChange={(e) => onChange(e.target.value)}>{f.options!.map((o) => <option key={o} value={o}>{CHANNEL_LABEL[o] ?? o.replace(/_/g, " ")}</option>)}</NativeSelect>;
   if (f.type === "user") return <MemberSelect value={(v as string) || null} onChange={(x) => onChange(x)} noneLabel="Choose person" />;
   return <Input value={v as string} onChange={(e) => onChange(e.target.value)} />;
 }
 
 function Builder({ initial, meta, isNew }: { initial: Auto | null; meta: Meta; isNew: boolean }) {
-  const router = useRouter(); const qc = useQueryClient(); const toast = useToast(); const { resolved } = useTheme(); const { can } = useAccess();
+  const router = useRouter(); const qc = useQueryClient(); const toast = useToast(); const { resolved } = useTheme(); const { can } = useAccess(); const aiSteps = useAiFeature("automations");
   const seed = initial ? fromGraph(initial.graph) : { trigger: "lead.created", triggerConfig: {}, steps: [] as Step[] };
   const [name, setName] = React.useState(initial?.name ?? "Untitled automation"); const [trigger, setTrigger] = React.useState(seed.trigger); const [tConfig, setTConfig] = React.useState(seed.triggerConfig); const [steps, setSteps] = React.useState<Step[]>(seed.steps);
   const [active, setActive] = React.useState(initial?.is_active ?? false); const [sel, setSel] = React.useState<string>("trigger"); const [busy, setBusy] = React.useState(false); const [err, setErr] = React.useState<string | null>(null);
@@ -54,9 +55,9 @@ function Builder({ initial, meta, isNew }: { initial: Auto | null; meta: Meta; i
   const trig = meta.triggers.find((t) => t.key === trigger)!; const aMeta = (k: string) => meta.actions.find((a) => a.key === k)!;
   const results = new Map((test?.steps ?? []).map((s) => [s.node_id, s]));
 
-  const summary = (s: Step) => { const c = s.config; switch (s.action_type) { case "send_email": return `${(c.to as string) === "owner" ? "To owner" : "To the record"}: ${(c.subject as string) ?? ""}`; case "create_task": return `${(c.title as string) ?? ""} · due in ${c.due_in_days ?? 1}d`; case "delay": return `Wait ${c.amount ?? 1} ${c.unit ?? "days"}`; case "assign_user": return c.strategy === "user" ? "Specific person" : "Round robin"; case "add_tag": return `Tag “${(c.tag as string) ?? ""}”`; case "change_status": return `→ ${(c.value as string) ?? ""}`; case "send_notification": return (c.title as string) ?? ""; case "webhook": return (c.url as string) ?? ""; default: return (c.title as string) ?? ""; } };
+  const summary = (s: Step) => { const c = s.config; switch (s.action_type) { case "send_email": return `${(c.to as string) === "owner" ? "To owner" : "To the record"}: ${(c.subject as string) ?? ""}`; case "create_task": return `${(c.title as string) ?? ""} · due in ${c.due_in_days ?? 1}d`; case "delay": return `Wait ${c.amount ?? 1} ${c.unit ?? "days"}`; case "assign_user": return c.strategy === "user" ? "Specific person" : "Round robin"; case "add_tag": return `Tag “${(c.tag as string) ?? ""}”`; case "change_status": return `→ ${(c.value as string) ?? ""}`; case "send_notification": return (c.title as string) ?? ""; case "webhook": return (c.url as string) ?? ""; case "ai_classify_lead": return "Adds a hot, warm, cold, broker or spam tag"; case "ai_extract_requirements": return "Fills empty requirement fields"; case "ai_draft_reply": return `${CHANNEL_LABEL[(c.channel as string) ?? "whatsapp"] ?? c.channel} reply, saved on a task for the owner`; default: return (c.title as string) ?? ""; } };
   const nodes: Node[] = [{ id: "trigger", type: "flow", position: { x: 0, y: 0 }, draggable: false, selected: sel === "trigger", data: { icon: TRIGGER_ICON, color: "var(--series-1)", kicker: "When", title: trig.label, summary: trigger === "deal.stage_changed" && tConfig.stage ? `Moved to ${tConfig.stage}` : undefined, first: true } },
-    ...steps.map((s, i) => ({ id: s.id, type: "flow", position: { x: 0, y: (i + 1) * 150 }, draggable: false, selected: sel === s.id, data: { icon: ACTION_ICONS[s.action_type], color: ACTION_COLORS[s.action_type], kicker: "Then", title: aMeta(s.action_type).label, summary: summary(s), status: results.get(s.id)?.status } }))];
+    ...steps.map((s, i) => ({ id: s.id, type: "flow", position: { x: 0, y: (i + 1) * 150 }, draggable: false, selected: sel === s.id, data: { icon: ACTION_ICONS[s.action_type] ?? TRIGGER_ICON, color: ACTION_COLORS[s.action_type] ?? "var(--fg-muted)", kicker: "Then", title: aMeta(s.action_type).label, summary: summary(s), status: results.get(s.id)?.status } }))];
   const edges = nodes.slice(1).map((n, i) => ({ id: `e${i}`, source: nodes[i].id, target: n.id, markerEnd: { type: MarkerType.ArrowClosed }, animated: active, style: { strokeWidth: 1.6 } }));
 
   const add = (type: string) => { const a = aMeta(type); const config = Object.fromEntries(a.fields.filter((f) => f.default !== undefined).map((f) => [f.key, f.default])); const s = { id: uid(), action_type: type, config }; setSteps((p) => { const idx = sel === "trigger" ? p.length : p.findIndex((x) => x.id === sel); const n = [...p]; n.splice(sel === "trigger" || idx < 0 ? p.length : idx + 1, 0, s); return n; }); setSel(s.id); mark(); setTest(null); };
@@ -110,7 +111,7 @@ function Builder({ initial, meta, isNew }: { initial: Auto | null; meta: Meta; i
                 {id && <p className="-mt-3 text-xs text-fg-subtle">The trigger can't be changed after creation — duplicate the automation instead.</p>}
                 {trig.config.map((c) => <FormField key={c.key} label={c.label} hint="Leave empty for any stage"><Input value={(tConfig[c.key] as string) ?? ""} onChange={(e) => { setTConfig({ ...tConfig, [c.key]: e.target.value }); mark(); }} placeholder="e.g. Won" /></FormField>)}
                 <div className="border-t border-border pt-5"><h3 className="mb-3 text-sm font-semibold">Add a step</h3>
-                  <div className="grid grid-cols-2 gap-2">{meta.actions.map((a) => { const I = ACTION_ICONS[a.key]; return <button key={a.key} onClick={() => add(a.key)} disabled={!canEdit || steps.length >= 18} className="flex items-center gap-2.5 rounded-lg border border-border p-2.5 text-left text-[13px] font-medium transition-colors hover:border-primary/40 hover:bg-primary-soft/40 disabled:opacity-50"><span className="flex size-7 shrink-0 items-center justify-center rounded-md" style={{ background: `color-mix(in srgb, ${ACTION_COLORS[a.key]} 15%, transparent)`, color: ACTION_COLORS[a.key] }}><I className="size-4" /></span>{a.label}</button>; })}</div></div>
+                  <div className="grid grid-cols-2 gap-2">{meta.actions.filter((a) => aiSteps || !AI_ACTIONS.has(a.key)).map((a) => { const I = ACTION_ICONS[a.key] ?? TRIGGER_ICON; return <button key={a.key} onClick={() => add(a.key)} disabled={!canEdit || steps.length >= 18} className="flex items-center gap-2.5 rounded-lg border border-border p-2.5 text-left text-[13px] font-medium transition-colors hover:border-primary/40 hover:bg-primary-soft/40 disabled:opacity-50"><span className="flex size-7 shrink-0 items-center justify-center rounded-md" style={{ background: `color-mix(in srgb, ${ACTION_COLORS[a.key]} 15%, transparent)`, color: ACTION_COLORS[a.key] }}><I className="size-4" /></span>{a.label}</button>; })}</div></div>
               </div>
             ) : selStep ? (
               <div className="space-y-5">

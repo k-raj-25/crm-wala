@@ -1,7 +1,7 @@
 "use client";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { Bookmark, ChevronLeft, ChevronRight, Columns3, Download, FileUp, Filter, Plus, Search, Tag, Trash2, UserCog, X } from "lucide-react";
+import { Bookmark, ChevronLeft, ChevronRight, Columns3, Download, FileUp, Filter, Plus, Search, Sparkles, Tag, Trash2, UserCog, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import * as React from "react";
@@ -9,6 +9,7 @@ import { Badge, Button, Card, Checkbox, ConfirmDialog, DropdownCheckItem, Dropdo
 import { api } from "@/lib/api";
 import { useAccess, useMe, useMembers, usePipelines, useTags } from "@/lib/queries";
 import type { SavedView } from "@/lib/types";
+import { AskAiSearch } from "../ai/lead-ask-search";
 import { MemberSelect, TagInput } from "../forms/fields";
 import { PageContainer, PageHeader } from "../shell/page";
 import { navigate } from "../shell/pending-nav";
@@ -48,7 +49,8 @@ function MultiFilter({ def, value, onChange }: { def: Extract<FilterDef, { kind:
 export type Embedded = { q?: string; owner_id?: string | null; priority?: string };
 function Wrap({ embedded, children }: { embedded: boolean; children: React.ReactNode }) { return embedded ? <>{children}</> : <PageContainer wide>{children}</PageContainer>; }
 
-export function EntityList({ cfg, heading, embedded }: { cfg: EntityConfig; heading?: string; embedded?: Embedded }) {
+/** `actions`: extra buttons for the page header (e.g. "Capture with AI" on leads). */
+export function EntityList({ cfg, heading, embedded, actions }: { cfg: EntityConfig; heading?: string; embedded?: Embedded; actions?: React.ReactNode }) {
   const router = useRouter(); const pathname = usePathname(); const sp = useSearchParams(); const qc = useQueryClient(); const toast = useToast(); const ui = useUI();
   const { can } = useAccess(); const { data: me } = useMe(); const isMobile = useMediaQuery("(max-width: 767px)");
   const params = React.useMemo(() => new URLSearchParams(sp.toString()), [sp]);
@@ -64,7 +66,7 @@ export function EntityList({ cfg, heading, embedded }: { cfg: EntityConfig; head
   React.useEffect(() => { if ((params.get("q") ?? "") !== dsearch) setParam("q", dsearch || null); }, [dsearch]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const page = Number(params.get("page") ?? 1), perPage = Number(params.get("per_page") ?? 25), sort = params.get("sort") ?? cfg.defaultSort;
-  const urlParams = Object.fromEntries([...params.entries()].filter(([k]) => !["page", "per_page", "sort", "view", "mode"].includes(k)));
+  const urlParams = Object.fromEntries([...params.entries()].filter(([k]) => !["page", "per_page", "sort", "view", "mode", "ai"].includes(k)));
   const apiParams = { ...urlParams, ...(embedded?.q ? { q: embedded.q } : {}), ...(embedded?.owner_id ? { owner_id: embedded.owner_id } : {}), ...(embedded?.priority ? { priority: embedded.priority } : {}) };
   const key = [cfg.key, { ...apiParams, page, perPage, sort }];
   const list = useQuery({ queryKey: key, queryFn: () => api.page<Row>(cfg.endpoint, { ...apiParams, page, per_page: perPage, sort }), placeholderData: keepPreviousData });
@@ -95,8 +97,12 @@ export function EntityList({ cfg, heading, embedded }: { cfg: EntityConfig; head
   const toggleAll = () => setSelected(allOn ? new Set() : new Set(rows.map((r) => r.id)));
   const toggle = (id: string) => setSelected((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const doExport = async () => { const r = await api.raw("GET", `${cfg.endpoint}/export${api.qs({ ...apiParams, sort })}`); if (!r.ok) return toast.error("Export failed"); const u = URL.createObjectURL(await r.blob()); const a = document.createElement("a"); a.href = u; a.download = `${cfg.key}.csv`; a.click(); URL.revokeObjectURL(u); };
-  const saveView = async () => { const name = window.prompt("Name this view (e.g. “My hot leads”)"); if (!name?.trim()) return; const v = await api.post<SavedView>("/api/v1/views", { entity_type: cfg.entityType, name: name.trim(), filters: { ...apiParams, ...(search ? { q: search } : {}) }, sort }); qc.invalidateQueries({ queryKey: ["views", cfg.entityType] }); toast.success("View saved"); applyView(v.id, v.filters, v.sort); };
-  const hasFilters = activeFilters.length > 0 || !!params.get("q");
+  const saveView = async (preset?: string) => { const name = preset ?? window.prompt("Name this view (e.g. “My hot leads”)"); if (!name?.trim()) return; const v = await api.post<SavedView>("/api/v1/views", { entity_type: cfg.entityType, name: name.trim(), filters: { ...apiParams, ...(search ? { q: search } : {}) }, sort }); qc.invalidateQueries({ queryKey: ["views", cfg.entityType] }); toast.success("View saved"); applyView(v.id, v.filters, v.sort); };
+  const aiLabel = params.get("ai");
+  /** Ask AI: swap the list's filters for the ones the assistant read from plain words. Sort and rows-per-page stay. */
+  const applyAi = (p: Record<string, string>, label: string) => { const n = new URLSearchParams(); for (const k of ["sort", "per_page"]) { const v = params.get(k); if (v) n.set(k, v); } for (const [k, v] of Object.entries(p)) n.set(k, v); n.set("ai", label); setSearch(p.q ?? ""); push(n); };
+  const clearAi = () => { const n = new URLSearchParams(); for (const k of ["sort", "per_page"]) { const v = params.get(k); if (v) n.set(k, v); } setSearch(""); push(n); };
+  const hasFilters = activeFilters.length > 0 || !!params.get("q") || !!aiLabel;
   const sortDir = (s?: string) => (!s ? null : sort === s ? "asc" : sort === `-${s}` ? "desc" : null);
   const toggleSort = (s: string) => setParam("sort", sort === s ? `-${s}` : sort === `-${s}` ? null : s);
 
@@ -117,6 +123,7 @@ export function EntityList({ cfg, heading, embedded }: { cfg: EntityConfig; head
       {embedded ? <div className="mb-4">{tabsEl}</div> : (
       <PageHeader title={heading ?? cfg.title} description={meta ? `${meta.total.toLocaleString("en-IN")} ${meta.total === 1 ? cfg.singular : cfg.title.toLowerCase()}` : " "}
         actions={<>
+          {actions}
           {can("data.import") && <Button variant="secondary" asChild><Link href={`/app/settings/data?import=${cfg.importAs}`}><FileUp /> Import</Link></Button>}
           {can("data.export") && <Button variant="secondary" onClick={doExport}><Download /> Export</Button>}
           {can(`${cfg.key}.create`) && <Button onClick={() => ui.openCreate(cfg.createKind)}><Plus /> New {cfg.singular}</Button>}
@@ -127,23 +134,30 @@ export function EntityList({ cfg, heading, embedded }: { cfg: EntityConfig; head
       <Card className="overflow-hidden">
         <div className="flex flex-wrap items-center gap-2 border-b border-border p-3">
           {!embedded && <div className="min-w-[200px] flex-1 sm:max-w-sm"><Input icon={<Search />} value={search} onChange={(e) => setSearch(e.target.value)} placeholder={cfg.searchPlaceholder} aria-label={`Search ${cfg.title}`} /></div>}
+          {!embedded && cfg.key === "leads" && <AskAiSearch onApply={applyAi} />}
           <Popover>
             <PopoverTrigger asChild><Button variant="secondary" size="md"><Filter /> Filters{activeFilters.length > 0 && <Badge tone="primary">{activeFilters.length}</Badge>}</Button></PopoverTrigger>
             <PopoverContent align="start" className="w-[340px] max-w-[calc(100vw-24px)] space-y-4">
               {cfg.filters.map((f) => <FilterField key={f.param} def={f} params={params} set={setParam} />)}
-              <div className="flex justify-between border-t border-border pt-3"><Button variant="ghost" size="sm" onClick={() => { setSearch(""); push(new URLSearchParams()); }}>Clear all</Button><Button variant="soft" size="sm" onClick={saveView}><Bookmark /> Save as view</Button></div>
+              <div className="flex justify-between border-t border-border pt-3"><Button variant="ghost" size="sm" onClick={() => { setSearch(""); push(new URLSearchParams()); }}>Clear all</Button><Button variant="soft" size="sm" onClick={() => saveView()}><Bookmark /> Save as view</Button></div>
             </PopoverContent>
           </Popover>
           <DropdownMenu>
             <DropdownTrigger asChild><Button variant="ghost" size="icon" aria-label="Customize columns"><Columns3 /></Button></DropdownTrigger>
             <DropdownContent><DropdownLabel>Columns</DropdownLabel>{cfg.columns.map((c, i) => <DropdownCheckItem key={c.key} checked={visible.some((v) => v.key === c.key)} disabled={i === 0} onSelect={(e) => e.preventDefault()} onCheckedChange={(on) => setVis((cur) => { const base = cur ?? cfg.columns.filter((x) => x.defaultVisible !== false).map((x) => x.key); return on ? [...base, c.key] : base.filter((k) => k !== c.key); })}>{c.label}</DropdownCheckItem>)}</DropdownContent>
           </DropdownMenu>
-          {hasFilters && <Button variant="ghost" size="sm" onClick={saveView}><Bookmark /> Save view</Button>}
+          {hasFilters && !aiLabel && <Button variant="ghost" size="sm" onClick={() => saveView()}><Bookmark /> Save view</Button>}
           {embedded && <div className="ml-auto flex items-center gap-2">
             {can("data.import") && <Button variant="ghost" size="sm" asChild><Link href={`/app/settings/data?import=${cfg.importAs}`}><FileUp /> Import</Link></Button>}
             {can("data.export") && <Button variant="ghost" size="sm" onClick={doExport}><Download /> Export</Button>}
           </div>}
         </div>
+        {aiLabel && (
+          <div className="flex flex-wrap items-center gap-2 border-b border-border bg-primary-soft/40 px-3 py-2">
+            <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-primary/30 bg-surface py-0.5 pl-2.5 pr-1 text-xs"><Sparkles className="size-3 shrink-0 text-primary" /><span className="truncate"><span className="text-fg-subtle">AI:</span> <span className="font-medium">{aiLabel}</span></span><button aria-label="Clear AI search" onClick={clearAi} className="rounded-full p-0.5 hover:bg-bg-subtle"><X className="size-3" /></button></span>
+            <Button variant="ghost" size="xs" onClick={() => saveView(aiLabel)}><Bookmark /> Save as view</Button>
+          </div>
+        )}
         {activeFilters.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 border-b border-border bg-surface-2 px-3 py-2">
             {activeFilters.map(([k, v]) => <span key={k} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface py-0.5 pl-2.5 pr-1 text-xs"><span className="text-fg-subtle">{k.replace(/_/g, " ")}:</span><span className="font-medium">{v === "me" ? "me" : v.length > 24 ? v.slice(0, 24) + "…" : v}</span><button aria-label={`Remove ${k} filter`} onClick={() => setParam(k, null)} className="rounded-full p-0.5 hover:bg-bg-subtle"><X className="size-3" /></button></span>)}

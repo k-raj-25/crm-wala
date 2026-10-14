@@ -50,6 +50,7 @@ class LeadResource(CrudResource):
         "score": ("num", Lead.score), "created_at": ("date", Lead.created_at), "next_follow_up_at": ("date", Lead.next_follow_up_at),
         "last_contacted_at": ("date", Lead.last_contacted_at), "intent": ("in", Lead.intent), "bhk": ("in", Lead.bhk),
         "property_type": ("in", Lead.property_type), "project_id": ("in", Lead.project_id), "budget_max": ("num", Lead.budget_max),
+        "location": ("like", Lead.location),
     }
     refs = {"owner_id": "member", "project_id": Project, "unit_id": Unit}
     limit_key = None

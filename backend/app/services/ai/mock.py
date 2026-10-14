@@ -28,16 +28,23 @@ class MockProvider:
     name = "mock"
 
     # ---------------- content generation ----------------
-    def complete(self, kind, system, prompt, context):
+    def complete(self, kind, system, prompt, context, images=None, max_tokens=900):
+        if "fallback" in context and isinstance(context["fallback"], str):
+            return AIResult(context["fallback"], model="rules-v1")
         if kind == "email_draft":
             return AIResult(self._email(context))
         if kind == "summary":
             return AIResult(self._summary(context))
         if kind == "meeting_summary":
             return AIResult(self._meeting(context))
-        if kind == "narrate":
-            return AIResult(context.get("fallback", ""))
+        if kind == "ping":
+            return AIResult("OK", model="rules-v1")
         return AIResult("")
+
+    def json(self, kind, system, prompt, context, images=None, max_tokens=1500):
+        """Every structured feature passes its deterministic answer as `fallback`; basic mode returns exactly that."""
+        fb = context.get("fallback")
+        return (dict(fb) if isinstance(fb, dict) else {}), AIResult("", model="rules-v1")
 
     def _email(self, c: dict) -> str:
         name = (c.get("name") or "there").split(" ")[0]
@@ -119,6 +126,10 @@ class MockProvider:
             return "\n".join(f"- **[{d['name']}]({d['url']})** — {_money(d['value'], d['currency'])} · {d['stage']} · {d['probability']}%{extra(d)}" for d in rows)
 
         text = ""
+        page = getattr(g, "ai_page", None) or {}
+        acted = self._act(q, page, run_tool)
+        if acted is not None:
+            return AIResult(acted, sources=sources[:8], model="rules-v1")
         if re.search(r"focus|today|what should i|priorit", q) and "lead" not in q:
             acts = insights.next_best_actions(6)
             from app.services import reporting
@@ -190,3 +201,44 @@ class MockProvider:
                 text = ("I can help with your CRM data. Try asking:\n\n- *What should I focus on today?*\n- *Which deals are most likely to close this month?*\n- *Which leads haven't been contacted in 7 days?*\n"
                         "- *Show me my highest-value opportunities.*\n- *Which salesperson has the highest conversion rate?*\n- *Why is my pipeline declining?*\n- *Summarize Acme Corp*")
         return AIResult(text, sources=sources[:8], model="rules-v1")
+
+    def _act(self, q: str, page: dict, run_tool: ToolRunner) -> str | None:
+        """Basic mode understands a few common requests; everything else needs the workspace's own AI key."""
+        import datetime as dt
+
+        from app.models.base import utcnow
+        from app.services.ai import extract
+
+        m = re.match(r"\s*(?:please\s+)?(?:remind me to|create (?:a )?task(?: to)?|add (?:a )?task(?: to)?)\s+(.+)", q)
+        if m:
+            title = m.group(1)
+            for _ in range(3):  # "call Priya tomorrow at 11am" -> "call Priya"
+                title = re.sub(r"\s+(?:at\s+)?(?:\d{1,2}(?::\d{2})?\s*(?:am|pm)|today|tomorrow|kal|day after tomorrow|next week|(?:this |on |next )?(?:mon|tues|wednes|thurs|fri|satur|sun)day|in \d+ days?)\s*$", "", title, flags=re.I).strip(" .,")
+            when = extract.follow_up_hint(q, utcnow()) or (utcnow() + dt.timedelta(hours=3) if "today" in q else utcnow().replace(hour=5, minute=30) + dt.timedelta(days=1))
+            tm = re.search(r"\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b", q, re.I)
+            if tm:
+                from app.services.ai.actions import _tz
+
+                h = int(tm.group(1)) % 12 + (12 if tm.group(3).lower() == "pm" else 0)
+                local = when.astimezone(_tz()).replace(hour=h, minute=int(tm.group(2) or 0))
+                when = local.astimezone(dt.timezone.utc)
+            if page.get("entity") == "lead" and page.get("id"):
+                from app.extensions import db
+                from app.models import Lead
+
+                lead = db.session.get(Lead, page["id"]) if re.fullmatch(r"[0-9a-f-]{36}", str(page["id"])) else None
+                if lead:
+                    title = re.sub(r"\b(this lead|this client|them|him|her)\b", lead.name, title, flags=re.I)
+            args = {"title": title[:1].upper() + title[1:], "due_at": when.isoformat()}
+            if page.get("entity") in ("lead", "contact", "deal") and page.get("id"):
+                args["record"] = {"type": page["entity"], "id": page["id"]}
+            out = run_tool("propose_create_task", args)
+            return out.get("error") or f"I've prepared a task **{args['title']}**. Check the card below and press **Approve** to save it."
+        m = re.search(r"\b(?:mark|move|set|change)\b.*?\b(?:as|to)\s+([a-z ]+?)\s*$", q)
+        if m and page.get("entity") == "lead" and page.get("id"):
+            out = run_tool("propose_update_lead", {"lead": page["id"], "changes": {"status": m.group(1).strip()}})
+            return out.get("error") or "I've prepared that change. Review it below and press **Approve**."
+        if re.match(r"\s*(please\s+)?(update|change|move|schedule|assign|give|mark|set|log|book|hold|convert|create|add|delete|reassign)\b", q):
+            return ("I can prepare that change for you once your workspace connects its own AI key — an admin can do it in **Settings → AI assistant**. "
+                    "Right now I'm in basic mode: I can answer questions about your leads, flats and deals, and create reminders (try “Remind me to call Priya tomorrow”).")
+        return None

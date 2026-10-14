@@ -9,6 +9,7 @@ Neither format is formally documented, so parsing is label-based and tolerant: u
 from __future__ import annotations
 
 import decimal
+import logging
 import re
 from dataclasses import dataclass, field
 
@@ -19,6 +20,7 @@ from app.extensions import db
 from app.models import Lead, Project, Workspace
 from app.services import activities, analytics, audit, events, notifications
 
+log = logging.getLogger("app.portal_leads")
 PENDING_STATUS = {"key": "pending_review", "label": "Awaiting review", "color": "#f59e0b"}
 SOURCE = "99acres"
 
@@ -193,6 +195,24 @@ def _match_project(workspace_id, text: str):
     return None
 
 
+def _flag_repeat(lead: Lead) -> None:
+    """The same buyer often enquires on several portals; point the reviewer at the existing lead instead of a silent duplicate."""
+    digits = re.sub(r"\D", "", lead.phone or "")[-10:]
+    conds = []
+    if len(digits) == 10:
+        conds.append(func.regexp_replace(func.coalesce(Lead.phone, ""), r"\D", "", "g").like(f"%{digits}"))
+    if lead.email:
+        conds.append(func.lower(Lead.email) == lead.email.lower())
+    if not conds:
+        return
+    from sqlalchemy import or_
+
+    other = db.session.query(Lead).filter(Lead.workspace_id == lead.workspace_id, Lead.id != lead.id, Lead.deleted_at.is_(None), or_(*conds)).order_by(Lead.created_at).first()
+    if other is not None:
+        lead.tags = sorted(set(lead.tags or []) | {"repeat enquiry"})
+        lead.custom = {**(lead.custom or {}), "possible_duplicate_of": str(other.id), "possible_duplicate_source": other.source}
+
+
 def ensure_pending_status(ws: Workspace) -> None:
     """Workspaces created before this status existed (or that edited their statuses) get it added after "new"."""
     statuses = list((ws.settings or {}).get("lead_statuses") or [])
@@ -230,6 +250,14 @@ def intake(ws: Workspace, e: Enquiry, *, via: str, dedupe_key: str | None = None
                         "portal_enquiry_id": e.enquiry_id, "portal_raw": e.raw})
     db.session.add(lead)
     db.session.flush()
+    try:  # read the free-text requirement, tag brokers / spam and repeat buyers; never blocks the enquiry
+        from app.services.ai import features
+
+        with db.session.begin_nested():
+            features.portal_cleanup(lead)
+            _flag_repeat(lead)
+    except Exception:
+        log.exception("portal lead clean-up failed")
     from app.api.v1.leads import rescore
 
     rescore(lead)

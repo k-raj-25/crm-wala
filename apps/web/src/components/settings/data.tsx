@@ -1,11 +1,12 @@
 "use client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, ArrowLeft, ArrowRight, Check, CheckCircle2, Download, FileSpreadsheet, GitMerge, Search, UploadCloud, XCircle } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight, Check, CheckCircle2, Download, FileSpreadsheet, GitMerge, Search, Sparkles, UploadCloud, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import * as React from "react";
 import { Avatar, Badge, Button, Card, EmptyState, Input, NativeSelect, Progress, Segmented, Skeleton, Table, TD, TH, THead, TR, cn, formatDate, timeAgo, useDebounce, useToast } from "@crm/ui";
 import { api } from "@/lib/api";
+import { useAiFeature } from "@/lib/ai";
 import { useAccess } from "@/lib/queries";
 import { Divided, FieldRow, SettingsSection } from "./ui";
 
@@ -21,7 +22,9 @@ function ImportWizard() {
   const [parsed, setParsed] = React.useState<Parsed | null>(null); const [rows, setRows] = React.useState<Record<string, string>[]>([]); const [map, setMap] = React.useState<Record<string, string>>({});
   const [val, setVal] = React.useState<Validation | null>(null); const [busy, setBusy] = React.useState(false); const [skipDup, setSkipDup] = React.useState(true); const [result, setResult] = React.useState<{ created: number; skipped: number; errors: Err[] } | null>(null); const [drag, setDrag] = React.useState(false);
   const input = React.useRef<HTMLInputElement>(null);
-  const reset = () => { setStep(0); setParsed(null); setRows([]); setMap({}); setVal(null); setResult(null); };
+  const ai = useAiFeature("import"); const [aiBusy, setAiBusy] = React.useState(false); const [aiNotes, setAiNotes] = React.useState<string | null>(null);
+  const mapWithAi = async () => { if (!parsed) return; setAiBusy(true); setAiNotes(null); try { const r = await api.post<{ mapping: Record<string, string>; notes: string }>("/api/v1/ai/import-assist", { entity: ent, headers: parsed.headers, rows: rows.slice(0, 8) }); const n = Object.keys(r.mapping).length; setMap(r.mapping); setAiNotes(r.notes || null); toast.success(`Mapped ${n} column${n === 1 ? "" : "s"}`, "Check the preview, then continue."); } catch (e) { toast.error("Couldn't map with AI", (e as Error).message); } finally { setAiBusy(false); } };
+  const reset = () => { setAiNotes(null); setStep(0); setParsed(null); setRows([]); setMap({}); setVal(null); setResult(null); };
   const upload = async (f: File) => {
     setBusy(true); const fd = new FormData(); fd.append("file", f); fd.append("entity_type", ent);
     try { const p = await api.upload<Parsed>("/api/v1/import/parse", fd); setParsed(p); setRows(p.rows); setMap(p.suggested_mapping); setStep(1); } catch (e) { toast.error("Couldn't read that file", (e as Error).message); } finally { setBusy(false); }
@@ -42,7 +45,8 @@ function ImportWizard() {
           <p className="text-xs text-fg-subtle">Tip: a header like “Name”, “Email”, “Company” maps automatically. <a className="text-primary hover:underline" href={`data:text/csv;charset=utf-8,${encodeURIComponent(ent === "deals" ? "name,company,value,stage,expected_close_date\nAcme rollout,Acme Corp,500000,Proposal,2026-12-01\n" : "first_name,last_name,email,phone,company,job_title\nAsha,Rao,asha@acme.io,+91 98765 43210,Acme Corp,CEO\n")}`} download={`${ent}-template.csv`}>Download a sample file</a></p></div>
       )}
       {step === 1 && parsed && (
-        <div className="space-y-4"><p className="flex items-center gap-2 text-sm text-fg-muted"><FileSpreadsheet className="size-4" />{parsed.filename} · {rows.length} rows</p>
+        <div className="space-y-4"><p className="flex items-center gap-2 text-sm text-fg-muted"><FileSpreadsheet className="size-4" />{parsed.filename} · {rows.length} rows{ai && <Button className="ml-auto" variant="soft" size="sm" onClick={mapWithAi} loading={aiBusy}><Sparkles /> Map with AI</Button>}</p>
+          {aiNotes && <p className="rounded-lg bg-primary-soft px-3 py-2 text-[13px] text-primary"><Sparkles className="mr-1.5 inline size-3.5" />{aiNotes}</p>}
           <div className="overflow-x-auto rounded-xl border border-border"><Table><THead><TR><TH className="pl-4">CRM field</TH><TH>CSV column</TH><TH>Preview</TH></TR></THead><tbody>
             {parsed.fields.map((f) => <TR key={f.key}><TD className="pl-4"><span className="font-medium">{f.label}</span>{f.required && <span className="ml-1 text-danger">*</span>}{f.hint && <span className="block text-xs text-fg-subtle">{f.hint}</span>}</TD><TD><NativeSelect className="max-w-56" value={map[f.key] ?? ""} onChange={(e) => setMap((m) => { const n = { ...m }; e.target.value ? (n[f.key] = e.target.value) : delete n[f.key]; return n; })} aria-label={`Column for ${f.label}`}><option value="">— skip —</option>{parsed.headers.map((h) => <option key={h}>{h}</option>)}</NativeSelect></TD><TD className="max-w-[260px] truncate text-[13px] text-fg-muted">{map[f.key] ? rows.slice(0, 3).map((r) => r[map[f.key]]).filter(Boolean).join(" · ") : "—"}</TD></TR>)}</tbody></Table></div>
           {!nameMapped && <p role="alert" className="text-sm text-warning">Map a name column to continue.</p>}

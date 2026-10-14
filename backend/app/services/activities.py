@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime as dt
 from typing import Any
 
-from flask import g, has_request_context
+from flask import g, has_request_context, request
 
 from app.extensions import db
 from app.models import Activity, Company, Contact, Deal, Lead
@@ -22,6 +22,8 @@ def log_activity(
         workspace_id = workspace_id or (g.workspace.id if getattr(g, "workspace", None) else None)
         user_id = user_id or (g.user.id if getattr(g, "user", None) else None)
     when = occurred_at or utcnow()
+    if has_request_context() and request.args.get("via") == "ai":
+        data = {**(data or {}), "via": "ai"}
     a = Activity(workspace_id=workspace_id, type=type_, title=title[:300], body=body, data=data or {}, user_id=user_id,
                  lead_id=lead_id, contact_id=contact_id, company_id=company_id, deal_id=deal_id, occurred_at=when, is_demo=is_demo)
     db.session.add(a)

@@ -5,8 +5,10 @@ import * as React from "react";
 import { AreaTrend, BarsChart, Button, Card, CardBody, CardHeader, FunnelBars, LineTrend, Popover, PopoverContent, PopoverTrigger, Segmented, Switch, formatMoneyCompact, formatNumber, formatPercent } from "@crm/ui";
 import { ActivityFeed, GettingStarted, Metric, NextBestActions, TodaysFocus, type Focus } from "@/components/dashboard/widgets";
 import { InventorySnapshot } from "@/components/dashboard/inventory";
+import { MyDayCard } from "@/components/ai/my-day";
 import { PageContainer, PageHeader, Stagger, StaggerItem } from "@/components/shell/page";
 import { useUI } from "@/components/shell/ui-context";
+import { useAiFeature } from "@/lib/ai";
 import { api } from "@/lib/api";
 import { useAccess, useInvalidate, keys } from "@/lib/queries";
 import type { Activity } from "@/lib/types";
@@ -27,7 +29,7 @@ const fmtMonth = (iso: string) => new Date(iso).toLocaleDateString("en-IN", { mo
 
 export default function Home() {
   const { me, can, has } = useAccess();
-  const ui = useUI(); const inv = useInvalidate();
+  const ui = useUI(); const inv = useInvalidate(); const dayOn = useAiFeature("briefing");
   const [days, setDays] = React.useState("30");
   const [scope, setScope] = React.useState<"all" | "mine">("all");
   const enabled = new Set(me?.user.preferences.dashboard_widgets ?? WIDGETS.map(([k]) => k));
@@ -50,7 +52,7 @@ export default function Home() {
     { done: counts.data.team > 1, title: "Invite your team", description: "Share one live view of inventory.", href: "/app/settings/team", cta: "Invite people" },
   ] : [];
 
-  if (!canReports) return <PageContainer><PageHeader title={`Good ${hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening"}, ${first}`} description="Use the sidebar to get started." /></PageContainer>;
+  if (!canReports) return <PageContainer><PageHeader title={`Good ${hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening"}, ${first}`} description="Use the sidebar to get started." />{dayOn && <div className="max-w-2xl"><MyDayCard /></div>}</PageContainer>;
   return (
     <PageContainer wide>
       <PageHeader title={<>Good {hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening"}, {first} 👋</>} description={new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" }) + " — here's what needs your attention."}
@@ -76,6 +78,7 @@ export default function Home() {
             <Metric icon={ListChecks} label="To-dos today" loading={loading} value={formatNumber(m?.tasks_due_today.value)} href="/app/tasks" sub="across the team" />
           </div></StaggerItem>)}
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+          {dayOn && <StaggerItem><MyDayCard /></StaggerItem>}
           {show("revenue") && <StaggerItem className="xl:col-span-2"><Card className="h-full"><CardHeader title="Sales over time" description="Value of deals closed" /><CardBody>{loading ? <div className="skeleton h-[260px]" /> : <AreaTrend data={d!.revenue_series} xKey="period" series={[{ key: "revenue", label: "Revenue" }]} format={(v) => formatMoneyCompact(v, cur)} xFormat={d!.range.bucket === "month" ? fmtMonth : fmtDay} height={260} />}</CardBody></Card></StaggerItem>}
           {show("pipeline") && <StaggerItem><Card className="h-full"><CardHeader title="Deals in progress" description="Open deals by stage" /><CardBody>{loading ? <div className="skeleton h-[260px]" /> : d!.pipeline_by_stage.every((s) => !s.deals) ? <p className="py-20 text-center text-sm text-fg-muted">No open deals yet</p> : <BarsChart horizontal data={d!.pipeline_by_stage} xKey="stage" series={[{ key: "value", label: "Value" }, { key: "weighted", label: "Weighted" }]} format={(v) => formatMoneyCompact(v, cur)} height={260} />}</CardBody></Card></StaggerItem>}
           {show("lead_funnel") && <StaggerItem><Card className="h-full"><CardHeader title="Lead conversion" description="New leads by status" /><CardBody>{loading ? <div className="skeleton h-[220px]" /> : <FunnelBars steps={d!.lead_funnel.filter((s) => s.status !== "lost" && s.status !== "unqualified").map((s) => ({ label: s.status.replace(/^\w/, (c) => c.toUpperCase()), value: s.count }))} />}</CardBody></Card></StaggerItem>}
