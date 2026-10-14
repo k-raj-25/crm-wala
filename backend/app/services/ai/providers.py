@@ -26,6 +26,7 @@ class AIResult:
     output_tokens: int = 0
     sources: list[dict] = field(default_factory=list)
     model: str | None = None
+    provider: str = ""
 
 
 class AIProvider(Protocol):

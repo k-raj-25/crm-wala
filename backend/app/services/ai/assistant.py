@@ -29,6 +29,7 @@ def generate(kind: str, prompt: str, context: dict, feature: str) -> AIResult:
     meter(feature)
     p = get_provider()
     res = p.complete(kind, SYSTEM, prompt, context)
+    res.provider = p.name
     record_usage(feature, res, p.name)
     return res
 
