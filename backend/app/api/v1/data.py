@@ -19,7 +19,7 @@ from app.models import (
 )
 from app.models.base import utcnow
 from app.schemas.common import Schema, parse
-from app.services import audit, importer
+from app.services import audit, importer, privacy
 from app.services.usage import check_limit
 
 bp = Blueprint("data", __name__, url_prefix="/api/v1")
@@ -143,7 +143,7 @@ def _digits(p: str | None) -> str:
 
 
 def _brief(o) -> dict:
-    return {"id": str(o.id), "name": o.name, "email": o.email, "phone": o.phone, "company": (o.company.name if getattr(o, "company", None) else getattr(o, "company_name", None)),
+    return {"id": str(o.id), "name": o.name, "email": o.email, "phone": privacy.mask_value(o.phone), "company": (o.company.name if getattr(o, "company", None) else getattr(o, "company_name", None)),
             "created_at": o.created_at.isoformat(), "status": getattr(o, "status", None)}
 
 
@@ -174,7 +174,7 @@ def find_duplicate_groups(entity: str) -> list[dict]:
         if all(p in dismissed for p in pairs):
             continue
         seen.add(ids)
-        groups.append({"reason": {"email": "Same email address", "phone": "Same phone number", "name+company": "Same name and company"}[reason], "key": key, "records": [_brief(m) for m in members]})
+        groups.append({"reason": {"email": "Same email address", "phone": "Same phone number", "name+company": "Same name and company"}[reason], "key": privacy.mask_value(key) if reason == "phone" else key, "records": [_brief(m) for m in members]})
     return groups
 
 

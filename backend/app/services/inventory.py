@@ -11,6 +11,7 @@ from app.core.errors import ApiError
 from app.extensions import db
 from app.models import Contact, Lead, Project, Tower, Unit, UnitEvent, User
 from app.models.base import utcnow
+from app.services import privacy
 
 # Single source of truth for what each colour on the building means (mirrored in the web app's constants).
 STATUSES: dict[str, dict[str, str]] = {
@@ -198,7 +199,7 @@ def matching_leads(unit: Unit, limit: int = 8) -> list[dict]:
         if m:
             scored.append((m[0], ld, m[1]))
     scored.sort(key=lambda t: (-t[0], t[1].created_at))
-    return [{"id": str(ld.id), "name": ld.name, "phone": ld.phone, "intent": ld.intent, "bhk": ld.bhk, "budget_min": _num(ld.budget_min),
+    return [{"id": str(ld.id), "name": ld.name, "phone": privacy.mask_value(ld.phone), "intent": ld.intent, "bhk": ld.bhk, "budget_min": _num(ld.budget_min),
              "budget_max": _num(ld.budget_max), "status": ld.status, "score": s, "reasons": r} for s, ld, r in scored[:limit]]
 
 
@@ -224,7 +225,7 @@ def people(ids: set) -> dict:
     if not ids:
         return {}
     rows = db.session.query(Contact.id, Contact.first_name, Contact.last_name, Contact.phone).filter(Contact.id.in_(ids)).all()
-    return {r.id: {"id": str(r.id), "name": f"{r.first_name} {r.last_name or ''}".strip(), "phone": r.phone} for r in rows}
+    return {r.id: {"id": str(r.id), "name": f"{r.first_name} {r.last_name or ''}".strip(), "phone": privacy.mask_value(r.phone)} for r in rows}
 
 
 def user_names(ids: set) -> dict:

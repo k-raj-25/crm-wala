@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import * as React from "react";
 import { ApiError, Button, Drawer, Field, Input, NativeSelect, Skeleton, Textarea, cn, formatDate, timeAgo, useTheme, useToast } from "@crm/ui";
 import { AsyncSelect, toLocalInput } from "@/components/forms/fields";
+import { isMasked } from "@/components/records/phone-field";
 import { UnitDocuments } from "@/components/whatsapp/whatsapp";
 import { api } from "@/lib/api";
 import { celebrate } from "@/lib/confetti";
@@ -187,7 +188,7 @@ export function UnitDrawer({ unitId, onClose, canEdit }: { unitId: string | null
                       <Link href={`/app/leads/${m.id}`} className="block truncate text-sm font-medium hover:text-primary">{m.name}</Link>
                       <p className="truncate text-xs text-fg-muted">{[m.intent, m.bhk, m.budget_max ? `up to ${money(m.budget_max)}` : null].filter(Boolean).join(" · ")}{m.reasons.length ? ` — ${m.reasons.join(", ")}` : ""}</p>
                     </div>
-                    {m.phone && <a href={`tel:${m.phone}`} aria-label={`Call ${m.name}`} className="grid size-8 place-items-center rounded-md text-fg-muted hover:bg-surface-hover hover:text-fg"><Phone className="size-4" /></a>}
+                    {m.phone && !isMasked(m.phone) && <a href={`tel:${m.phone}`} aria-label={`Call ${m.name}`} className="grid size-8 place-items-center rounded-md text-fg-muted hover:bg-surface-hover hover:text-fg"><Phone className="size-4" /></a>}
                     {canEdit && u.status !== "on_hold" && <Button variant="secondary" size="sm" onClick={() => holdFor(m)} disabled={busy}>Hold</Button>}
                     {canEdit && <Button variant="ghost" size="sm" onClick={() => setVisit({ lead: m.id, at: toLocalInput(new Date(Date.now() + 864e5).toISOString().replace(/T.*/, "T11:00:00")) })}>Visit</Button>}
                   </li>

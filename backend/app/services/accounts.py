@@ -80,6 +80,7 @@ def build_me() -> dict:
             **ws.to_dict(exclude=("settings",)),
             "lead_statuses": (ws.settings or {}).get("lead_statuses", []),
             "branding": (ws.settings or {}).get("branding", {}),
+            "hide_phones": (ws.settings or {}).get("hide_phones", True),
         }
         out["role"] = {"key": g.member.role.key, "name": g.member.role.name}
         out["permissions"] = sorted(g.permissions)

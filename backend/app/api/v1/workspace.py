@@ -29,6 +29,7 @@ class WorkspacePatchIn(Schema):
     timezone: str | None = Field(default=None, max_length=64)
     currency: str | None = Field(default=None, min_length=3, max_length=3)
     locale: str | None = Field(default=None, max_length=10)
+    hide_phones: bool | None = None
 
 
 @bp.get("/workspace")
@@ -41,6 +42,14 @@ def get_workspace():
 @protect("settings.manage")
 def update_workspace():
     ch = provided(parse(WorkspacePatchIn))
+    if "hide_phones" in ch:
+        hide = ch.pop("hide_phones")
+        if hide is not None:
+            if g.member.role.key != "owner":
+                raise forbidden("Only the workspace owner can change who sees phone numbers.", "owner_only")
+            g.workspace.settings = {**(g.workspace.settings or {}), "hide_phones": hide}
+            audit.record("workspace.phone_privacy", entity_type="workspace", entity_id=g.workspace.id,
+                         summary="Phone numbers hidden from employees" if hide else "Phone numbers shown to everyone", after={"hide_phones": hide})
     before = {k: getattr(g.workspace, k) for k in ch}
     for k, v in ch.items():
         if k == "brand_color" or k == "logo_url":
