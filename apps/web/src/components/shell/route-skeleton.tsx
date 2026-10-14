@@ -100,5 +100,5 @@ export function RouteSkeleton({ path }: { path: string }) {
   if (["leads", "contacts", "companies"].includes(section)) return <ListSkeleton />;
   if (section === "pipeline" || section === "deals") return <BoardSkeleton />;
   if (section === "projects") return id ? <ProjectSkeleton /> : <CardsSkeleton />;
-  return <PageSkeleton wide={["tasks", "calendar", "inbox", "reports", "ai"].includes(section)} />;
+  return <PageSkeleton wide={["tasks", "calendar", "inbox", "reports", "ai", "compare"].includes(section)} />;
 }

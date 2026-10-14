@@ -1,7 +1,7 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { BarChart3, Building2, ChevronRight, Download, Layers, LayoutGrid, List, MapPin, MoreHorizontal, Plus, Rows3, Search, Trash2, Wand2 } from "lucide-react";
+import { ArrowRight, BarChart3, Building2, Check, ChevronRight, Download, Layers, LayoutGrid, List, MapPin, MoreHorizontal, Plus, Rows3, Scale, Search, Trash2, Wand2 } from "lucide-react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import * as React from "react";
@@ -10,6 +10,8 @@ import { ListingWriter } from "@/components/ai/listing-writer";
 import { PageContainer } from "@/components/shell/page";
 import { useAiFeature } from "@/lib/ai";
 import { api } from "@/lib/api";
+import { MAX_COMPARE, compare, useCompare } from "@/lib/compare";
+import { navigate } from "@/components/shell/pending-nav";
 import { useAccess } from "@/lib/queries";
 import { AVAILABLE, PROJECT_KINDS, PROJECT_STAGES, STATUS, STATUS_ORDER, floorLabel, priceLine, where } from "@/lib/realestate";
 import type { Building, Project, Summary, UnitMini, UnitStatus } from "@/lib/realestate";
@@ -35,6 +37,11 @@ export function ProjectView() {
   const [flash, setFlash] = React.useState<number | null>(null);
   const writer = useAiFeature("writer"); const [writing, setWriting] = React.useState(false);
   const floorEls = React.useRef(new Map<number, HTMLElement>());
+  const [picking, setPicking] = React.useState(false);
+  const cmpList = useCompare();
+  const picked = React.useMemo(() => new Set(cmpList.map((f) => f.id)), [cmpList]);
+  const pickRef = React.useRef<(id: string) => void>(() => {});
+  const pickStable = React.useCallback((uid: string) => pickRef.current(uid), []); // stable, so the memoised flat tiles don't all re-render
 
   const unitProbe = useQuery({ queryKey: ["unit", sp.get("unit")], enabled: !!sp.get("unit") && !sp.get("tower"), queryFn: () => api.get<{ tower_id: string }>(`/api/v1/units/${sp.get("unit")}`) });
   const project = useQuery({ queryKey: ["project", id], queryFn: () => api.get<Project>(`/api/v1/projects/${id}`) });
@@ -63,6 +70,14 @@ export function ProjectView() {
   const bhks = b ? [...new Set(b.floors.flatMap((f) => f.units.map((u) => u.bhk)).filter(Boolean) as string[])].sort() : [];
   const counts = b?.summary.counts ?? {};
   const tower = towers.find((t) => t.id === towerId);
+  // Compare mode: a tap picks the flat for the comparison instead of opening it
+  const pickUnit = (uid: string) => {
+    const u = b?.floors.flatMap((f) => f.units).find((x) => x.id === uid);
+    if (!u) return;
+    if (compare.toggle({ id: u.id, number: u.number, where: [tower?.name, p?.name].filter(Boolean).join(" · ") }) === "full") toast.error(`You can compare up to ${MAX_COMPARE} flats`, "Remove one to add another.");
+  };
+  pickRef.current = pickUnit;
+  const openOrPick = picking ? pickStable : setUnitId;
 
   return (
     <PageContainer wide>
@@ -114,7 +129,7 @@ export function ProjectView() {
         : (
           <div className="grid items-start gap-5 lg:grid-cols-[250px_minmax(0,1fr)_290px]">
             {/* left: the tower as a picture */}
-            <div className="order-2 space-y-4 lg:order-1 lg:sticky lg:top-6">
+            <div className="order-2 space-y-4 lg:order-1 lg:sticky lg:top-20">
               <Card className="overflow-hidden">
                 <div className="relative"><TowerArt data={b} spot={spot} onPickFloor={view === "building" ? pickFloor : undefined} />
                   <span className="absolute left-3 top-3 rounded-full bg-surface/90 px-2.5 py-1 text-xs font-semibold shadow-sm backdrop-blur">{b.tower.name}</span></div>
@@ -129,7 +144,10 @@ export function ProjectView() {
             <div className="order-1 min-w-0 space-y-4 lg:order-2">
               <Card className="p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <Segmented value={view} onChange={(v) => nav({ view: v === "building" ? null : v })} options={[{ value: "building", label: "Building", icon: <LayoutGrid /> }, { value: "list", label: "List", icon: <List /> }, { value: "analytics", label: "Analytics", icon: <BarChart3 /> }]} />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Segmented value={view} onChange={(v) => { if (v === "analytics") setPicking(false); nav({ view: v === "building" ? null : v }); }} options={[{ value: "building", label: "Building", icon: <LayoutGrid /> }, { value: "list", label: "List", icon: <List /> }, { value: "analytics", label: "Analytics", icon: <BarChart3 /> }]} />
+                    {view !== "analytics" && <Button variant={picking ? "primary" : "secondary"} onClick={() => setPicking((x) => !x)} aria-pressed={picking}>{picking ? <Check /> : <Scale />} {picking ? "Done picking" : "Compare"}</Button>}
+                  </div>
                   {view !== "analytics" && (
                     <div className="flex w-full items-center gap-2 sm:w-auto">
                       {bhks.length > 1 && <NativeSelect aria-label="Filter by size" value={spot.bhk ?? ""} onChange={(e) => setSpot({ ...spot, bhk: e.target.value || null })} className="!w-auto min-w-[110px]"><option value="">All sizes</option>{bhks.map((x) => <option key={x} value={x}>{x}</option>)}</NativeSelect>}
@@ -141,21 +159,22 @@ export function ProjectView() {
                   <div className="mt-3 space-y-3">
                     <Legend counts={counts} active={spot.statuses} onToggle={toggleStatus} />
                     {isSpotting(spot) && <SpotBar b={b} spot={spot} onClear={() => setSpot(NO_SPOT)} />}
+                    {picking && <PickBar n={cmpList.length} onCompare={() => navigate(router, "/app/compare")} />}
                   </div>
                 )}
               </Card>
 
               {view === "building" && (
                 <Sky className="rounded-2xl border border-border px-2 pb-0 pt-5 sm:px-6">
-                  <BuildingView data={b} spot={spot} onOpen={setUnitId} flashFloor={flash} registerFloor={(f, el) => { if (el) floorEls.current.set(f, el); else floorEls.current.delete(f); }} />
+                  <BuildingView data={b} spot={spot} onOpen={openOrPick} picked={picking ? picked : null} flashFloor={flash} registerFloor={(f, el) => { if (el) floorEls.current.set(f, el); else floorEls.current.delete(f); }} />
                 </Sky>
               )}
-              {view === "list" && <UnitTable b={b} spot={spot} onOpen={setUnitId} />}
+              {view === "list" && <UnitTable b={b} spot={spot} onOpen={openOrPick} picked={picking ? picked : null} />}
               {view === "analytics" && p && <Analytics project={p} b={b} />}
             </div>
 
             {/* right: numbers */}
-            <div className="order-3 space-y-4 lg:sticky lg:top-6">
+            <div className="order-3 space-y-4 lg:sticky lg:top-20">
               <Card className="p-4">
                 <h2 className="mb-3 text-sm font-semibold">Flats by status</h2>
                 <div className="grid grid-cols-2 gap-2">
@@ -197,6 +216,15 @@ function SpotBar({ b, spot, onClear }: { b: Building; spot: Spot; onClear: () =>
   );
 }
 
+function PickBar({ n, onCompare }: { n: number; onCompare: () => void }) {
+  return (
+    <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg bg-primary-soft px-3 py-2 text-[13px]" role="status">
+      <span><Scale className="mr-1.5 inline size-4 align-[-3px] text-primary" />{n === 0 ? "Tap flats to add them to your comparison." : <><b>{n}</b> of {MAX_COMPARE} picked. Tap more flats, here or in other towers.</>}</span>
+      {n > 0 && <button type="button" onClick={onCompare} className="inline-flex items-center gap-1 font-medium text-primary hover:underline">Compare now <ArrowRight className="size-3.5" /></button>}
+    </motion.div>
+  );
+}
+
 function StatusTile({ s, n, active, onClick }: { s: UnitStatus; n: number; active: boolean; onClick: () => void }) {
   const { resolved } = useTheme();
   const m = STATUS[s]; const Icon = m.icon; const bg = resolved === "dark" ? m.bgDark : m.bg;
@@ -223,7 +251,7 @@ function SummaryCard({ b, tower }: { b: Building; tower?: string }) {
   );
 }
 
-function UnitTable({ b, spot, onOpen }: { b: Building; spot: Spot; onOpen: (id: string) => void }) {
+function UnitTable({ b, spot, onOpen, picked }: { b: Building; spot: Spot; onOpen: (id: string) => void; picked?: Set<string> | null }) {
   const { resolved } = useTheme();
   const [sort, setSort] = React.useState<{ k: "number" | "floor" | "price" | "area"; dir: 1 | -1 }>({ k: "floor", dir: -1 });
   const rows = b.floors.flatMap((f) => f.units).filter((u) => !isSpotting(spot) || fitsSpot(u, spot));
@@ -240,8 +268,9 @@ function UnitTable({ b, spot, onOpen }: { b: Building; spot: Spot; onOpen: (id: 
             {rows.map((u) => {
               const m = STATUS[u.status]; const Icon = m.icon;
               return (
-                <tr key={u.id} onClick={() => onOpen(u.id)} className="cursor-pointer transition-colors hover:bg-surface-hover">
-                  <td className="px-4 py-2.5 font-semibold tabular-nums"><button className="outline-none focus-visible:underline" onClick={(e) => { e.stopPropagation(); onOpen(u.id); }}>{u.number}</button></td>
+                <tr key={u.id} onClick={() => onOpen(u.id)} className={cn("cursor-pointer transition-colors hover:bg-surface-hover", picked?.has(u.id) && "bg-primary-soft/60")}>
+                  <td className="px-4 py-2.5 font-semibold tabular-nums"><button className="inline-flex items-center gap-2 outline-none focus-visible:underline" aria-pressed={picked ? picked.has(u.id) : undefined} onClick={(e) => { e.stopPropagation(); onOpen(u.id); }}>
+                    {picked && <span className={cn("grid size-4 place-items-center rounded border", picked.has(u.id) ? "border-primary bg-primary text-primary-fg" : "border-border-strong")}>{picked.has(u.id) && <Check className="size-3" strokeWidth={3} />}</span>}{u.number}</button></td>
                   <td className="px-4 py-2.5 text-fg-muted">{floorLabel(u.floor)}</td><td className="px-4 py-2.5">{u.bhk ?? "—"}</td>
                   <td className="px-4 py-2.5 text-right tabular-nums">{u.area_sqft ? `${Math.round(u.area_sqft).toLocaleString("en-IN")} sq ft` : "—"}</td><td className="px-4 py-2.5 text-fg-muted">{u.facing ?? "—"}</td>
                   <td className="px-4 py-2.5 text-right font-medium tabular-nums">{priceLine(u)}</td>
