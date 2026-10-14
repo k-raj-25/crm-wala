@@ -103,3 +103,12 @@ def test_owner_controls_the_setting(app):
     assert rep.get(f"/api/v1/leads/{lead['id']}").get_json()["data"]["phone"] == PHONE
     owner.patch("/api/v1/workspace", json={"hide_phones": True})
     assert rep.get(f"/api/v1/leads/{lead['id']}").get_json()["data"]["phone_masked"] is True
+
+
+def test_ai_payloads_are_scrubbed():
+    from app.services.privacy import _scrub
+
+    out = _scrub({"leads": [{"name": "Jasmine", "phone": PHONE, "whatsapp": "https://wa.me/919876543210?text=hi", "budget_max": 25000000}],
+                  "message": "Several leads match: Jasmine (+91 98765 43210, id 7). Budget 25000000."})
+    assert out["leads"][0] == {"name": "Jasmine", "phone": "+91 ••••• •••10", "whatsapp": None, "budget_max": 25000000}
+    assert "43210" not in out["message"] and "25000000" in out["message"]

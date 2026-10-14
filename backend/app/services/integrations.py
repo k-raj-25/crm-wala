@@ -142,7 +142,7 @@ def _microsoft_token(i: Integration) -> str:
     return creds["access_token"]
 
 
-def send_via_integration(i: Integration, to: str, cc: list[str], subject: str, html: str, from_addr: str | None) -> str | None:
+def send_via_integration(i: Integration, to: str, cc: list[str], subject: str, html: str, from_addr: str | None, attachments=None) -> str | None:
     if i.provider == "gmail":
         msg = EmailMessage()
         msg["To"], msg["Subject"] = to, subject
@@ -150,6 +150,9 @@ def send_via_integration(i: Integration, to: str, cc: list[str], subject: str, h
             msg["Cc"] = ", ".join(cc)
         msg.set_content("Please view this email in an HTML-capable client.")
         msg.add_alternative(html, subtype="html")
+        from app.services.email import add_attachments
+
+        add_attachments(msg, attachments)
         raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
         r = httpx.post("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", headers={"Authorization": f"Bearer {_google_token(i)}"}, json={"raw": raw}, timeout=20)
         if r.status_code in (401, 403):
@@ -159,7 +162,9 @@ def send_via_integration(i: Integration, to: str, cc: list[str], subject: str, h
     if i.provider == "outlook":
         r = httpx.post("https://graph.microsoft.com/v1.0/me/sendMail", headers={"Authorization": f"Bearer {_microsoft_token(i)}"}, timeout=20, json={
             "message": {"subject": subject, "body": {"contentType": "HTML", "content": html}, "toRecipients": [{"emailAddress": {"address": to}}],
-                        "ccRecipients": [{"emailAddress": {"address": c}} for c in cc]}})
+                        "ccRecipients": [{"emailAddress": {"address": c}} for c in cc],
+                        **({"attachments": [{"@odata.type": "#microsoft.graph.fileAttachment", "name": n, "contentType": m, "contentBytes": base64.b64encode(b).decode()}
+                                            for n, m, b in attachments]} if attachments else {})}})
         r.raise_for_status()
         return None
     raise RuntimeError("Unsupported mailbox provider")

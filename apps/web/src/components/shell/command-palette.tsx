@@ -1,7 +1,7 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import { Command } from "cmdk";
-import { Activity, ArrowRight, Building2, CalendarPlus, Home, Landmark, CheckSquare, FileUp, Handshake, Mail, Moon, Plus, Search, Settings, StickyNote, Sun, UserRound, Users } from "lucide-react";
+import { Activity, ArrowRight, Building2, CalendarPlus, Home, Landmark, CheckSquare, FileUp, Handshake, Mail, Moon, Plus, Search, Settings, StickyNote, Sun, UserRound, Users, Scale } from "lucide-react";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { Dialog as D } from "radix-ui";
@@ -9,6 +9,7 @@ import { Kbd, Spinner, useDebounce, useTheme } from "@crm/ui";
 import { api } from "@/lib/api";
 import { useAccess } from "@/lib/queries";
 import { useNavItems } from "./sidebar";
+import { navigate } from "./pending-nav";
 import { useUI } from "./ui-context";
 
 type Result = { id: string; title: string; subtitle?: string; url: string };
@@ -24,13 +25,14 @@ export function CommandPalette() {
   const run = (fn: () => void) => () => { close(); setTimeout(fn, 60); };
   const create = (kind: Parameters<typeof ui.openCreate>[0]) => run(() => ui.openCreate(kind));
   const cmds = [
-    { label: "Add lead", icon: Plus, perm: "leads.create", on: create("lead"), kw: "new enquiry buyer renter" }, { label: "New project", icon: Building2, perm: "projects.create", on: run(() => router.push("/app/projects?new=1")), kw: "add tower building society" },
+    { label: "Add lead", icon: Plus, perm: "leads.create", on: create("lead"), kw: "new enquiry buyer renter" }, { label: "New project", icon: Building2, perm: "projects.create", on: run(() => navigate(router, "/app/projects?new=1")), kw: "add tower building society" },
     { label: "Add client", icon: Plus, perm: "contacts.create", on: create("contact"), kw: "new add person owner buyer tenant" },
+    { label: "New comparison", icon: Scale, perm: "units.read", on: run(() => navigate(router, "/app/compare?pick=1")), kw: "compare flats side by side shortlist share pdf" },
     { label: "Create deal", icon: Plus, perm: "deals.create", on: create("deal"), kw: "new add booking" }, { label: "Add to-do", icon: CheckSquare, perm: "tasks.create", on: create("task"), kw: "new add task reminder" },
     { label: "Add builder", icon: Landmark, perm: "companies.create", on: create("company"), kw: "new developer company" },
     { label: "Schedule event", icon: CalendarPlus, perm: "meetings.create", on: create("meeting"), kw: "calendar book meeting site visit show" }, { label: "Send email", icon: Mail, perm: "emails.create", on: run(() => ui.openCompose()), kw: "compose write" },
-    { label: "Import clients", icon: FileUp, perm: "data.import", on: run(() => router.push("/app/settings/data?import=contacts")), kw: "csv upload" },
-    { label: "Open settings", icon: Settings, perm: "", on: run(() => router.push("/app/settings")), kw: "preferences" },
+    { label: "Import clients", icon: FileUp, perm: "data.import", on: run(() => navigate(router, "/app/settings/data?import=contacts")), kw: "csv upload" },
+    { label: "Open settings", icon: Settings, perm: "", on: run(() => navigate(router, "/app/settings")), kw: "preferences" },
     { label: resolved === "dark" ? "Switch to light mode" : "Switch to dark mode", icon: resolved === "dark" ? Sun : Moon, perm: "", on: run(() => setPref(resolved === "dark" ? "light" : "dark")), kw: "theme" },
   ].filter((c) => !c.perm || can(c.perm));
   const match = (label: string, kw = "") => !q.trim() || (label + " " + kw).toLowerCase().includes(q.trim().toLowerCase());
@@ -52,7 +54,7 @@ export function CommandPalette() {
               {q.trim() && GROUPS.map(([k, label, Icon]) => search.data?.[k]?.length ? (
                 <Command.Group key={k} heading={label} className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-fg-subtle">
                   {search.data[k].map((r) => (
-                    <Command.Item key={r.id} value={`${k}-${r.id}`} onSelect={run(() => router.push(r.url))} className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm aria-selected:bg-primary-soft">
+                    <Command.Item key={r.id} value={`${k}-${r.id}`} onSelect={run(() => navigate(router, r.url))} className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm aria-selected:bg-primary-soft">
                       <Icon className="size-4 shrink-0 text-fg-subtle" /><span className="min-w-0 flex-1"><span className="block truncate font-medium">{r.title}</span>{r.subtitle && <span className="block truncate text-xs text-fg-muted">{r.subtitle}</span>}</span><ArrowRight className="size-3.5 text-fg-subtle opacity-0 aria-selected:opacity-100" />
                     </Command.Item>))}
                 </Command.Group>) : null)}
@@ -62,7 +64,7 @@ export function CommandPalette() {
                 </Command.Group>)}
               {nav.some((n) => match(`go to ${n.label}`)) && (
                 <Command.Group heading="Go to" className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-fg-subtle">
-                  {nav.filter((n) => match(`go to ${n.label}`)).map((n) => <Command.Item key={n.href} value={`go-${n.href}`} onSelect={run(() => router.push(n.href))} className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm aria-selected:bg-primary-soft"><n.icon className="size-4 text-fg-subtle" /><span className="flex-1">{n.label}</span>{n.chord && <span className="flex gap-1"><Kbd>G</Kbd><Kbd>{n.chord.toUpperCase()}</Kbd></span>}</Command.Item>)}
+                  {nav.filter((n) => match(`go to ${n.label}`)).map((n) => <Command.Item key={n.href} value={`go-${n.href}`} onSelect={run(() => navigate(router, n.href))} className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm aria-selected:bg-primary-soft"><n.icon className="size-4 text-fg-subtle" /><span className="flex-1">{n.label}</span>{n.chord && <span className="flex gap-1"><Kbd>G</Kbd><Kbd>{n.chord.toUpperCase()}</Kbd></span>}</Command.Item>)}
                 </Command.Group>)}
               {!hasResults && null}
             </Command.List>

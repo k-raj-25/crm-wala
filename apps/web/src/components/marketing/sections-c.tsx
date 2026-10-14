@@ -142,7 +142,10 @@ export function Footer() {
         <div><Logo /><p className="mt-3 max-w-xs text-sm text-fg-muted">The simple CRM for realtors. See every flat at a glance.</p></div>
         {cols.map(([t, ls]) => <div key={t}><p className="mb-3 text-sm font-semibold">{t}</p><ul className="space-y-2">{ls.map(([l, h]) => <li key={l}><a href={h} className="text-sm text-fg-muted hover:text-fg">{l}</a></li>)}</ul></div>)}
       </Container>
-      <Container className="mt-10 text-xs text-fg-subtle">© {new Date().getFullYear()} CRM Wala. All rights reserved.</Container>
+      <Container className="mt-10 flex flex-col gap-2 text-xs text-fg-subtle sm:flex-row sm:items-center sm:justify-between">
+        <span>© {new Date().getFullYear()} CRM Wala. All rights reserved.</span>
+        <span>Developed By <a href="https://www.linkedin.com/in/kr25" target="_blank" rel="noopener noreferrer" className="text-fg-muted hover:text-fg underline-offset-2 hover:underline">Kamal Rajput</a></span>
+      </Container>
     </footer>
   );
 }

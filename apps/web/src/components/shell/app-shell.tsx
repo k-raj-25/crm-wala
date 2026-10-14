@@ -10,11 +10,15 @@ import { api } from "@/lib/api";
 import { MOBILE_PRIMARY, NAV } from "@/lib/nav";
 import { useAccess, useMe } from "@/lib/queries";
 import { ComposeEmail } from "../forms/compose-email";
+import { AiDock } from "../ai/ai-dock";
 import { CommandPalette } from "./command-palette";
 import { QuickCreateDrawer, QuickCreateMenu } from "./quick-create";
+import { CompareTray } from "@/components/compare/compare-tray";
 import { Sidebar, UserMenu, WorkspaceSwitcher, useNavItems } from "./sidebar";
 import { UIProvider, useUI } from "./ui-context";
 import { NotificationsPopover } from "./notifications";
+import { PendingNavigation, startNavigation, usePendingPath } from "./pending-nav";
+import { RouteSkeleton } from "./route-skeleton";
 
 function TrialBanner() {
   const { data: me } = useMe();
@@ -75,14 +79,14 @@ function RestrictedScreen() {
   );
 }
 
-const SHORTCUTS = [["⌘ K", "Command palette / search"], ["C", "Quick create menu"], ["G then B/L/C/P/K/T…", "Go to Projects, Leads, Clients, Pipeline, Calendar, Daily plan…"], ["[", "Collapse / expand sidebar"], ["?", "Show this help"], ["Esc", "Close dialogs"]];
+const SHORTCUTS = [["⌘ K", "Command palette / search"], ["⌘ J", "Open the AI assistant"], ["C", "Quick create menu"], ["G then B/L/C/P/K/T…", "Go to Projects, Leads, Clients, Pipeline, Calendar, Daily plan…"], ["[", "Collapse / expand sidebar"], ["?", "Show this help"], ["Esc", "Close dialogs"]];
 function ShortcutsDialog() {
   const ui = useUI();
   return <Dialog open={ui.shortcuts} onOpenChange={ui.setShortcuts}><DialogContent size="sm" title="Keyboard shortcuts"><ul className="divide-y divide-border">{SHORTCUTS.map(([k, d]) => <li key={k} className="flex items-center justify-between gap-4 py-2.5 text-sm"><span className="text-fg-muted">{d}</span><span className="flex shrink-0 gap-1">{k.split(" ").map((p, i) => <Kbd key={i}>{p}</Kbd>)}</span></li>)}</ul></DialogContent></Dialog>;
 }
 
 function MobileNav() {
-  const pathname = usePathname(); const items = useNavItems(); const [more, setMore] = React.useState(false);
+  const current = usePathname(); const pathname = usePendingPath() ?? current; const items = useNavItems(); const [more, setMore] = React.useState(false);
   const primary = items.filter((i) => MOBILE_PRIMARY.includes(i.href)); const rest = items.filter((i) => !MOBILE_PRIMARY.includes(i.href));
   const act = (h: string) => (h === "/app" ? pathname === "/app" : pathname.startsWith(h));
   React.useEffect(() => setMore(false), [pathname]);
@@ -113,7 +117,7 @@ function MobileNav() {
 function Topbar() {
   const ui = useUI();
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-bg/80 px-4 backdrop-blur-xl sm:px-8">
+    <header className="sticky top-0 z-30 flex h-[calc(3.5rem+env(safe-area-inset-top))] items-center pt-[env(safe-area-inset-top)] gap-3 border-b border-border bg-bg/80 px-4 backdrop-blur-xl sm:px-8">
       <div className="md:hidden"><Link href="/app"><Logo collapsed /></Link></div>
       <button onClick={() => ui.openCommand()} className="group flex h-9 max-w-md flex-1 items-center gap-2.5 rounded-lg border border-border bg-surface px-3 text-sm text-fg-subtle shadow-xs transition-colors hover:border-border-strong" aria-label="Search or run a command">
         <Search className="size-4" /><span className="flex-1 text-left">Search or jump to…</span><span className="hidden gap-1 sm:flex"><Kbd>⌘</Kbd><Kbd>K</Kbd></span>
@@ -125,6 +129,7 @@ function Topbar() {
 
 function Shell({ children }: { children: React.ReactNode }) {
   const router = useRouter(); const pathname = usePathname(); const ui = useUI();
+  const pendingPath = usePendingPath();
   const [collapsed, setCollapsed] = useLocalStorage("sidebar-collapsed", false);
   const { data: me, isLoading, error } = useMe();
   const { restricted } = useAccess();
@@ -134,7 +139,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   useHotkey("[", () => setCollapsed((c) => !c));
   useHotkey("?", () => ui.openShortcuts());
   useHotkey("c", (e) => { e.preventDefault(); ui.openCommand("Create "); }, [items.length]);
-  useChord("g", Object.fromEntries(NAV.filter((n) => n.chord).map((n) => [n.chord!, () => router.push(n.href)])));
+  useChord("g", Object.fromEntries(NAV.filter((n) => n.chord).map((n) => [n.chord!, () => { startNavigation(n.href); router.push(n.href); }])));
 
   React.useEffect(() => {
     if (!me) return;
@@ -158,17 +163,19 @@ function Shell({ children }: { children: React.ReactNode }) {
       <div className="flex min-w-0 flex-1 flex-col">
         <ImpersonationBanner /><VerifyBanner /><TrialBanner />
         <Topbar />
-        <main className="flex-1 pb-24 md:pb-0" id="main">
+        <main className="min-w-0 flex-1 overflow-x-clip pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-0" id="main">
           <AnimatePresence mode="wait" initial={false}>
-            <motion.div key={pathname.split("/").slice(0, 3).join("/")} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18, ease: "easeOut" }}>
+            <motion.div key={pathname.split("/").slice(0, 3).join("/")} hidden={!!pendingPath} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18, ease: "easeOut" }}>
               {restricted && !allowedWhenRestricted ? <RestrictedScreen /> : children}
             </motion.div>
           </AnimatePresence>
+          {/* The clicked page's skeleton, shown at once while the route itself is still on its way. */}
+          {pendingPath && <RouteSkeleton path={pendingPath} />}
         </main>
       </div>
       <MobileNav />
-      <div className="fixed bottom-20 right-4 z-30 md:hidden"><QuickCreateMenu variant="fab" /></div>
-      <CommandPalette /><QuickCreateDrawer /><ShortcutsDialog />
+      <CompareTray />
+      <PendingNavigation /><CommandPalette /><AiDock /><QuickCreateDrawer /><ShortcutsDialog />
       <ComposeEmail open={!!ui.compose} onOpenChange={(o) => !o && ui.closeCompose()} defaults={ui.compose?.defaults} />
     </div>
   );

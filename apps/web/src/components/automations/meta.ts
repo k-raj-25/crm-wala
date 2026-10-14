@@ -1,12 +1,16 @@
-import { Bell, CheckSquare, Clock, FileText, Globe, Mail, Tag, ToggleRight, UserPlus, Zap } from "lucide-react";
+import { Bell, CheckSquare, Clock, FileText, Flame, Globe, Mail, MessageSquareText, ScanText, Tag, ToggleRight, UserPlus, Zap } from "lucide-react";
 
 export type Field = { key: string; label: string; type: "text" | "textarea" | "number" | "select" | "user"; options?: string[]; default?: unknown };
 export type Meta = { triggers: { key: string; label: string; config: { key: string; label: string; type: string }[] }[]; actions: { key: string; label: string; fields: Field[] }[] };
 export type Step = { id: string; action_type: string; config: Record<string, unknown> };
 export type Graph = { nodes: { id: string; type: "trigger" | "action"; position: { x: number; y: number }; data: Record<string, unknown> }[]; edges: { id: string; source: string; target: string }[] };
 
-export const ACTION_ICONS: Record<string, React.ElementType> = { send_email: Mail, create_task: CheckSquare, assign_user: UserPlus, add_tag: Tag, change_status: ToggleRight, send_notification: Bell, webhook: Globe, delay: Clock, create_activity: FileText };
-export const ACTION_COLORS: Record<string, string> = { send_email: "var(--series-2)", create_task: "var(--series-7)", assign_user: "var(--series-3)", add_tag: "var(--series-5)", change_status: "var(--series-1)", send_notification: "var(--series-4)", webhook: "var(--fg-muted)", delay: "var(--series-4)", create_activity: "var(--series-6)" };
+export const ACTION_ICONS: Record<string, React.ElementType> = { send_email: Mail, create_task: CheckSquare, assign_user: UserPlus, add_tag: Tag, change_status: ToggleRight, send_notification: Bell, webhook: Globe, delay: Clock, create_activity: FileText,
+  ai_classify_lead: Flame, ai_extract_requirements: ScanText, ai_draft_reply: MessageSquareText };
+export const ACTION_COLORS: Record<string, string> = { send_email: "var(--series-2)", create_task: "var(--series-7)", assign_user: "var(--series-3)", add_tag: "var(--series-5)", change_status: "var(--series-1)", send_notification: "var(--series-4)", webhook: "var(--fg-muted)", delay: "var(--series-4)", create_activity: "var(--series-6)",
+  ai_classify_lead: "var(--series-5)", ai_extract_requirements: "var(--series-3)", ai_draft_reply: "var(--series-2)" };
+export const AI_ACTIONS = new Set(["ai_classify_lead", "ai_extract_requirements", "ai_draft_reply"]);
+export const CHANNEL_LABEL: Record<string, string> = { whatsapp: "WhatsApp", email: "Email" };
 export const TRIGGER_ICON = Zap;
 
 export function toGraph(trigger: string, triggerConfig: Record<string, unknown>, steps: Step[]): Graph {

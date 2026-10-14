@@ -10,6 +10,7 @@ import { api } from "@/lib/api";
 import { NAV } from "@/lib/nav";
 import { useAccess, useMe } from "@/lib/queries";
 import { NotificationsPopover } from "./notifications";
+import { usePendingPath } from "./pending-nav";
 import { useUI } from "./ui-context";
 
 export function useNavItems() {
@@ -94,7 +95,7 @@ export function UserMenu({ collapsed }: { collapsed?: boolean }) {
 }
 
 export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
-  const pathname = usePathname();
+  const current = usePathname(); const pathname = usePendingPath() ?? current;
   const items = useNavItems();
   const { data: me } = useMe();
   const { can } = useAccess();

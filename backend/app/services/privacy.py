@@ -82,6 +82,38 @@ def mask_records(entity_type: str, dicts: list[dict]) -> list[dict]:
     return dicts
 
 
+_PHONE_TEXT = re.compile(r"(?<![\w])(\+?\d[\d\s-]{8,}\d)(?![\w])")
+_PHONE_KEYS = {"phone", "mobile"}
+_WA_KEYS = {"whatsapp", "whatsapp_url"}
+
+
+def _scrub(v: Any, key: str | None = None) -> Any:
+    if isinstance(v, dict):
+        return {k: _scrub(x, k) for k, x in v.items()}
+    if isinstance(v, list):
+        return [_scrub(x) for x in v]
+    if not isinstance(v, str) or not v:
+        return v
+    if key in _PHONE_KEYS:
+        return mask(v)
+    if key in _WA_KEYS and "wa.me/" in v:
+        return None  # a wa.me link carries the number in its URL
+    return _PHONE_TEXT.sub(lambda m: mask(m.group(1)) if len(re.sub(r"\D", "", m.group(1))) >= 10 else m.group(1), v)
+
+
+def mask_response(resp):
+    """after_request hook for blueprints whose payloads mention numbers in free-form places (the AI features):
+    masks `phone` fields, drops wa.me links and masks phone numbers written inside text."""
+    if can_view() or not resp.is_json:
+        return resp
+    data = resp.get_json(silent=True)
+    if data is not None:
+        import json
+
+        resp.set_data(json.dumps(_scrub(data)))
+    return resp
+
+
 def mask_value(v: Any) -> Any:
     return v if can_view() else mask(v)
 

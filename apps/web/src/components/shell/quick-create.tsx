@@ -1,21 +1,23 @@
 "use client";
-import { Building2, CalendarPlus, CheckSquare, ChevronDown, Handshake, Landmark, Phone, Plus, StickyNote, UserRound, Users } from "lucide-react";
+import { Building2, CalendarPlus, CheckSquare, ChevronDown, Handshake, Landmark, Phone, Plus, Scale, StickyNote, UserRound, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Button, Drawer, DropdownContent, DropdownItem, DropdownMenu, DropdownTrigger, Tooltip } from "@crm/ui";
 import { FORMS, RecordForm } from "../forms/record-form";
 import type { CreateKind } from "./ui-context";
+import { navigate } from "./pending-nav";
 import { useUI } from "./ui-context";
 import { useAccess } from "@/lib/queries";
 
-export const CREATE_ITEMS: { kind: CreateKind | "project"; label: string; icon: React.ElementType; perm: string; defaults?: Record<string, unknown> }[] = [
+export const CREATE_ITEMS: { kind: CreateKind | "project" | "comparison"; label: string; icon: React.ElementType; perm: string; defaults?: Record<string, unknown> }[] = [
   { kind: "lead", label: "New Lead", icon: Users, perm: "leads.create" }, { kind: "project", label: "New Project", icon: Building2, perm: "projects.create" },
   { kind: "meeting", label: "New Event", icon: CalendarPlus, perm: "meetings.create" }, { kind: "deal", label: "New Deal", icon: Handshake, perm: "deals.create" },
   { kind: "contact", label: "New Client", icon: UserRound, perm: "contacts.create" }, { kind: "task", label: "New To-do", icon: CheckSquare, perm: "tasks.create" },
   { kind: "call", label: "Log Call", icon: Phone, perm: "meetings.create" }, { kind: "note", label: "New Note", icon: StickyNote, perm: "notes.create" },
-  { kind: "company", label: "New Builder", icon: Landmark, perm: "companies.create" },
+  { kind: "company", label: "New Builder", icon: Landmark, perm: "companies.create" }, { kind: "comparison", label: "New Comparison", icon: Scale, perm: "units.read" },
 ];
+const PAGES: Partial<Record<(typeof CREATE_ITEMS)[number]["kind"], string>> = { project: "/app/projects?new=1", comparison: "/app/compare?pick=1" };
 
-export function QuickCreateMenu({ variant = "button" }: { variant?: "button" | "fab" }) {
+export function QuickCreateMenu() {
   const ui = useUI(); const { can } = useAccess(); const router = useRouter();
   const items = CREATE_ITEMS.filter((i) => can(i.perm));
   if (!items.length) return null;
@@ -23,10 +25,10 @@ export function QuickCreateMenu({ variant = "button" }: { variant?: "button" | "
     <DropdownMenu>
       <Tooltip content="Quick create" shortcut="C" side="bottom">
         <DropdownTrigger asChild>
-          {variant === "fab" ? <Button size="icon" className="size-14 rounded-full shadow-lg" aria-label="Quick create"><Plus className="!size-6" /></Button> : <Button aria-label="Quick create"><Plus /> <span className="hidden sm:inline">Create</span><ChevronDown className="hidden !size-3.5 opacity-70 sm:block" /></Button>}
+          <Button aria-label="Quick create"><Plus /> <span className="hidden sm:inline">Create</span><ChevronDown className="hidden !size-3.5 opacity-70 sm:block" /></Button>
         </DropdownTrigger>
       </Tooltip>
-      <DropdownContent align="end" className="w-56">{items.map((i) => <DropdownItem key={i.label} icon={<i.icon />} onSelect={() => (i.kind === "project" ? router.push("/app/projects?new=1") : ui.openCreate(i.kind, i.defaults))}>{i.label}</DropdownItem>)}</DropdownContent>
+      <DropdownContent align="end" className="w-56">{items.map((i) => <DropdownItem key={i.label} icon={<i.icon />} onSelect={() => (PAGES[i.kind] ? navigate(router, PAGES[i.kind]!) : ui.openCreate(i.kind as CreateKind, i.defaults))}>{i.label}</DropdownItem>)}</DropdownContent>
     </DropdownMenu>
   );
 }
@@ -39,7 +41,7 @@ export function QuickCreateDrawer() {
   return (
     <Drawer open={!!c} onOpenChange={(o) => !o && ui.closeCreate()} title={cfg?.title ?? ""} description={c ? `Quick add — you'll stay right where you are.` : undefined}
       footer={c && <><Button variant="secondary" onClick={ui.closeCreate}>Cancel</Button><Button type="submit" form={`form-${c.kind}`}>{c.kind === "call" ? "Log call" : c.kind === "meeting" ? "Schedule" : c.kind === "note" ? "Add note" : `Create ${cfg!.noun}`}</Button></>}>
-      {c && <RecordForm key={c.kind + JSON.stringify(c.defaults ?? {})} kind={c.kind} defaults={c.defaults} hideActions onView={href[c.kind] ? (rec) => router.push(`/app/${href[c.kind]}/${rec.id}`) : undefined} onSaved={() => ui.closeCreate()} />}
+      {c && <RecordForm key={c.kind + JSON.stringify(c.defaults ?? {})} kind={c.kind} defaults={c.defaults} hideActions onView={href[c.kind] ? (rec) => navigate(router, `/app/${href[c.kind]}/${rec.id}`) : undefined} onSaved={() => ui.closeCreate()} />}
     </Drawer>
   );
 }
