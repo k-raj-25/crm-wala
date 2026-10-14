@@ -13,7 +13,7 @@ from app.core.crud import MAX_PER_PAGE, ensure_ref, parse_date, users_map
 from app.core.errors import ApiError, bad_request, not_found
 from app.core.responses import created, no_content, ok
 from app.extensions import db, limiter
-from app.models import Activity, Company, Contact, Deal, FileAsset, Lead, Note, Notification, Task
+from app.models import Activity, Company, Contact, Deal, FileAsset, Lead, Note, Notification, Project, Task, Unit
 from app.models.base import utcnow
 from app.services import audit, storage
 from app.api.v1.crm_helpers import activity_dicts
@@ -116,7 +116,7 @@ def timeline():
 @protect("files.read")
 def list_files():
     q = db.session.query(FileAsset).filter(FileAsset.workspace_id == g.workspace.id, FileAsset.deleted_at.is_(None))
-    for k in ("lead_id", "contact_id", "company_id", "deal_id", "task_id"):
+    for k in ("lead_id", "contact_id", "company_id", "deal_id", "task_id", "project_id", "unit_id"):
         if request.args.get(k):
             q = q.filter(getattr(FileAsset, k) == request.args[k])
     rows = q.order_by(FileAsset.created_at.desc()).limit(200).all()
@@ -146,7 +146,7 @@ def upload_file():
     if limit_mb is not None and current_usage(g.workspace)["storage_mb"] + size / (1024 * 1024) > limit_mb:
         raise ApiError(402, "plan_limit_reached", f"Your plan includes {limit_mb} MB of storage. Upgrade to upload more.", {"limit": "storage_mb"})
     rel = {}
-    for k, m in (("lead_id", Lead), ("contact_id", Contact), ("company_id", Company), ("deal_id", Deal), ("task_id", Task)):
+    for k, m in (("lead_id", Lead), ("contact_id", Contact), ("company_id", Company), ("deal_id", Deal), ("task_id", Task), ("project_id", Project), ("unit_id", Unit)):
         v = request.form.get(k)
         if v:
             try:
@@ -154,10 +154,15 @@ def upload_file():
             except ValueError:
                 raise bad_request(f"Invalid {k}")
             ensure_ref(m, rel[k], k)
+    if rel.get("unit_id"):  # a unit's documents also belong to its project
+        rel["project_id"] = db.session.query(Unit.project_id).filter(Unit.id == rel["unit_id"]).scalar()
+    doc_kind = request.form.get("doc_kind") or None
+    if doc_kind and doc_kind not in ("brochure", "floor_plan", "price_list", "other"):
+        raise bad_request("Invalid document type")
     safe_name = "".join(ch for ch in f.filename if ch.isalnum() or ch in " ._-()")[:200] or "file"
     key = storage.new_key(g.workspace.id, safe_name)
     storage.get_storage().put(key, f.stream, mime)
-    fa = FileAsset(workspace_id=g.workspace.id, filename=safe_name, storage_key=key, mime_type=mime, size_bytes=size, uploaded_by=g.user.id, **rel)
+    fa = FileAsset(workspace_id=g.workspace.id, filename=safe_name, storage_key=key, mime_type=mime, size_bytes=size, uploaded_by=g.user.id, doc_kind=doc_kind, **rel)
     db.session.add(fa)
     db.session.flush()
     from app.services import activities

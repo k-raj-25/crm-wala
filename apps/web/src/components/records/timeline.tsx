@@ -1,6 +1,6 @@
 "use client";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { AtSign, CalendarClock, CheckCircle2, CheckSquare, FileText, Handshake, Mail, MoveRight, Phone, PlusCircle, Repeat, Settings2, StickyNote, Trophy, UserCheck, XCircle } from "lucide-react";
+import { AtSign, CalendarClock, CheckCircle2, CheckSquare, FileText, Handshake, Mail, MessageCircle, MoveRight, Phone, PlusCircle, Repeat, Settings2, StickyNote, Trophy, UserCheck, XCircle } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
 import { Button, EmptyState, SkeletonRows, cn, dayLabel, formatDate, timeAgo } from "@crm/ui";
@@ -12,6 +12,7 @@ const MAP: Record<string, [React.ElementType, string]> = {
   note: [StickyNote, "bg-warning-soft text-warning"], email: [Mail, "bg-info-soft text-info"], call: [Phone, "bg-success-soft text-success"], meeting: [CalendarClock, "bg-primary-soft text-primary"],
   task: [CheckSquare, "bg-bg-subtle text-fg-muted"], task_completed: [CheckCircle2, "bg-success-soft text-success"], converted: [UserCheck, "bg-primary-soft text-primary"], file: [FileText, "bg-bg-subtle text-fg-muted"],
   assigned: [AtSign, "bg-info-soft text-info"], won: [Trophy, "bg-success-soft text-success"], lost: [XCircle, "bg-danger-soft text-danger"], system: [Settings2, "bg-bg-subtle text-fg-muted"],
+  whatsapp: [MessageCircle, "bg-success-soft text-success"],
 };
 export function ActivityIcon({ type, small }: { type: string; small?: boolean }) {
   const [I, tone] = MAP[type] ?? [Handshake, "bg-bg-subtle text-fg-muted"];
@@ -34,7 +35,7 @@ export function Timeline({ entity, id, types, userId, showRelated }: { entity?: 
   });
   const items = q.data?.pages.flatMap((p) => p.data) ?? [];
   if (q.isLoading) return <SkeletonRows rows={5} />;
-  if (!items.length) return <EmptyState compact icon={<CalendarClock />} title="No activity yet" description="Emails, calls, notes and stage changes will build a timeline here." />;
+  if (!items.length) return <EmptyState compact icon={<CalendarClock />} title="No activity yet" description="Emails, WhatsApp messages, calls, notes and stage changes will build a timeline here." />;
   return (
     <div>
       {groupByDay(items).map((g) => (

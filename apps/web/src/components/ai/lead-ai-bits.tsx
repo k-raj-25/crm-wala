@@ -2,6 +2,7 @@
 import { Copy, FileAudio, Mic, MicOff, Send } from "lucide-react";
 import * as React from "react";
 import { Button, Segmented, Textarea, cn, useToast } from "@crm/ui";
+import { isMasked } from "@/components/records/phone-field";
 import { useAiStatus, useDictation, waLink } from "@/lib/ai";
 import { api } from "@/lib/api";
 
@@ -42,7 +43,7 @@ export function WaMessage({ value, onChange, phone, label = "WhatsApp message", 
       <Textarea id={id} rows={rows} value={value} onChange={(e) => onChange(e.target.value)} className="bg-surface" />
       <div className="mt-2 flex flex-wrap gap-2">
         <Button size="sm" variant="secondary" disabled={!value.trim()} onClick={() => { navigator.clipboard?.writeText(value); toast.success("Copied"); }}><Copy /> Copy</Button>
-        {phone ? <Button size="sm" variant="soft" disabled={!value.trim()} asChild><a href={waLink(phone, value)} target="_blank" rel="noreferrer"><Send /> Send on WhatsApp</a></Button> : <span className="self-center text-xs text-fg-subtle">Add a phone number to send it on WhatsApp.</span>}
+        {phone && isMasked(phone) ? <span className="self-center text-xs text-fg-subtle">Copy it into the record's WhatsApp tab to send.</span> : phone ? <Button size="sm" variant="soft" disabled={!value.trim()} asChild><a href={waLink(phone, value)} target="_blank" rel="noreferrer"><Send /> Send on WhatsApp</a></Button> : <span className="self-center text-xs text-fg-subtle">Add a phone number to send it on WhatsApp.</span>}
       </div>
     </div>
   );

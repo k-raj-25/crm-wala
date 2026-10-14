@@ -52,6 +52,10 @@ def connect(provider):
     if kind == "google" and current_app.config["GOOGLE_CLIENT_ID"]:
         state = accounts.signed_token("integ_oauth", f"{g.workspace.id}:{provider}:{g.user.id}", 15)
         return ok({"auth_url": svc.google_auth_url(provider, state)})
+    if kind == "whatsapp":
+        from app.api.v1 import whatsapp
+
+        return ok(whatsapp.connect(i, request.get_json(silent=True) or {}))
     if kind == "webhook_url":
         if not body.webhook_url or not body.webhook_url.startswith("https://hooks.slack.com/"):
             raise ApiError(422, "validation_error", "Paste a Slack incoming webhook URL (https://hooks.slack.com/…)", {"webhook_url": "Invalid Slack webhook URL"})

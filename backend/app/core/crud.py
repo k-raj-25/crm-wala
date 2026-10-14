@@ -19,7 +19,7 @@ from app.core.responses import created, no_content, ok
 from app.extensions import db
 from app.models import User, WorkspaceMember
 from app.schemas.common import parse, provided
-from app.services import analytics, audit
+from app.services import analytics, audit, privacy
 from app.services import custom_fields as cf_service
 from app.services.usage import check_limit
 
@@ -106,7 +106,7 @@ class CrudResource:
             if self.owner_field:
                 d["owner"] = users.get(getattr(o, self.owner_field))
             out.append(d)
-        return out
+        return privacy.mask_records(self.entity_type, out)
 
     def serialize(self, obj) -> dict:
         return self.serialize_many([obj])[0]
@@ -253,6 +253,7 @@ class CrudResource:
         model = parse(self.patch_schema)
         changes = provided(model)
         before = obj.to_dict()
+        changes = privacy.guard_changes(self.entity_type, obj, changes)
         changes = self.prepare_update(obj, changes)
         self.validate_refs(changes)
         if self.custom_fields and "custom" in changes:
@@ -347,12 +348,18 @@ class CrudResource:
         buf = io.StringIO()
         w = csv.writer(buf)
         w.writerow([h for h, _ in self.export_columns])
+        hide = set() if privacy.can_view() else {i for i, (h, _) in enumerate(self.export_columns) if h == "Phone"}
         for o in rows:
             o._owner_name = users.get(getattr(o, self.owner_field), {}).get("name") if self.owner_field else None  # type: ignore[attr-defined]
-            w.writerow([_csv_safe(fn(o)) for _, fn in self.export_columns])
+            w.writerow([_csv_safe(privacy.mask(fn(o)) if i in hide else fn(o)) for i, (_, fn) in enumerate(self.export_columns)])
         audit.record(f"{self.entity_type}.exported", entity_type=self.entity_type, summary=f"Exported {len(rows)} {self.name} to CSV")
         db.session.commit()
         return Response(buf.getvalue(), mimetype="text/csv", headers={"Content-Disposition": f'attachment; filename="{self.name}.csv"'})
+
+    def reveal_phone(self, ident):
+        out = privacy.reveal(self.entity_type, self.get_or_404(ident))
+        db.session.commit()
+        return ok(out)
 
     # ---- routing -----------------------------------------------------------------------
     def register(self, bp: Blueprint) -> None:
@@ -364,6 +371,8 @@ class CrudResource:
         bp.add_url_rule("/<uuid:ident>", f"{n}_delete", protect(f"{pp}.delete")(self.delete), methods=["DELETE"])
         bp.add_url_rule("/bulk", f"{n}_bulk", protect(f"{pp}.read")(self.bulk), methods=["POST"])
         bp.add_url_rule("/export", f"{n}_export", protect(f"{pp}.read", allow_restricted=True)(self.export), methods=["GET"])
+        if self.entity_type in privacy.CUSTOM_ENTITIES:
+            bp.add_url_rule("/<uuid:ident>/reveal-phone", f"{n}_reveal_phone", protect(f"{pp}.read")(self.reveal_phone), methods=["POST"])
 
 
 def _csv_safe(v: Any) -> Any:

@@ -39,6 +39,8 @@ PERMISSIONS.update(
         "billing.manage": ("billing", "Manage billing and subscription"),
         "settings.manage": ("settings", "Manage workspace settings"),
         "audit.read": ("settings", "View audit log"),
+        "phones.view": ("phones", "See phone numbers of leads and clients"),
+        "phones.reveal": ("phones", "Reveal phone numbers one at a time (each reveal is logged)"),
     }
 )
 
@@ -69,7 +71,7 @@ SYSTEM_ROLES: dict[str, dict] = {
         "name": "Manager", "rank": 60, "description": "Manage the team's pipeline, automations and reports.",
         "permissions": _rw(*_CORE, "pipelines", "automations")
         + ["leads.convert", "deals.close", "data.import", "data.export", "reports.read", "reports.manage", "ai.use",
-           "team.read", "integrations.manage"],
+           "team.read", "integrations.manage", "phones.reveal"],
     },
     "sales_rep": {
         "name": "Sales Representative", "rank": 40, "description": "Work leads, contacts, deals and tasks.",

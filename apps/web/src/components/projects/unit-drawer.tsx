@@ -8,6 +8,8 @@ import * as React from "react";
 import { ApiError, Button, Drawer, Field, Input, NativeSelect, Skeleton, Textarea, cn, formatDate, timeAgo, useTheme, useToast } from "@crm/ui";
 import { ListingWriter } from "@/components/ai/listing-writer";
 import { AsyncSelect, toLocalInput } from "@/components/forms/fields";
+import { isMasked } from "@/components/records/phone-field";
+import { UnitDocuments } from "@/components/whatsapp/whatsapp";
 import { useAiFeature, waLink } from "@/lib/ai";
 import { api } from "@/lib/api";
 import { MAX_COMPARE, compare, useCompare } from "@/lib/compare";
@@ -51,7 +53,7 @@ export function UnitDrawer({ unitId, onClose, canEdit }: { unitId: string | null
   const [pitch, setPitch] = React.useState("");
   React.useEffect(() => { setPitch(aiLeads.data?.message ?? ""); }, [aiLeads.data?.message]);
 
-  const refresh = () => { ["unit", "unit-history", "unit-matches", "building", "project", "projects", "units"].forEach((k) => qc.invalidateQueries({ queryKey: [k] })); };
+  const refresh = () => { ["unit", "unit-history", "unit-docs", "unit-matches", "building", "project", "projects", "units"].forEach((k) => qc.invalidateQueries({ queryKey: [k] })); };
   const fail = (e: unknown) => toast.error(e instanceof ApiError ? e.message : "Something went wrong. Please try again.");
 
   const setStatus = async (status: UnitStatus, extra: Record<string, unknown> = {}) => {
@@ -182,6 +184,8 @@ export function UnitDrawer({ unitId, onClose, canEdit }: { unitId: string | null
             </div>
           )}
 
+          <UnitDocuments unit={u} canEdit={canEdit} defaultLead={u.hold_lead ?? (matches.data?.[0] ? { id: matches.data[0].id, name: matches.data[0].name } : null)} />
+
           {sellable && (matches.data?.length ?? 0) > 0 && (
             <section aria-label="Clients who may want this">
               <h3 className="mb-2 flex items-center gap-1.5 text-sm font-semibold"><Sparkles className="size-4 text-primary" /> Clients who may want this</h3>
@@ -192,7 +196,7 @@ export function UnitDrawer({ unitId, onClose, canEdit }: { unitId: string | null
                       <Link href={`/app/leads/${m.id}`} className="block truncate text-sm font-medium hover:text-primary">{m.name}</Link>
                       <p className="truncate text-xs text-fg-muted">{[m.intent, m.bhk, m.budget_max ? `up to ${money(m.budget_max)}` : null].filter(Boolean).join(" · ")}{m.reasons.length ? ` — ${m.reasons.join(", ")}` : ""}</p>
                     </div>
-                    {m.phone && <a href={`tel:${m.phone}`} aria-label={`Call ${m.name}`} className="grid size-8 place-items-center rounded-md text-fg-muted hover:bg-surface-hover hover:text-fg"><Phone className="size-4" /></a>}
+                    {m.phone && !isMasked(m.phone) && <a href={`tel:${m.phone}`} aria-label={`Call ${m.name}`} className="grid size-8 place-items-center rounded-md text-fg-muted hover:bg-surface-hover hover:text-fg"><Phone className="size-4" /></a>}
                     {canEdit && u.status !== "on_hold" && <Button variant="secondary" size="sm" onClick={() => holdFor(m)} disabled={busy}>Hold</Button>}
                     {canEdit && <Button variant="ghost" size="sm" onClick={() => setVisit({ lead: m.id, at: toLocalInput(new Date(Date.now() + 864e5).toISOString().replace(/T.*/, "T11:00:00")) })}>Visit</Button>}
                   </li>
@@ -211,7 +215,7 @@ export function UnitDrawer({ unitId, onClose, canEdit }: { unitId: string | null
                     {aiLeads.data!.leads.map((l) => (
                       <li key={l.id} className="flex items-center gap-3 px-3 py-2.5">
                         <div className="min-w-0 flex-1"><Link href={l.url} className="block truncate text-sm font-medium hover:text-primary">{l.name}</Link><p className="truncate text-xs text-fg-muted">{l.why}</p></div>
-                        {l.phone && <Button asChild variant="secondary" size="sm"><a href={waLink(l.phone, pitch.replace(/\{first_name\}/g, l.name.split(" ")[0]))} target="_blank" rel="noreferrer noopener"><MessageCircle /> WhatsApp</a></Button>}
+                        {l.phone && !isMasked(l.phone) && <Button asChild variant="secondary" size="sm"><a href={waLink(l.phone, pitch.replace(/\{first_name\}/g, l.name.split(" ")[0]))} target="_blank" rel="noreferrer noopener"><MessageCircle /> WhatsApp</a></Button>}
                       </li>
                     ))}
                   </ul>

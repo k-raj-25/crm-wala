@@ -1,6 +1,6 @@
 "use client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Building2, Calendar, CheckSquare, ChevronRight, Copy, Handshake, Link2, Mail, MoreHorizontal, Pencil, Phone, Sparkles, StickyNote, Trash2, Trophy, UserCheck, XCircle } from "lucide-react";
+import { ArrowLeft, Building2, Calendar, CheckSquare, ChevronRight, Copy, Handshake, Link2, Mail, MessageCircle, MoreHorizontal, Pencil, Phone, Sparkles, StickyNote, Trash2, Trophy, UserCheck, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import * as React from "react";
@@ -20,8 +20,10 @@ import { Markdown } from "../markdown";
 import { PageContainer } from "../shell/page";
 import { useUI } from "../shell/ui-context";
 import { InlineField } from "./inline-field";
+import { PhoneField, isMasked } from "./phone-field";
 import { CallsTab, ContactsTab, DealsTab, EmailsTab, FilesTab, MeetingsTab, NotesTab, TasksTab, type Scope } from "./related";
 import { Timeline } from "./timeline";
+import { WA_GREEN, WhatsAppTab } from "../whatsapp/whatsapp";
 import { ScorePill } from "../list/cells";
 
 type Entity = "lead" | "contact" | "company" | "deal";
@@ -108,7 +110,8 @@ export function RecordPage({ entity }: { entity: Entity }) {
   const lead = rec as Lead; const deal = rec as Deal; const contact = rec as Contact; const company = rec as Company;
   const custom = rec.custom as Record<string, unknown>;
 
-  const tabs: [string, string][] = [["overview", "Activity"], ["notes", "Notes"], ["tasks", "Tasks"], ["emails", "Emails"], ["calls", "Calls"], ["meetings", "Site visits"], ...(entity === "contact" || entity === "company" ? [["deals", "Deals"] as [string, string]] : []), ...(entity === "company" ? [["contacts", "Contacts"] as [string, string]] : []), ["files", "Files"]];
+  const wa = (entity === "lead" || entity === "contact") && has("whatsapp_integration");
+  const tabs: [string, string][] = [["overview", "Activity"], ["notes", "Notes"], ["tasks", "Tasks"], ["emails", "Emails"], ["calls", "Calls"], ["meetings", "Site visits"], ...(wa ? [["whatsapp", "WhatsApp"] as [string, string]] : []), ...(entity === "contact" || entity === "company" ? [["deals", "Deals"] as [string, string]] : []), ...(entity === "company" ? [["contacts", "Contacts"] as [string, string]] : []), ["files", "Files"]];
 
   return (
     <PageContainer wide>
@@ -134,6 +137,7 @@ export function RecordPage({ entity }: { entity: Entity }) {
           {entity === "deal" && deal.status === "open" && can("deals.close") && <><Button variant="soft" onClick={() => { const w = pipelines.data?.find((p) => p.id === deal.pipeline_id)?.stages.find((s) => s.kind === "won"); w && move(w.id); }}><Trophy /> Won</Button><Button variant="secondary" onClick={() => setLostOpen(true)}><XCircle /> Lost</Button></>}
           {entity === "deal" && deal.status !== "open" && canEdit && <Button variant="secondary" onClick={() => { const s = pipelines.data?.find((p) => p.id === deal.pipeline_id)?.stages.find((x) => x.kind === "open"); s && move(s.id); }}>Reopen</Button>}
           {e && can("emails.create") && <Button variant="secondary" onClick={() => ui.openCompose(composeDefaults)}><Mail /> Email</Button>}
+          {wa && (rec.phone as string | null) && can("emails.create") && <Button variant="secondary" onClick={() => setTab("whatsapp")}><MessageCircle style={{ color: WA_GREEN }} /> <span className="hidden sm:inline">WhatsApp</span></Button>}
           {can("meetings.create") && <Button variant="secondary" onClick={() => ui.openCreate("call", { [`${entity}_id`]: id })}><Phone /> <span className="hidden sm:inline">Call</span></Button>}
           <DropdownMenu><DropdownTrigger asChild><Button variant="secondary" size="icon" aria-label="More actions"><MoreHorizontal /></Button></DropdownTrigger>
             <DropdownContent>
@@ -159,6 +163,7 @@ export function RecordPage({ entity }: { entity: Entity }) {
               <TabsContent value="emails"><EmailsTab scope={scope} defaults={composeDefaults} /></TabsContent>
               <TabsContent value="calls"><CallsTab scope={scope} /></TabsContent>
               <TabsContent value="meetings"><MeetingsTab scope={scope} /></TabsContent>
+              {wa && <TabsContent value="whatsapp"><WhatsAppTab entity={entity as "lead" | "contact"} id={id} firstName={rec.first_name as string} /></TabsContent>}
               {(entity === "contact" || entity === "company") && <TabsContent value="deals"><DealsTab scope={scope} /></TabsContent>}
               {entity === "company" && <TabsContent value="contacts"><ContactsTab companyId={id} companyName={name} /></TabsContent>}
               <TabsContent value="files"><FilesTab scope={scope} /></TabsContent>
@@ -181,7 +186,7 @@ export function RecordPage({ entity }: { entity: Entity }) {
           <Section title="Details" actions={canEdit && <Button variant="ghost" size="xs" onClick={() => setEdit(true)}><Pencil /> Edit all</Button>}>
             {entity === "lead" && <>
               <InlineField label="Email" type="email" value={lead.email} onSave={(v) => save({ email: v })} editable={canEdit} />
-              <InlineField label="Phone" type="tel" value={lead.phone} onSave={(v) => save({ phone: v })} editable={canEdit} />
+              <PhoneField plural="leads" id={id} value={lead.phone} onSave={(v) => save({ phone: v })} editable={canEdit} />
               <InlineField label="Looking to" value={lead.intent} display={lead.intent && INTENTS.find((i) => i[0] === lead.intent)?.[1].replace("Wants to ", "")} options={INTENTS.map(([k, l]) => [k, l.replace("Wants to ", "").replace(/^\w/, (c) => c.toUpperCase())])} onSave={(v) => save({ intent: v })} editable={canEdit} placeholder="Buy, rent, invest…" />
               <InlineField label="Size" value={lead.bhk} options={BHK_OPTIONS.map((b) => [b, b])} onSave={(v) => save({ bhk: v })} editable={canEdit} placeholder="3 BHK…" />
               <InlineField label="Budget from" type="number" value={lead.budget_min} display={lead.budget_min ? formatMoney(lead.budget_min) : undefined} onSave={(v) => save({ budget_min: v === null ? null : Number(v) })} editable={canEdit} mono placeholder="Add minimum" />
@@ -196,7 +201,7 @@ export function RecordPage({ entity }: { entity: Entity }) {
             </>}
             {entity === "contact" && <>
               <InlineField label="Email" type="email" value={contact.email} onSave={(v) => save({ email: v })} editable={canEdit} />
-              <InlineField label="Phone" type="tel" value={contact.phone} onSave={(v) => save({ phone: v })} editable={canEdit} />
+              <PhoneField plural="contacts" id={id} value={contact.phone} onSave={(v) => save({ phone: v })} editable={canEdit} />
               <InlineField label="Job title" value={contact.job_title} onSave={(v) => save({ job_title: v })} editable={canEdit} />
               <Row label="Company"><AsyncSelect endpoint="/api/v1/companies" value={contact.company_id} initialLabel={contact.company?.name} onChange={(c) => save({ company_id: c })} /></Row>
               <InlineField label="Location" value={contact.location} onSave={(v) => save({ location: v })} editable={canEdit} />
@@ -209,7 +214,7 @@ export function RecordPage({ entity }: { entity: Entity }) {
               <InlineField label="Size" value={company.size} onSave={(v) => save({ size: v })} editable={canEdit} />
               <InlineField label="Location" value={company.location} onSave={(v) => save({ location: v })} editable={canEdit} />
               <InlineField label="Revenue" type="number" value={company.annual_revenue} display={company.annual_revenue ? formatMoney(company.annual_revenue) : undefined} onSave={(v) => save({ annual_revenue: v === null ? null : Number(v) })} editable={canEdit} mono />
-              <InlineField label="Phone" type="tel" value={company.phone} onSave={(v) => save({ phone: v })} editable={canEdit} />
+              <PhoneField plural="companies" id={id} value={company.phone} onSave={(v) => save({ phone: v })} editable={canEdit} />
               <Row label="Contacts">{company.contacts_count}</Row><Row label="Open deals">{company.open_deals_count} · {formatMoney(company.open_deals_value)}</Row>
             </>}
             {entity === "deal" && <>
@@ -259,6 +264,6 @@ function CustomRow({ def, value, canEdit, onSave }: { def: { label: string; fiel
   if (t === "checkbox") return <Row label={def.label}><Switch checked={!!value} onCheckedChange={(c) => onSave(c)} disabled={!canEdit} aria-label={def.label} /></Row>;
   if (t === "multi_select") { const cur = (value as string[]) ?? []; return <Row label={def.label}><div className="flex flex-wrap gap-1.5">{def.options.map((o) => <button key={o} disabled={!canEdit} onClick={() => onSave(cur.includes(o) ? cur.filter((x) => x !== o) : [...cur, o])} className={cn("rounded-full border px-2.5 py-0.5 text-xs", cur.includes(o) ? "border-primary bg-primary-soft text-primary" : "border-border text-fg-subtle")}>{o}</button>)}</div></Row>; }
   const type = { number: "number", currency: "number", date: "date", url: "url", email: "email", phone: "tel" }[t] ?? "text";
-  return <InlineField label={def.label} type={type} value={value as string} options={t === "dropdown" ? def.options.map((o) => [o, o]) : undefined} onSave={(v) => onSave(v === null ? null : type === "number" ? Number(v) : v)} editable={canEdit} />;
+  return <InlineField label={def.label} type={type} value={value as string} options={t === "dropdown" ? def.options.map((o) => [o, o]) : undefined} onSave={(v) => onSave(v === null ? null : type === "number" ? Number(v) : v)} editable={canEdit && !(t === "phone" && isMasked(value))} />;
 }
 export { Building2, Handshake, FORMS };

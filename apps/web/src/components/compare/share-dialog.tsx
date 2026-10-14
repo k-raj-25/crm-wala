@@ -4,6 +4,7 @@ import { Mail, MessageCircle, Send, Share2 } from "lucide-react";
 import * as React from "react";
 import { ApiError, Button, Dialog, DialogContent, DialogFooter, Field, Input, Segmented, Textarea, useToast } from "@crm/ui";
 import { AsyncSelect } from "@/components/forms/fields";
+import { isMasked } from "@/components/records/phone-field";
 import { api } from "@/lib/api";
 import { useAccess } from "@/lib/queries";
 
@@ -49,7 +50,7 @@ export function ShareComparison({ open, onOpenChange, unitIds, flatsLabel }: { o
   const pick = (id: string | null, item?: Record<string, unknown>) => {
     const p = id ? ({ id, ...(item ?? {}) } as Person) : null;
     setPerson(p);
-    if (p) { setName(String(p.name ?? p.first_name ?? "")); setPhone(p.phone ?? ""); setEmail(p.email ?? ""); }
+    if (p) { setName(String(p.name ?? p.first_name ?? "")); setPhone(isMasked(p.phone) ? "" : p.phone ?? ""); setEmail(p.email ?? ""); }
   };
   const rel = person ? (who === "lead" ? { lead_id: person.id } : { contact_id: person.id }) : {};
 

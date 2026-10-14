@@ -33,7 +33,7 @@ CATALOG: dict[str, dict] = {
     "outlook": {"name": "Outlook", "category": "Communication", "description": "Connect Microsoft 365 / Outlook to send email and keep conversations in the CRM.", "kind": "microsoft", "scopes": ["Mail.Send", "Mail.Read", "offline_access"]},
     "slack": {"name": "Slack", "category": "Communication", "description": "Get deal and lead alerts in a Slack channel via an incoming webhook.", "kind": "webhook_url"},
     "microsoft_teams": {"name": "Microsoft Teams", "category": "Communication", "description": "Post CRM alerts to a Teams channel.", "kind": "sandbox"},
-    "whatsapp": {"name": "WhatsApp Business", "category": "Communication", "description": "Message customers on WhatsApp from their CRM record.", "kind": "sandbox", "feature": "whatsapp_integration"},
+    "whatsapp": {"name": "WhatsApp Business", "category": "Communication", "description": "Send approved templates, brochures and floor plans on WhatsApp, and see client replies on the timeline.", "kind": "whatsapp", "feature": "whatsapp_integration"},
     "zoom": {"name": "Zoom", "category": "Communication", "description": "Create Zoom links when you schedule meetings.", "kind": "sandbox"},
     "google_calendar": {"name": "Google Calendar", "category": "Productivity", "description": "Two-way sync of meetings and follow-ups with Google Calendar.", "kind": "google", "scopes": ["https://www.googleapis.com/auth/calendar.events"]},
     "google_contacts": {"name": "Google Contacts", "category": "Productivity", "description": "Import your Google Contacts into the CRM.", "kind": "google", "scopes": ["https://www.googleapis.com/auth/contacts.readonly"]},
@@ -82,11 +82,12 @@ def get_creds(i: Integration) -> dict:
 def public_view(provider: str, i: Integration | None) -> dict:
     meta = CATALOG[provider]
     cfg = dict(i.config or {}) if i else {}
-    cfg.pop("signing_secret", None)
+    for k in ("signing_secret", "webhook_token", "verify_token"):
+        cfg.pop(k, None)
     return {"provider": provider, "name": meta["name"], "category": meta["category"], "description": meta["description"], "feature": meta.get("feature"),
             "status": i.status if i else "not_connected", "mode": i.mode if i else None, "account_label": i.account_label if i else None,
             "last_synced_at": i.last_synced_at.isoformat() if i and i.last_synced_at else None, "last_error": i.last_error if i else None, "config": cfg,
-            "live_capable": meta["kind"] in ("webhook_url", "webhooks") or (meta["kind"] == "google" and bool(current_app.config["GOOGLE_CLIENT_ID"]))}
+            "live_capable": meta["kind"] in ("webhook_url", "webhooks", "whatsapp") or (meta["kind"] == "google" and bool(current_app.config["GOOGLE_CLIENT_ID"]))}
 
 
 # ---- Google OAuth -------------------------------------------------------------------------

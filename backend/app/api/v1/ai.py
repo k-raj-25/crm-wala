@@ -13,12 +13,13 @@ from app.extensions import db, limiter
 from app.models import AiConversation, Lead, Meeting
 from app.models.base import utcnow
 from app.schemas.common import Schema, parse
-from app.services import analytics, audit
+from app.services import analytics, audit, privacy
 from app.services.ai import assistant, features, insights, settings as ai_settings, tools
 from app.services.features import plan_limits
 from app.services.usage import current_usage
 
 bp = Blueprint("ai", __name__, url_prefix="/api/v1/ai")
+bp.after_request(privacy.mask_response)
 CHAT, INSIGHTS = dict(perm="ai.use", feature="ai_assistant"), dict(perm="ai.use", feature="ai_insights")
 
 
