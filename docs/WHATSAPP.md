@@ -54,6 +54,19 @@ The API must be reachable from the internet at `WEB_ORIGIN` (Meta calls the call
   A message from a number not in the CRM creates a new lead with source *whatsapp*.
 - **Ticks**: one tick = sent, two = delivered, blue = read. Failed messages show Meta's reason.
 
+## The CRM inside WhatsApp (for your team)
+
+Reps can update the CRM without opening the app, by messaging your company's WhatsApp number from their own phone.
+
+1. **Link a number.** Each rep adds their mobile number to *Settings → Profile*, then opens *Settings → Notifications → WhatsApp* and presses **Link my WhatsApp**. They send the code shown (`LINK 123456`) to your company number from that phone. Only the number on a rep's profile counts as theirs, and changing it unlinks WhatsApp.
+2. **Send updates.** A text or voice note such as *"Visited Priya, liked 1502, follow up Sunday"* comes back as a card with **Confirm** and **Cancel** buttons. Nothing is saved until the rep taps Confirm; the change is then made as that rep, with their permissions, and the audit log shows "(via WhatsApp)". *"New lead Neha 98765 43210, 3 BHK Baner"* prepares a new lead. Questions ("which leads haven't I called?") are answered too.
+3. **Voice notes** are turned into text with your workspace's AI key, which needs to be an OpenAI key for audio. Without one, reps are asked to send text.
+4. **Morning plan and new lead alerts** are opt-in per rep (switches on the same page, or send *plan on* / *alerts on*). The plan arrives at 9 AM in the workspace's timezone; *plan* sends it any time.
+
+A linked rep's messages never become leads and never appear on a client's timeline. Client phone numbers stay hidden in WhatsApp replies for roles that can't see them.
+
+**Team alert template.** WhatsApp only lets you message someone first within 24 hours of their last message. So that plans and alerts reach reps who haven't written that day, create a *Utility* template with one placeholder (for example `CRM Wala: {{1}}`), get it approved, and pick it under *Integrations → WhatsApp → Manage → Team alert template*. Without it, plans and alerts only go to reps who messaged in the last 24 hours.
+
 ## Rules WhatsApp enforces
 
 - **24-hour window**: free text and plain files only go to someone who messaged you in the last 24 hours. Otherwise
