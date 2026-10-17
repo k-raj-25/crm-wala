@@ -44,15 +44,19 @@ export function DotField({ className }: { className?: string }) {
     const draw = (now: number) => {
       const t = (now - t0) / 1000;
       if (!pointer) { target.x = w * (0.5 + 0.3 * Math.cos(t * 0.25)); target.y = h * (0.45 + 0.22 * Math.sin(t * 0.35)); }
-      focus.x += (target.x - focus.x) * 0.06; focus.y += (target.y - focus.y) * 0.06;
-      const R = Math.min(Math.max(w, h) * 0.22, 300), band = R * 0.5;
+      // the ring never rests: even with the cursor still, its centre circles lazily around it
+      const gx = target.x + Math.cos(t * 0.7) * 34 + Math.cos(t * 1.9) * 10, gy = target.y + Math.sin(t * 0.9) * 26 + Math.sin(t * 1.6) * 8;
+      focus.x += (gx - focus.x) * 0.06; focus.y += (gy - focus.y) * 0.06;
+      const R = Math.min(Math.max(w, h) * 0.22, 300) * (1 + 0.1 * Math.sin(t * 1.1)), band = R * 0.5; // and breathes in and out
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, w, h);
       ctx.lineCap = "round";
       const base = dark ? "255,255,255" : "30,41,94";
       for (const d of dots) {
-        // idle shimmer: every dot breathes a little on its own
-        const x0 = d.x + Math.sin(t * 0.6 + d.p) * 1.2, y0 = d.y + Math.cos(t * 0.5 + d.p) * 1.2;
+        // the whole field flows: every dot rides a slow swirling current, so nothing ever sits still
+        const fx = Math.sin(d.y * 0.012 + t * 0.55) + Math.sin(d.x * 0.007 - t * 0.35 + d.p);
+        const fy = Math.cos(d.x * 0.011 - t * 0.5) + Math.cos(d.y * 0.009 + t * 0.4 + d.p);
+        const x0 = d.x + fx * 5, y0 = d.y + fy * 5;
         const dx = x0 - focus.x, dy = y0 - focus.y, dist = Math.hypot(dx, dy) || 1;
         const k = d.w * Math.exp(-(((dist - R) / band) ** 2)); // up to 1 on the ring, 0 far from it; uneven, so the ring reads as scattered arcs
         if (k < 0.04) {
@@ -60,9 +64,10 @@ export function DotField({ className }: { className?: string }) {
           ctx.fillRect(x0 - 0.6, y0 - 0.6, 1.2, 1.2);
           continue;
         }
-        const ux = dx / dist, uy = dy / dist, push = k * 8;
-        const cx = x0 + ux * push, cy = y0 + uy * push, len = 1 + k * 5;
-        const [r, g, b] = mix(Math.atan2(dy, dx) / (Math.PI * 2) + 0.5 + t * 0.02);
+        const wave = Math.sin(dist * 0.035 - t * 2.6 + d.p * 0.3); // ripples running outward through the ring
+        const ux = dx / dist, uy = dy / dist, push = k * (6 + 6 * wave);
+        const cx = x0 + ux * push, cy = y0 + uy * push, len = 1 + k * (4 + 2 * wave);
+        const [r, g, b] = mix(Math.atan2(dy, dx) / (Math.PI * 2) + 0.5 + t * 0.05);
         ctx.strokeStyle = `rgba(${r | 0},${g | 0},${b | 0},${0.15 + k * 0.7})`;
         ctx.lineWidth = 1 + k * 1.6;
         ctx.beginPath(); ctx.moveTo(cx - ux * len / 2, cy - uy * len / 2); ctx.lineTo(cx + ux * len / 2, cy + uy * len / 2); ctx.stroke();
