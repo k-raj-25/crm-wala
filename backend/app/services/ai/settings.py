@@ -37,6 +37,7 @@ FEATURES: list[tuple[str, str, str]] = [
     ("visit_log", "Voice log after visits", "Speak after a site visit or call; the assistant logs it and sets the follow-up."),
     ("matching", "Smart flat matching", "Re-ranks flats using preferences in notes and explains each pick."),
     ("whatsapp", "WhatsApp helper", "Suggested replies, chat summaries and requirement capture."),
+    ("promises", "Promise finder", "Spots promises reps made to buyers in WhatsApp chats and call notes, for a person to confirm."),
     ("briefing", "My day", "A morning plan for each person, and a team view for managers."),
     ("search", "Search in plain words", "Type what you want to see; it becomes filters you can save."),
     ("automations", "AI in automations", "Describe an automation in words, plus AI steps inside automations."),

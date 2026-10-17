@@ -9,6 +9,7 @@ import { Avatar, Badge, Button, DropdownContent, DropdownItem, DropdownLabel, Dr
 import { api } from "@/lib/api";
 import { NAV } from "@/lib/nav";
 import { useAccess, useMe } from "@/lib/queries";
+import { usePromiseSummary } from "../promises/promises";
 import { NotificationsPopover } from "./notifications";
 import { usePendingPath } from "./pending-nav";
 import { useUI } from "./ui-context";
@@ -100,7 +101,8 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
   const { data: me } = useMe();
   const { can } = useAccess();
   const tasks = useQuery({ queryKey: ["tasks-summary-badge"], enabled: can("tasks.read"), queryFn: () => api.get<{ today: number; overdue: number }>("/api/v1/tasks/summary", { mine: "true" }), refetchInterval: 60_000 });
-  const badge = (href: string) => (href === "/app/tasks" ? (tasks.data?.overdue ?? 0) + (tasks.data?.today ?? 0) : 0);
+  const promises = usePromiseSummary(); // managers see how many promises wait for them
+  const badge = (href: string) => (href === "/app/tasks" ? (tasks.data?.overdue ?? 0) + (tasks.data?.today ?? 0) : href === "/app/promises" && promises.data?.can_approve ? promises.data.counts.pending : 0);
   const active = (href: string) => (href === "/app" ? pathname === "/app" : pathname.startsWith(href) || (href === "/app/pipeline" && pathname.startsWith("/app/deals")));
   const renderItem = (n: (typeof items)[number]) => {
     const a = active(n.href);

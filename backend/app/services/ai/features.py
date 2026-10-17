@@ -976,3 +976,107 @@ def listing(kind: str, project_id: uuid.UUID | None = None, unit_id: uuid.UUID |
                              f"{' Extra instructions: ' + notes if notes else ''}\n\n{assistant.ctx(facts)}", {"fallback": fb[kind]}, "writer", tier="smart", max_tokens=500)
     db.session.commit()
     return {"text": res.text.strip(), "kind": kind}
+
+
+# ---- 9. promise ledger: spot promises in chats and call notes ---------------------------------------------------------------
+
+PROMISE_PROMPT = """You read a property sales rep's messages and notes with a buyer and list every PROMISE the rep or the company made to the buyer:
+an extra discount, free or extra parking, fittings (modular kitchen, wardrobes, ACs), a possession date, a payment plan, a waived charge
+(floor rise, PLC, club membership, stamp duty, maintenance), or anything else committed. Skip questions, the buyer's own requests that the
+rep did not agree to, standard features of the flat, and prices merely quoted. Each source is numbered; say which source each promise came from.
+Return JSON: {"promises": [{"source": <number>, "kind": "discount|parking|fittings|possession|payment_plan|waiver|other",
+"title": "<short, e.g. Free covered parking / Discount of ₹2 L>", "details": "<one sentence with conditions, or empty>",
+"value": <rupees it is worth, or null>, "quote": "<the exact words it came from>"}]}. Return {"promises": []} when there are none."""
+
+_SOURCE_KIND = {"whatsapp": "WhatsApp", "call": "Call notes", "visit": "Site visit notes", "note": "Note"}
+
+
+def _promise_sources(entity: str, ident, text: str | None) -> list[dict]:
+    from app.models import WhatsAppMessage
+    from app.services import promises as promise_svc
+
+    if text:
+        return [{"source": "note", "text": text[:6000], "user_id": g.user.id, "date": utcnow().date()}]
+    leads, contacts, deals = promise_svc.group(entity, ident)
+    ws = g.workspace.id
+
+    def related(model):
+        conds = [col.in_(ids) for col, ids in ((model.lead_id, leads), (model.contact_id, contacts), (model.deal_id, deals)) if ids]
+        return or_(*conds) if conds else model.id.is_(None)
+
+    out: list[dict] = []
+    for m in (db.session.query(WhatsAppMessage).filter(WhatsAppMessage.workspace_id == ws, WhatsAppMessage.direction == "outbound",
+                                                       WhatsAppMessage.body.isnot(None), related(WhatsAppMessage))
+              .order_by(WhatsAppMessage.created_at.desc()).limit(80)):
+        out.append({"source": "whatsapp", "text": m.body, "user_id": m.user_id, "date": m.created_at.date()})
+    for c in (db.session.query(Call).filter(Call.workspace_id == ws, Call.deleted_at.is_(None), Call.notes.isnot(None), related(Call))
+              .order_by(Call.created_at.desc()).limit(40)):
+        out.append({"source": "call", "text": c.notes, "user_id": c.user_id, "date": (c.occurred_at or c.created_at).date()})
+    for mt in (db.session.query(Meeting).filter(Meeting.workspace_id == ws, Meeting.deleted_at.is_(None), related(Meeting))
+               .order_by(Meeting.starts_at.desc()).limit(30)):
+        body = "\n".join(x for x in (mt.summary, mt.description if mt.description != mt.summary else None) if x)
+        if body:
+            out.append({"source": "visit" if mt.kind == "site_visit" else "note", "text": body, "user_id": mt.organizer_id, "date": mt.starts_at.date()})
+    for n in (db.session.query(Note).filter(Note.workspace_id == ws, Note.deleted_at.is_(None), related(Note))
+              .order_by(Note.created_at.desc()).limit(40)):
+        out.append({"source": "note", "text": n.body, "user_id": n.author_id, "date": n.created_at.date()})
+    return out
+
+
+def _same_promise(a: dict, b: dict) -> bool:
+    if a["kind"] != b["kind"]:
+        return False
+    wa, wb = set(re.findall(r"\w+", a["title"].lower())), set(re.findall(r"\w+", b["title"].lower()))
+    return bool(wa and wb) and len(wa & wb) / min(len(wa), len(wb)) >= 0.6
+
+
+def promise_scan(entity: str, ident, text: str | None = None) -> dict:
+    """Promises found in the buyer's WhatsApp messages, call notes, visit notes and notes (or in pasted text), as cards to confirm.
+    Nothing is recorded until a person approves a card, and approving records it as waiting for a manager."""
+    from app.models import Promise
+    from app.services import promises as promise_svc
+
+    assistant.require_feature("promises")
+    row = promise_svc.get_record(entity, ident)
+    sources = _promise_sources(entity, ident, (text or "").strip() or None)
+    fallback = {"promises": [{**p, "source": i} for i, s in enumerate(sources) for p in extract.promises_from_text(s["text"])]}
+    data = fallback
+    if sources:
+        listing = "\n".join(f"[{i}] {_SOURCE_KIND[s['source']]}, {s['date']:%d %b %Y}: {s['text'][:1200]}" for i, s in enumerate(sources))
+        data = assistant.structured("promises", f"{PROMISE_PROMPT}\n\nBuyer: {row.name}\n\nSources:\n{listing[-12000:]}", {"fallback": fallback}, "promises", tier="fast")
+    existing = [{"kind": p.kind, "title": p.title} for p in db.session.query(Promise).filter(
+        Promise.workspace_id == g.workspace.id, Promise.deleted_at.is_(None), promise_svc.group_filter(entity, ident))]
+    kinds = dict(actions.PROMISE_KINDS)
+    picked: list[dict] = []
+    skipped = 0
+    for p in (data.get("promises") or [])[:20]:
+        if not isinstance(p, dict):
+            continue
+        try:
+            src = sources[int(p.get("source"))]
+        except (TypeError, ValueError, IndexError):
+            continue
+        cand = {"kind": p.get("kind") if p.get("kind") in kinds else "other", "title": str(p.get("title") or "").strip()[:200],
+                "details": str(p.get("details") or "").strip()[:1000] or None, "quote": str(p.get("quote") or "").strip()[:400] or None, "src": src}
+        try:
+            cand["value"] = float(p["value"]) if p.get("value") not in (None, "") and float(p["value"]) >= 0 else None
+        except (TypeError, ValueError):
+            cand["value"] = None
+        if len(cand["title"]) < 2:
+            continue
+        if any(_same_promise(cand, e) for e in existing) or any(_same_promise(cand, x) for x in picked):
+            skipped += 1
+            continue
+        picked.append(cand)
+    actions.begin()
+    member_ids = {r[0] for r in db.session.query(WorkspaceMember.user_id).filter(WorkspaceMember.workspace_id == g.workspace.id, WorkspaceMember.status == "active")}
+    for c in picked[:10]:
+        s = c["src"]
+        try:
+            actions.propose_record_promise({"type": entity, "id": str(row.id)}, c["title"], kind=c["kind"], details=c["details"], value=c["value"],
+                                           promised_by=str(s["user_id"]) if s.get("user_id") in member_ids else None, source=s["source"],
+                                           quote=c["quote"] or s["text"][:400], promised_on=s["date"].isoformat())
+        except ActionError:
+            continue
+    db.session.commit()
+    return {"proposals": actions.collected(), "scanned": len(sources), "already_recorded": skipped, "ai": ai_settings.resolve().provider != "mock"}

@@ -10,7 +10,7 @@ from app.core.tenant import bypass_scope, tenant_scope
 from app.extensions import db
 from app.models import (
     Activity, Automation, Call, Company, Contact, CustomFieldDef, Deal, Email, Lead, Meeting, Note, Notification, Pipeline, PipelineStage,
-    Project, Tag, Task, Tower, Unit, UnitEvent, User, Workspace, WorkspaceMember,
+    Project, Promise, Tag, Task, Tower, Unit, UnitEvent, User, WhatsAppMessage, Workspace, WorkspaceMember,
 )
 from app.models.base import utcnow
 from app.services import inventory, scoring
@@ -298,6 +298,27 @@ def seed_demo(reset: bool = False, plan: str = "trial") -> dict:
                                       "NRI client — prefers WhatsApp. Family visits in December.", "Comparing with Godrej Aria. Our edge: ready to move in."]):
                 ld = leads[[0, 4, 11, 15][i]]
                 db.session.add(Note(workspace_id=ws.id, body=body, author_id=users[i % 3].id, lead_id=ld.id, pinned=i == 0, created_at=now - dt.timedelta(days=rnd.randint(0, 10))))
+            # ---- promise ledger: what reps told buyers, waiting for or approved by the manager (Priya) -------------------------
+            def promise(ld, title, kind, by, status, days, value=None, details=None, source="manual", quote=None, note=None):
+                p = Promise(workspace_id=ws.id, lead_id=ld.id, project_id=ld.project_id, unit_id=ld.unit_id, title=title, kind=kind, value=value, details=details,
+                            promised_by=users[by].id, created_by=users[by].id, promised_on=(now - dt.timedelta(days=days)).date(), source=source, source_text=quote,
+                            status=status, created_at=now - dt.timedelta(days=days, hours=2))
+                if status != "pending":
+                    p.decided_by, p.decided_at, p.decision_note = users[1].id, now - dt.timedelta(days=max(days - 1, 0), hours=1), note
+                db.session.add(p)
+                db.session.add(Activity(workspace_id=ws.id, type="promise", title=f"{users[by].name} promised {ld.name}: {title}", lead_id=ld.id, user_id=users[by].id,
+                                        occurred_at=p.created_at, is_demo=True))
+            promise(leads[0], "Free covered parking", "parking", 2, "pending", 0, 350000, source="whatsapp",
+                    quote="Sir, booking this week pe covered parking free de denge, pakka.")
+            promise(leads[0], "Modular kitchen with chimney", "fittings", 2, "approved", 6, 280000, details="Hettich fittings, as in the sample flat.", note="OK, within the festive offer budget.")
+            promise(leads[4], "Discount of ₹2 L", "discount", 3, "pending", 1, 200000, details="Only if the token is paid by 31 Oct.", source="call",
+                    quote="Told her we can do 2 lakh off if she pays the token this month.")
+            promise(leads[4], "No EMI till possession", "payment_plan", 3, "approved", 9, details="Builder pays pre-EMI interest under the subvention scheme.", note="Approved with HDFC subvention.")
+            promise(leads[11], "Possession by March 2027", "possession", 2, "rejected", 4, note="RERA date is Dec 2027. Don't commit to an earlier date.")
+            promise(leads[15], "Free club membership for 3 years", "waiver", 3, "pending", 2, 150000)
+            db.session.add(WhatsAppMessage(workspace_id=ws.id, lead_id=leads[15].id, direction="outbound", status="read", kind="text", phone="910000000000", user_id=users[3].id,
+                                           body=f"Hi {leads[15].first_name} ji, as discussed: floor rise charge will be waived for you and we will give 2 wardrobes free.",
+                                           created_at=now - dt.timedelta(days=1, hours=3)))
             db.session.add(Automation(workspace_id=ws.id, name="New enquiry: assign, call task, send brochure", description="Assign the enquiry, create a call task, email the brochure, wait 2 days and remind.",
                                       trigger_type="lead.created", is_active=True, created_by=users[0].id, run_count=18, last_run_at=now - dt.timedelta(hours=5), graph={
                 "nodes": [{"id": "t", "type": "trigger", "position": {"x": 0, "y": 0}, "data": {"trigger_type": "lead.created"}},

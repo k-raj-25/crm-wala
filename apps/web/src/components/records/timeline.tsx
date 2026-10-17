@@ -1,6 +1,6 @@
 "use client";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { AtSign, CalendarClock, CheckCircle2, CheckSquare, FileText, Handshake, Mail, MessageCircle, MoveRight, Phone, PlusCircle, Repeat, Settings2, StickyNote, Trophy, UserCheck, XCircle } from "lucide-react";
+import { AtSign, CalendarClock, CheckCircle2, CheckSquare, FileText, Handshake, Mail, MessageCircle, MoveRight, Phone, PlusCircle, Repeat, ScrollText, Settings2, StickyNote, Trophy, UserCheck, XCircle } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
 import { Button, EmptyState, SkeletonRows, cn, dayLabel, formatDate, timeAgo } from "@crm/ui";
@@ -12,7 +12,7 @@ const MAP: Record<string, [React.ElementType, string]> = {
   note: [StickyNote, "bg-warning-soft text-warning"], email: [Mail, "bg-info-soft text-info"], call: [Phone, "bg-success-soft text-success"], meeting: [CalendarClock, "bg-primary-soft text-primary"],
   task: [CheckSquare, "bg-bg-subtle text-fg-muted"], task_completed: [CheckCircle2, "bg-success-soft text-success"], converted: [UserCheck, "bg-primary-soft text-primary"], file: [FileText, "bg-bg-subtle text-fg-muted"],
   assigned: [AtSign, "bg-info-soft text-info"], won: [Trophy, "bg-success-soft text-success"], lost: [XCircle, "bg-danger-soft text-danger"], system: [Settings2, "bg-bg-subtle text-fg-muted"],
-  whatsapp: [MessageCircle, "bg-success-soft text-success"],
+  whatsapp: [MessageCircle, "bg-success-soft text-success"], promise: [ScrollText, "bg-warning-soft text-warning"],
 };
 export function ActivityIcon({ type, small }: { type: string; small?: boolean }) {
   const [I, tone] = MAP[type] ?? [Handshake, "bg-bg-subtle text-fg-muted"];

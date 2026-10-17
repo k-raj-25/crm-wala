@@ -647,6 +647,40 @@ def propose_update_unit(unit: str | dict, status: str | None = None, hold_hours:
                          record={"type": "unit", "id": str(u.id), "name": unit_label(u), "url": f"/app/projects/{u.project_id}?tower={u.tower_id}&unit={u.id}"}))
 
 
+# ---- promises to buyers ------------------------------------------------------------------------------------------------------
+
+PROMISE_KINDS = [["discount", "Discount"], ["parking", "Parking"], ["fittings", "Fittings & furnishing"], ["possession", "Possession date"],
+                 ["payment_plan", "Payment plan"], ["waiver", "Charge waived"], ["other", "Other"]]
+
+
+def propose_record_promise(record: dict | str, title: str, kind: str = "other", details: str | None = None, value: float | str | None = None,
+                           promised_by: str | None = None, source: str = "chat", quote: str | None = None, promised_on: str | None = None) -> dict:
+    """A promise a rep made to a buyer. Approving the card records it as waiting for a manager; it isn't approved yet."""
+    _need("promises.create", "record promises")
+    fk, row = record_ref(record)
+    if not row:
+        raise ActionError("Which buyer was the promise made to?")
+    title = str(title or "").strip()[:200]
+    if len(title) < 2:
+        raise ActionError("What was promised?")
+    who = find_member(promised_by) if promised_by else g.user
+    k = kind if kind in dict(PROMISE_KINDS) else "other"
+    v = _num(value)
+    rows = [change("title", "Promise", None, title), change("kind", "Type", None, k, input="select", options=PROMISE_KINDS, display_to=dict(PROMISE_KINDS)[k]),
+            change("value", "Worth", None, v, input="money", display_to=money(v) or "—"),
+            change("promised_by", "Promised by", None, str(who.id), input="select", options=_member_options(), display_to=who.name),
+            change("details", "Details", None, (details or "").strip()[:4000], input="textarea")]
+    if quote:
+        rows.append(change("quote", "Picked up from", None, f"“{str(quote).strip()[:400]}”", input="readonly"))
+    body = {fk: str(row.id), "title": "{{title}}", "kind": "{{kind}}", "value": "{{value}}", "promised_by": "{{promised_by}}", "details": "{{details}}",
+            "source": source if source in ("whatsapp", "call", "visit", "note", "chat") else "chat", "source_text": (str(quote).strip()[:2000] if quote else None),
+            "promised_on": str(promised_on)[:10] if promised_on else None}
+    return _add(proposal("record_promise", f"Record promise: {title}", record={"type": fk[:-3], "id": str(row.id), "name": row.name, "url": _url(fk, row)},
+                         changes=rows, description=f"{who.name} promised this to {row.name}. Once saved, a manager approves or rejects it.",
+                         ops=[{"method": "POST", "path": "/api/v1/promises", "body": body}],
+                         undo=[{"method": "POST", "path": "/api/v1/promises/{{result.0.id}}/cancel", "body": {"note": "Undone right after recording"}}]))
+
+
 def propose_navigation(url: str, label: str, explanation: str | None = None) -> dict:
     if not str(url).startswith("/app"):
         raise ActionError("I can only open pages inside CRM Wala.")
@@ -657,7 +691,7 @@ PROPOSERS = {
     "propose_update_lead": propose_update_lead, "propose_create_lead": propose_create_lead, "propose_convert_lead": propose_convert_lead,
     "propose_bulk_update_leads": propose_bulk_update_leads, "propose_create_task": propose_create_task, "propose_log_note": propose_log_note,
     "propose_log_call": propose_log_call, "propose_schedule_visit": propose_schedule_visit, "propose_update_unit": propose_update_unit,
-    "propose_navigation": propose_navigation,
+    "propose_record_promise": propose_record_promise, "propose_navigation": propose_navigation,
 }
 
 _REF = {"type": "object", "description": "The record: {type: lead|contact|deal, id or name}", "properties": {"type": {"type": "string", "enum": ["lead", "contact", "deal"]},
@@ -707,6 +741,13 @@ SPECS: list[dict] = [
      "input_schema": {"type": "object", "properties": {"unit": {"type": "string", "description": "Flat id, or number like '1204' with project/tower"}, "project": {"type": "string"},
                                                        "status": {"type": "string"}, "hold_hours": {"type": "integer"}, "lead": _LEAD, "sale_price": {"type": "number"},
                                                        "monthly_rent": {"type": "number"}, "note": {"type": "string"}}, "required": ["unit"]}},
+    {"name": "propose_record_promise", "description": "Prepare recording a promise a rep made to a buyer (discount, free parking, modular kitchen, possession date, payment plan, "
+                                                "waived charge). It is saved as waiting for a manager's approval. Use when the user says someone promised or offered a buyer something.",
+     "input_schema": {"type": "object", "properties": {"record": _REF, "title": {"type": "string", "description": "Short, e.g. 'Free covered parking' or 'Discount of ₹2 L'"},
+                                                       "kind": {"type": "string", "enum": [k[0] for k in PROMISE_KINDS]}, "details": {"type": "string"},
+                                                       "value": {"type": "number", "description": "Rupees it is worth, if known"},
+                                                       "promised_by": {"type": "string", "description": "Teammate who made the promise (name or 'me')"},
+                                                       "quote": {"type": "string", "description": "The words it came from, if any"}}, "required": ["record", "title"]}},
     {"name": "propose_navigation", "description": "Offer a button that opens a page in CRM Wala (e.g. /app/settings/team). Use for 'take me to' / 'show me where'.",
      "input_schema": {"type": "object", "properties": {"url": {"type": "string"}, "label": {"type": "string"}, "explanation": {"type": "string"}}, "required": ["url", "label"]}},
 ]
