@@ -3,14 +3,18 @@ import { AnimatePresence, motion, useMotionValue, useReducedMotion, useSpring, u
 import { Check } from "lucide-react";
 import * as React from "react";
 import { cn, useTheme } from "@crm/ui";
+import { DEMAND, DEMAND_ORDER, TAKEN_TILE, demandLine } from "@/lib/pricing";
+import type { DemandLevel, UnitDemand } from "@/lib/pricing";
 import { STATUS, STATUS_ORDER, floorLabel, holdLeft, money, priceLine } from "@/lib/realestate";
 import type { Building, UnitMini, UnitStatus } from "@/lib/realestate";
 
 /* ---- spotlight filter ------------------------------------------------------------------------------------------------ */
-export type Spot = { statuses: UnitStatus[]; bhk: string | null; q: string };
+/** `ids`: an extra filter by flat (the demand view's level chips use it). */
+export type Spot = { statuses: UnitStatus[]; bhk: string | null; q: string; ids?: Set<string> | null };
 export const NO_SPOT: Spot = { statuses: [], bhk: null, q: "" };
-export const isSpotting = (s: Spot) => s.statuses.length > 0 || !!s.bhk || !!s.q.trim();
+export const isSpotting = (s: Spot) => s.statuses.length > 0 || !!s.bhk || !!s.q.trim() || !!s.ids;
 export const fitsSpot = (u: UnitMini, s: Spot) => {
+  if (s.ids && !s.ids.has(u.id)) return false;
   if (s.statuses.length && !s.statuses.includes(u.status)) return false;
   if (s.bhk && u.bhk !== s.bhk) return false;
   const q = s.q.trim().toLowerCase();
@@ -89,11 +93,21 @@ function tileStyle(status: UnitStatus, dark: boolean): React.CSSProperties {
   };
 }
 
-const UnitTile = React.memo(function UnitTile({ u, dark, dim, hit, delay, animate, picking, picked, onOpen, onHover }: {
-  u: UnitMini; dark: boolean; dim: boolean; hit: boolean; delay: number; animate: boolean; picking: boolean; picked: boolean; onOpen: (id: string) => void; onHover: (u: UnitMini | null, el: HTMLElement | null) => void;
+/** Demand view: the same glass, coloured by how much interest the flat is getting. Flats already taken fade back. */
+function heatStyle(heat: DemandLevel | "taken", dark: boolean): React.CSSProperties {
+  const h = heat === "taken" ? TAKEN_TILE : DEMAND[heat];
+  const bg = dark ? h.bgDark : h.bg;
+  return {
+    color: dark ? h.inkDark : h.ink, backgroundColor: bg, ["--st" as string]: bg,
+    backgroundImage: "linear-gradient(160deg, rgba(255,255,255,.22) 0%, rgba(255,255,255,0) 48%, rgba(0,0,0,.14) 100%)",
+  };
+}
+
+const UnitTile = React.memo(function UnitTile({ u, dark, dim, hit, delay, animate, picking, picked, heat, onOpen, onHover }: {
+  u: UnitMini; dark: boolean; dim: boolean; hit: boolean; delay: number; animate: boolean; picking: boolean; picked: boolean; heat?: DemandLevel | "taken"; onOpen: (id: string) => void; onHover: (u: UnitMini | null, el: HTMLElement | null) => void;
 }) {
   const s = STATUS[u.status];
-  const Icon = s.icon;
+  const Icon = heat && heat !== "taken" ? DEMAND[heat].icon : s.icon;
   const left = u.status === "on_hold" ? holdLeft(u.hold_until) : null;
   return (
     <motion.button
@@ -108,18 +122,18 @@ const UnitTile = React.memo(function UnitTile({ u, dark, dim, hit, delay, animat
       onPointerLeave={() => onHover(null, null)}
       onFocus={(e) => (!picking || e.currentTarget.matches(":focus-visible")) && onHover(u, e.currentTarget)}
       onBlur={() => onHover(null, null)}
-      aria-label={`Unit ${u.number}${u.bhk ? `, ${u.bhk}` : ""}, ${s.label}${u.sale_price ? `, ${money(u.sale_price)}` : ""}`}
+      aria-label={`Unit ${u.number}${u.bhk ? `, ${u.bhk}` : ""}, ${s.label}${heat && heat !== "taken" ? `, demand ${DEMAND[heat].label.toLowerCase()}` : ""}${u.sale_price ? `, ${money(u.sale_price)}` : ""}`}
       aria-pressed={picking ? picked : undefined}
       data-unit={u.id}
       data-dim={dim ? "1" : undefined}
-      style={{ ...tileStyle(u.status, dark), ...(animate ? { ["--d" as string]: `${delay + 0.35}s` } : null) }}
+      style={{ ...(heat ? heatStyle(heat, dark) : tileStyle(u.status, dark)), ...(animate ? { ["--d" as string]: `${delay + 0.35}s` } : null) }}
       className={cn("unit-tile @container/tile relative flex min-w-0 flex-col justify-between overflow-hidden rounded-[7px] text-left outline-none focus-visible:ring-2 focus-visible:ring-primary",
-        `unit-${u.status}`, "h-[60px] px-2 py-1.5", animate && "tile-wave", u.status === "on_hold" && "unit-hold", hit && "tile-hit z-10",
+        heat ? "unit-heat" : `unit-${u.status}`, "h-[60px] px-2 py-1.5", animate && "tile-wave", !heat && u.status === "on_hold" && "unit-hold", hit && "tile-hit z-10",
         picking && !picked && "opacity-80", picked && "tile-picked z-10")}>
       {picked && <span aria-hidden className="pick-badge absolute bottom-0 right-0 z-10 grid size-5 place-items-center rounded-tl-[7px] bg-primary text-primary-fg"><Check className="size-3.5" strokeWidth={3} /></span>}
       <span className="flex items-start justify-between gap-1">
         <span className="text-[13px] font-semibold tabular-nums leading-none">{u.number}</span>
-        <Icon className={cn("size-3.5 shrink-0 opacity-90", `ico-${u.status}`)} aria-hidden />
+        <Icon className={cn("size-3.5 shrink-0 opacity-90", !heat && `ico-${u.status}`)} aria-hidden />
       </span>
       <span className={cn("flex items-end justify-between gap-1 text-[10.5px] font-medium leading-none opacity-90", picked && "pr-4")}>
         <span className="truncate">{left ? <>{left.replace(" left", "")}<span className="@max-[100px]/tile:hidden"> left</span></> : u.bhk?.replace(" BHK", "BHK") ?? ""}</span>
@@ -194,10 +208,12 @@ type Hover = { u: UnitMini; x: number; y: number; w: number } | null;
 
 /** The hero: the tower as you'd see it from the street. Floors stack bottom-to-top, each flat is a lit window coloured by its status.
  *  Move the pointer over it and the flats swell toward you; a glint of sunlight sweeps across the glass every few seconds. */
-export function BuildingView({ data, spot, onOpen, flashFloor, registerFloor, picked }: {
+export function BuildingView({ data, spot, onOpen, flashFloor, registerFloor, picked, demand }: {
   data: Building; spot: Spot; onOpen: (id: string) => void; flashFloor?: number | null; registerFloor?: (floor: number, el: HTMLElement | null) => void;
   /** Compare mode: the flats already picked. Tapping a flat then picks it instead of opening it. */
   picked?: Set<string> | null;
+  /** Demand view: colour flats by interest instead of status. Flats missing from the map are taken or rentals. */
+  demand?: Record<string, UnitDemand> | null;
 }) {
   const dark = useSky() === "night"; // at night the empty flats go dark; lit ones glow
   const reduce = useReducedMotion();
@@ -267,7 +283,7 @@ export function BuildingView({ data, spot, onOpen, flashFloor, registerFloor, pi
                 <div className="grid gap-2 @2xl:gap-3" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
                   {f.units.map((u) => {
                     const hit = spotting && fitsSpot(u, spot);
-                    return <UnitTile key={u.id} u={u} dark={dark} dim={spotting && !hit} hit={hit} animate={animateTiles} delay={Math.min(fromBottom * 0.045 + (u.position - 1) * 0.02, 1.5)} picking={!!picked} picked={!!picked?.has(u.id)} onOpen={onOpen} onHover={onHover} />;
+                    return <UnitTile key={u.id} u={u} dark={dark} dim={spotting && !hit} hit={hit} animate={animateTiles} delay={Math.min(fromBottom * 0.045 + (u.position - 1) * 0.02, 1.5)} picking={!!picked} picked={!!picked?.has(u.id)} heat={demand ? demand[u.id]?.level ?? "taken" : undefined} onOpen={onOpen} onHover={onHover} />;
                   })}
                   {f.units.length === 0 && <div className="col-span-full rounded-md border border-dashed border-border-strong py-3 text-center text-xs text-fg-subtle">No flats on this floor yet</div>}
                 </div>
@@ -284,7 +300,7 @@ export function BuildingView({ data, spot, onOpen, flashFloor, registerFloor, pi
           <motion.div key="hc" initial={{ opacity: 0, y: 6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, transition: { duration: 0.08 } }} transition={{ type: "spring", stiffness: 500, damping: 34 }}
             className="pointer-events-none absolute z-30 w-[236px] rounded-xl border border-border bg-surface p-3.5 shadow-lg"
             style={{ left: Math.min(Math.max(hover.x - 118, 4), Math.max(hover.w - 240, 4)), top: Math.max(hover.y - 8, 0), transform: "translateY(-100%)" }}>
-            <HoverCard u={hover.u} hint={picked ? (picked.has(hover.u.id) ? "Click to remove from comparison" : "Click to add to comparison") : "Click to open"} />
+            <HoverCard u={hover.u} demand={demand ? demand[hover.u.id] ?? null : undefined} hint={picked ? (picked.has(hover.u.id) ? "Click to remove from comparison" : "Click to add to comparison") : "Click to open"} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -292,7 +308,7 @@ export function BuildingView({ data, spot, onOpen, flashFloor, registerFloor, pi
   );
 }
 
-function HoverCard({ u, hint }: { u: UnitMini; hint: string }) {
+function HoverCard({ u, hint, demand }: { u: UnitMini; hint: string; demand?: UnitDemand | null }) {
   const s = STATUS[u.status];
   const Icon = s.icon;
   const left = u.status === "on_hold" ? holdLeft(u.hold_until) : null;
@@ -307,6 +323,7 @@ function HoverCard({ u, hint }: { u: UnitMini; hint: string }) {
         <span className="text-fg-muted">{u.status === "for_rent" || u.status === "rented" ? "Rent" : "Price"}</span><span className="font-semibold tabular-nums">{priceLine(u)}</span>
       </div>
       {left && <p className="mt-1 text-xs font-medium text-[#7c3aed] dark:text-[#a78bfa]">Hold · {left}</p>}
+      {demand && <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs"><span className="rounded-full px-1.5 py-px font-semibold" style={{ background: DEMAND[demand.level].bg, color: DEMAND[demand.level].ink }}>{DEMAND[demand.level].label}</span><span className="text-fg-muted">{demandLine(demand)}</span></p>}
       <p className="mt-1.5 text-[11px] text-fg-subtle">{hint}</p>
     </div>
   );
@@ -330,6 +347,31 @@ export function Legend({ counts, active, onToggle, className }: { counts: Partia
           </button>
         );
       })}
+    </div>
+  );
+}
+
+/** Colour key for the demand view. Doubles as a filter, like the status legend. */
+export function DemandLegend({ demand, active, onToggle, windowDays, className }: { demand: Record<string, UnitDemand>; active: DemandLevel[]; onToggle: (l: DemandLevel) => void; windowDays: number; className?: string }) {
+  const { resolved } = useTheme();
+  const counts = Object.values(demand).reduce<Partial<Record<DemandLevel, number>>>((a, d) => ({ ...a, [d.level]: (a[d.level] ?? 0) + 1 }), {});
+  return (
+    <div className={cn("space-y-1.5", className)}>
+      <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter by demand">
+        {DEMAND_ORDER.filter((l) => (counts[l] ?? 0) > 0 || active.includes(l)).map((l) => {
+          const m = DEMAND[l]; const on = active.includes(l); const Icon = m.icon;
+          const bg = resolved === "dark" ? m.bgDark : m.bg, ink = resolved === "dark" ? m.inkDark : m.ink;
+          return (
+            <button key={l} type="button" onClick={() => onToggle(l)} aria-pressed={on} title={m.hint}
+              className={cn("inline-flex h-8 items-center gap-2 rounded-full border px-2.5 text-[13px] font-medium transition-all", on ? "border-transparent shadow-sm" : "border-border bg-surface text-fg-muted hover:border-border-strong hover:text-fg")}
+              style={on ? { background: bg, color: ink } : undefined}>
+              <span className="grid size-5 place-items-center rounded-full" style={{ background: on ? "rgba(255,255,255,.22)" : bg, color: ink }}><Icon className="size-3" /></span>
+              {m.label}<span className={cn("tabular-nums", on ? "opacity-90" : "text-fg-subtle")}>{counts[l] ?? 0}</span>
+            </button>
+          );
+        })}
+      </div>
+      <p className="text-xs text-fg-subtle">Unsold flats, coloured by holds, site visits, comparisons and enquiries in the last {windowDays} days. Faded flats are taken, rented or for rent.</p>
     </div>
   );
 }

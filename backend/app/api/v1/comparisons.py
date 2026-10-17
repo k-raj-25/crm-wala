@@ -21,7 +21,7 @@ from app.extensions import db, limiter
 from app.models import Contact, FileAsset, Lead
 from app.models.base import utcnow
 from app.schemas.common import Email, Schema, parse
-from app.services import activities, audit, mailbox, storage
+from app.services import activities, audit, inventory, mailbox, storage
 from app.services import comparison as cmp
 from app.services.usage import check_limit
 
@@ -57,8 +57,11 @@ def _ids_arg() -> list[uuid.UUID]:
     return out
 
 
-def _pdf(d: PdfIn) -> tuple[dict, bytes]:
-    data = cmp.build(cmp.load_units(d.unit_ids))
+def _pdf(d: PdfIn, note: str) -> tuple[dict, bytes]:
+    units = cmp.load_units(d.unit_ids)
+    for u in units:  # a flat that keeps getting compared is in demand (read by airline-style pricing)
+        inventory.log_event(u, "compared", note=note)
+    data = cmp.build(units)
     pdf = cmp.render_pdf(data, title=d.title or "Flat comparison", client_name=d.client_name, note=d.note,
                          prepared_by=g.user.name, workspace_name=g.workspace.name)
     return data, pdf
@@ -74,7 +77,8 @@ def preview():
 @protect("units.read")
 def download_pdf():
     d = parse(PdfIn)
-    data, pdf = _pdf(d)
+    data, pdf = _pdf(d, "Comparison PDF downloaded" + (f" for {d.client_name}" if d.client_name else ""))
+    db.session.commit()
     return Response(pdf, mimetype="application/pdf", headers={"Content-Disposition": f'attachment; filename="{cmp.filename(data)}"'})
 
 
@@ -110,7 +114,7 @@ def share():
             raise ApiError(403, "email_not_verified", "Verify your email address to send emails. Check your inbox for the link, or request a new one.")
         check_limit(g.workspace, "emails_month", len(d.to))
 
-    data, pdf = _pdf(d)
+    data, pdf = _pdf(d, f"Comparison sent by {'email' if d.channel == 'email' else 'WhatsApp'}" + (f" to {d.client_name}" if d.client_name else ""))
     name = cmp.filename(data)
     key = storage.new_key(g.workspace.id, name)
     storage.get_storage().put(key, io.BytesIO(pdf), "application/pdf")

@@ -1,27 +1,30 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { ArrowRight, BarChart3, Building2, Check, ChevronRight, Download, Layers, LayoutGrid, List, MapPin, MoreHorizontal, Plus, Rows3, Scale, Search, Trash2, Wand2 } from "lucide-react";
+import { ArrowRight, BarChart3, Building2, Check, ChevronRight, Download, Flame, IndianRupee, Layers, LayoutGrid, List, MapPin, MoreHorizontal, Plus, Rows3, Scale, Search, Trash2, Wand2 } from "lucide-react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import * as React from "react";
 import { Badge, BarsChart, Button, Card, ConfirmDialog, DonutChart, DropdownContent, DropdownItem, DropdownMenu, DropdownTrigger, EmptyState, ErrorState, Input, NativeSelect, Segmented, Skeleton, Tooltip, cn, formatMoneyCompact, useTheme, useToast } from "@crm/ui";
 import { ListingWriter } from "@/components/ai/listing-writer";
+import { PricingPanel } from "@/components/pricing/pricing-panel";
 import { PageContainer } from "@/components/shell/page";
 import { useAiFeature } from "@/lib/ai";
 import { api } from "@/lib/api";
 import { MAX_COMPARE, compare, useCompare } from "@/lib/compare";
 import { navigate } from "@/components/shell/pending-nav";
+import { useDemand } from "@/lib/pricing";
+import type { DemandLevel } from "@/lib/pricing";
 import { useAccess } from "@/lib/queries";
 import { AVAILABLE, PROJECT_KINDS, PROJECT_STAGES, STATUS, STATUS_ORDER, floorLabel, priceLine, where } from "@/lib/realestate";
 import type { Building, Project, Summary, UnitMini, UnitStatus } from "@/lib/realestate";
 import { AddFloorsDialog, AddTowerDialog, AddUnitDialog } from "./forms";
-import { BuildingView, Legend, NO_SPOT, Sky, fitsSpot, isSpotting } from "./building";
+import { BuildingView, DemandLegend, Legend, NO_SPOT, Sky, fitsSpot, isSpotting } from "./building";
 import type { Spot } from "./building";
 import { TowerArt } from "./tower-art";
 import { UnitDrawer } from "./unit-drawer";
 
-type View = "building" | "list" | "analytics";
+type View = "building" | "list" | "analytics" | "pricing";
 
 export function ProjectView() {
   const { id } = useParams<{ id: string }>();
@@ -31,6 +34,7 @@ export function ProjectView() {
   const toast = useToast();
   const { can } = useAccess();
   const canEdit = can("units.update");
+  const canPrice = can("pricing.read");
   const [spot, setSpot] = React.useState<Spot>(NO_SPOT);
   const [unitId, setUnitId] = React.useState<string | null>(sp.get("unit"));
   const [dialog, setDialog] = React.useState<null | "tower" | "floors" | "unit" | "delete">(null);
@@ -47,7 +51,9 @@ export function ProjectView() {
   const project = useQuery({ queryKey: ["project", id], queryFn: () => api.get<Project>(`/api/v1/projects/${id}`) });
   const towers = project.data?.towers ?? [];
   const towerId = towers.find((t) => t.id === (sp.get("tower") ?? unitProbe.data?.tower_id))?.id ?? towers[0]?.id;
-  const view = (["building", "list", "analytics"].includes(sp.get("view") ?? "") ? sp.get("view") : "building") as View;
+  const view = (["building", "list", "analytics", ...(canPrice ? ["pricing"] : [])].includes(sp.get("view") ?? "") ? sp.get("view") : "building") as View;
+  const heat = sp.get("colour") === "demand" && canPrice && view === "building"; // the tower coloured by demand instead of status
+  const [heatOnly, setHeatOnly] = React.useState<DemandLevel[]>([]);
   const building = useQuery({ queryKey: ["building", id, towerId], enabled: !!towerId, queryFn: () => api.get<Building>(`/api/v1/projects/${id}/towers/${towerId}/building`), refetchInterval: 60_000 });
 
   const nav = (patch: Record<string, string | null>) => {
@@ -55,6 +61,10 @@ export function ProjectView() {
     Object.entries(patch).forEach(([k, v]) => (v == null ? q.delete(k) : q.set(k, v)));
     router.replace(`${path}?${q.toString()}`, { scroll: false });
   };
+  const demand = useDemand(id, towerId, heat);
+  const heatMap = heat ? demand.data?.units ?? null : null;
+  const heatIds = React.useMemo(() => (heatMap && heatOnly.length ? new Set(Object.entries(heatMap).filter(([, d]) => heatOnly.includes(d.level)).map(([k]) => k)) : null), [heatMap, heatOnly]);
+  const shown = heatIds ? { ...spot, ids: heatIds } : spot;
   const toggleStatus = (s: UnitStatus) => setSpot((x) => ({ ...x, statuses: x.statuses.includes(s) ? x.statuses.filter((v) => v !== s) : [...x.statuses, s] }));
   const pickFloor = (f: number) => {
     floorEls.current.get(f)?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -115,7 +125,7 @@ export function ProjectView() {
       {p && towers.length > 1 && (
         <div className="mb-5 flex flex-wrap gap-2" role="tablist" aria-label="Towers">
           {towers.map((t) => (
-            <button key={t.id} role="tab" aria-selected={t.id === towerId} onClick={() => { setSpot(NO_SPOT); nav({ tower: t.id }); }}
+            <button key={t.id} role="tab" aria-selected={t.id === towerId} onClick={() => { setSpot(NO_SPOT); setHeatOnly([]); nav({ tower: t.id }); }}
               className={cn("relative h-10 rounded-full border px-4 text-sm font-medium transition-colors", t.id === towerId ? "border-primary bg-primary-soft text-primary" : "border-border bg-surface text-fg-muted hover:border-border-strong hover:text-fg")}>
               {t.name}<span className="ml-2 text-xs opacity-70">{t.summary.available} free</span>
             </button>
@@ -144,21 +154,25 @@ export function ProjectView() {
             <div className="order-1 min-w-0 space-y-4 lg:order-2">
               <Card className="p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Segmented value={view} onChange={(v) => { if (v === "analytics") setPicking(false); nav({ view: v === "building" ? null : v }); }} options={[{ value: "building", label: "Building", icon: <LayoutGrid /> }, { value: "list", label: "List", icon: <List /> }, { value: "analytics", label: "Analytics", icon: <BarChart3 /> }]} />
-                    {view !== "analytics" && <Button variant={picking ? "primary" : "secondary"} onClick={() => setPicking((x) => !x)} aria-pressed={picking}>{picking ? <Check /> : <Scale />} {picking ? "Done picking" : "Compare"}</Button>}
+                  <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
+                    <Segmented value={view} onChange={(v) => { if (v === "analytics" || v === "pricing") setPicking(false); nav({ view: v === "building" ? null : v }); }} className="max-w-full overflow-x-auto"
+                      options={[{ value: "building", label: "Building", icon: <span className="hidden sm:contents"><LayoutGrid /></span> }, { value: "list", label: "List", icon: <span className="hidden sm:contents"><List /></span> }, { value: "analytics", label: "Analytics", icon: <span className="hidden sm:contents"><BarChart3 /></span> },
+                        ...(canPrice ? [{ value: "pricing" as const, label: "Pricing", icon: <span className="hidden sm:contents"><IndianRupee /></span> }] : [])]} />
+                    {view === "building" && canPrice && <Button variant={heat ? "primary" : "secondary"} aria-pressed={heat} onClick={() => { setHeatOnly([]); nav({ colour: heat ? null : "demand" }); }}><Flame /> Demand</Button>}
+                    {view !== "analytics" && view !== "pricing" && <Button variant={picking ? "primary" : "secondary"} onClick={() => setPicking((x) => !x)} aria-pressed={picking}>{picking ? <Check /> : <Scale />} {picking ? "Done picking" : "Compare"}</Button>}
                   </div>
-                  {view !== "analytics" && (
+                  {view !== "analytics" && view !== "pricing" && (
                     <div className="flex w-full items-center gap-2 sm:w-auto">
                       {bhks.length > 1 && <NativeSelect aria-label="Filter by size" value={spot.bhk ?? ""} onChange={(e) => setSpot({ ...spot, bhk: e.target.value || null })} className="!w-auto min-w-[110px]"><option value="">All sizes</option>{bhks.map((x) => <option key={x} value={x}>{x}</option>)}</NativeSelect>}
                       <div className="min-w-0 flex-1 sm:w-56 sm:flex-none"><Input icon={<Search />} value={spot.q} onChange={(e) => setSpot({ ...spot, q: e.target.value })} placeholder="Find a flat, e.g. 801" aria-label="Find a flat" /></div>
                     </div>
                   )}
                 </div>
-                {view !== "analytics" && (
+                {view !== "analytics" && view !== "pricing" && (
                   <div className="mt-3 space-y-3">
-                    <Legend counts={counts} active={spot.statuses} onToggle={toggleStatus} />
-                    {isSpotting(spot) && <SpotBar b={b} spot={spot} onClear={() => setSpot(NO_SPOT)} />}
+                    {heat && heatMap ? <DemandLegend demand={heatMap} active={heatOnly} windowDays={demand.data?.window_days ?? 60} onToggle={(l) => setHeatOnly((x) => (x.includes(l) ? x.filter((v) => v !== l) : [...x, l]))} />
+                      : <Legend counts={counts} active={spot.statuses} onToggle={toggleStatus} />}
+                    {isSpotting(shown) && <SpotBar b={b} spot={shown} onClear={() => { setSpot(NO_SPOT); setHeatOnly([]); }} />}
                     {picking && <PickBar n={cmpList.length} onCompare={() => navigate(router, "/app/compare")} />}
                   </div>
                 )}
@@ -166,11 +180,12 @@ export function ProjectView() {
 
               {view === "building" && (
                 <Sky className="rounded-2xl border border-border px-2 pb-0 pt-5 sm:px-6">
-                  <BuildingView data={b} spot={spot} onOpen={openOrPick} picked={picking ? picked : null} flashFloor={flash} registerFloor={(f, el) => { if (el) floorEls.current.set(f, el); else floorEls.current.delete(f); }} />
+                  <BuildingView data={b} spot={shown} demand={heatMap} onOpen={openOrPick} picked={picking ? picked : null} flashFloor={flash} registerFloor={(f, el) => { if (el) floorEls.current.set(f, el); else floorEls.current.delete(f); }} />
                 </Sky>
               )}
               {view === "list" && <UnitTable b={b} spot={spot} onOpen={openOrPick} picked={picking ? picked : null} />}
               {view === "analytics" && p && <Analytics project={p} b={b} />}
+              {view === "pricing" && p && <PricingPanel projectId={p.id} />}
             </div>
 
             {/* right: numbers */}

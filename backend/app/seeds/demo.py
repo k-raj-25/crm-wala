@@ -3,6 +3,7 @@ users, so it can never mix with production tenants and can be wiped with `flask 
 from __future__ import annotations
 
 import datetime as dt
+import decimal
 import random
 
 from app.core.passwords import hash_password
@@ -10,10 +11,10 @@ from app.core.tenant import bypass_scope, tenant_scope
 from app.extensions import db
 from app.models import (
     Activity, Automation, Call, Company, Contact, CustomFieldDef, Deal, Email, Lead, Meeting, Note, Notification, Pipeline, PipelineStage,
-    Project, Tag, Task, Tower, Unit, UnitEvent, User, Workspace, WorkspaceMember,
+    PriceChange, Project, Tag, Task, Tower, Unit, UnitEvent, User, Workspace, WorkspaceMember,
 )
 from app.models.base import utcnow
-from app.services import inventory, scoring
+from app.services import inventory, pricing, scoring
 from app.services.workspaces import create_workspace, seed_platform, system_role
 
 PASSWORD = "Demo@12345"
@@ -72,6 +73,58 @@ def _wipe() -> None:
         db.session.flush()
         db.session.query(User).filter(User.email.like("%@demo.crmwala.dev")).delete(synchronize_session=False)
         db.session.commit()
+
+
+def _shape_demand(ws, users, projects, units, now, rnd) -> tuple[list[Unit], set]:
+    """Give airline-style pricing a story on day one: one group of flats in Tower D-12 keeps getting held and booked, Tower D-13's
+    ground floor has sat unsold for months, and Godrej Aria shows a price rise from three weeks ago and how sales went after it.
+    Runs before the status history is written, so moved dates flow into it."""
+    def groups(project, tower_name=None):
+        out: dict[str, list[Unit]] = {}
+        for u in units:
+            if u.project_id == project.id and u.sale_price and u.status not in pricing.OUT_OF_SCOPE:
+                out.setdefault(pricing.segment_key(u), []).append(u)
+        return out
+    left = lambda us: [u for u in us if u.status in pricing.SELLABLE]  # noqa: E731
+    ireo, aria = projects[0], projects[1]
+    d12 = next(t for t in db.session.query(Tower).filter(Tower.project_id == ireo.id) if t.name == "Tower D-12")
+    d13 = next(t for t in db.session.query(Tower).filter(Tower.project_id == ireo.id) if t.name == "Tower D-13")
+    ev = lambda u, to, frm, when, note=None, typ="status": db.session.add(UnitEvent(  # noqa: E731
+        workspace_id=ws.id, unit_id=u.id, type=typ, from_status=frm, to_status=to, note=note, user_id=users[rnd.randint(1, 3)].id, created_at=when))
+    # hot: the D-12 group that has sold best keeps getting held
+    cands = [us for k, us in groups(ireo).items() if us[0].tower_id == d12.id and not k.endswith("|g") and 1 <= len(left(us)) <= 3]
+    hot = max(cands, key=lambda us: sum(u.status in pricing.TAKEN for u in us) - len(left(us)), default=[])
+    for u in hot:
+        if u.status in pricing.TAKEN:
+            u.status_changed_at = now - dt.timedelta(days=rnd.randint(5, 50))
+    for u in left(hot):
+        for _ in range(3):
+            when = now - dt.timedelta(days=rnd.randint(6, 55), hours=rnd.randint(0, 20))
+            ev(u, "on_hold", u.status, when, "Hold placed for a client")
+            ev(u, u.status, "on_hold", when + dt.timedelta(days=2), "Hold expired")
+        ev(u, None, None, now - dt.timedelta(days=rnd.randint(2, 40)), "Site visit", typ="visit")
+    # cold: D-13's ground floor, listed months ago, nobody has asked
+    cold = [u for k, us in groups(ireo).items() if us[0].tower_id == d13.id and k.endswith("|g") for u in left(us)]
+    for u in cold:
+        u.status_changed_at = now - dt.timedelta(days=rnd.randint(95, 160))
+    # history: Godrej Aria repriced +3% three weeks ago; one hold in the three weeks before, three holds and a booking since
+    past = next((left(us) for us in groups(aria).values() if len(left(us)) >= 3), [])[:3]
+    if past:
+        when = now - dt.timedelta(days=21)
+        rows = [{"id": str(u.id), "number": u.number, "before": float(round(float(u.sale_price) / 1.03, -3)), "after": float(u.sale_price)} for u in past]
+        ev(past[0], "on_hold", "for_sale", when - dt.timedelta(days=9), "Hold placed for a client")
+        ev(past[0], "for_sale", "on_hold", when - dt.timedelta(days=7), "Hold expired")
+        for i, u in enumerate(past):
+            ev(u, "on_hold", u.status, when + dt.timedelta(days=3 + i * 4), "Hold placed for a client")
+            ev(u, u.status, "on_hold", when + dt.timedelta(days=5 + i * 4), "Hold expired")
+            ev(u, "price", None, when, f"Price {pricing.inr(rows[i]['before'])} → {pricing.inr(rows[i]['after'])} (+3%), from a pricing suggestion", typ="price")
+        past[0].status, past[0].status_changed_at = "booked", now - dt.timedelta(days=4)
+        k = pricing.segment_key(past[0])
+        label = pricing.segment_label([u for u in units if u.project_id == aria.id and pricing.segment_key(u) == k], "Tower A")
+        db.session.add(PriceChange(workspace_id=ws.id, project_id=aria.id, tower_id=past[0].tower_id, status="applied", rule="raise_hot", segment_key=k, segment_label=label,
+                                   pct=decimal.Decimal(3), headline=f"{label} were getting held every week. Raise the price by 3%.", units=rows, decided_by=users[0].id,
+                                   evidence={}, created_at=when))
+    return left(hot), {u.id for u in cold}
 
 
 def _pick_status(rnd: random.Random) -> str:
@@ -170,6 +223,7 @@ def seed_demo(reset: bool = False, plan: str = "trial") -> dict:
                             db.session.add(u)
                             all_units.append(u)
             db.session.flush()
+            hot_left, cold_ids = _shape_demand(ws, users, projects, all_units, now, rnd)
             for u in all_units:
                 if u.status != "vacant":
                     db.session.add(UnitEvent(workspace_id=ws.id, unit_id=u.id, type="status", from_status="vacant", to_status=u.status, user_id=users[rnd.randint(0, 3)].id,
@@ -310,6 +364,9 @@ def seed_demo(reset: bool = False, plan: str = "trial") -> dict:
             for title, body, ntype, link in [("New enquiry: Aarti Desai", "99acres · 3 BHK · ₹2–2.8 Cr", "new_lead", "/app/leads"), ("A hold expires today", "Unit 604, Tower D-13", "deal_update", "/app/projects"),
                                              ("Site visit today: Gautam Bhatt", None, "task_assigned", "/app/calendar"), ("Your trial ends in 2 days", "Choose a plan to keep access", "trial_ending", "/app/billing")]:
                 db.session.add(Notification(workspace_id=ws.id, user_id=users[0].id, type=ntype, title=title, body=body, link=link, created_at=now - dt.timedelta(hours=rnd.randint(1, 30))))
+            for ld in leads:  # the unsold ground-floor flats stay without enquiries; those buyers asked about the busy flats instead
+                if ld.unit_id in cold_ids and hot_left:
+                    ld.unit_id = rnd.choice(hot_left).id
             ws.last_activity_at = now
             db.session.commit()
             counts = {"projects": len(projects), "units": len(all_units), "leads": len(leads), "contacts": len(contacts), "deals": db.session.query(Deal).count()}

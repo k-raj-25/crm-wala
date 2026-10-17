@@ -231,7 +231,8 @@ export function UnitDrawer({ unitId, onClose, canEdit }: { unitId: string | null
                 {history.data.map((e) => (
                   <li key={e.id} className="relative text-sm">
                     <span className="absolute -left-[21px] top-1.5 size-2.5 rounded-full border-2 border-surface" style={{ background: e.to_status ? STATUS[e.to_status].bg : "var(--fg-subtle)" }} />
-                    <p>{e.type === "status" && e.to_status ? <>Marked <b>{STATUS[e.to_status].label.toLowerCase()}</b>{e.from_status ? <span className="text-fg-muted"> (was {STATUS[e.from_status].label.toLowerCase()})</span> : null}</> : e.type === "visit" ? "Site visit" : e.type === "created" ? "Added to inventory" : e.note}</p>
+                    <p>{e.type === "status" && e.to_status ? <>Marked <b>{STATUS[e.to_status].label.toLowerCase()}</b>{e.from_status ? <span className="text-fg-muted"> (was {STATUS[e.from_status].label.toLowerCase()})</span> : null}</> : e.type === "visit" ? "Site visit" : e.type === "created" ? "Added to inventory" : e.type === "price" ? "Price changed" : e.type === "compared" ? "Put in a comparison"
+                      : e.type === "whatsapp" ? "Sent on WhatsApp" : e.note}</p>
                     {e.note && e.type !== "note" && <p className="text-[13px] text-fg-muted">{e.note}</p>}
                     <p className="text-xs text-fg-subtle" title={formatDate(e.created_at, "datetime")}>{e.user_name ? `${e.user_name} · ` : ""}{timeAgo(e.created_at)}</p>
                   </li>
