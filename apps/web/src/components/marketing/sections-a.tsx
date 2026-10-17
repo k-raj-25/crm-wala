@@ -2,7 +2,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { BarChart3, CalendarDays, Kanban, Mail, Phone, ShieldCheck, Target, Users, Workflow, Zap, Building2, Handshake, CheckCircle2, Clock } from "lucide-react";
 import { useState } from "react";
-import { Avatar, Badge, Card, Segmented, cn } from "@crm/ui";
+import { Avatar, Badge, Segmented, cn } from "@crm/ui";
 import { TowerArt, MatchArt, HoldArt, VisitArt, CloseArt } from "./panel-art";
 import { Container, Reveal, Section, Window } from "./primitives";
 
