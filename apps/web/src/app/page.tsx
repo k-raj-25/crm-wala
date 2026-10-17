@@ -1,3 +1,4 @@
+import { ForceTheme } from "@crm/ui";
 import { Hero } from "@/components/marketing/hero";
 import { Nav } from "@/components/marketing/nav";
 import { Benefits, Features, ProductPreview, TrustedBy } from "@/components/marketing/sections-a";
@@ -6,24 +7,26 @@ import { FAQ, FinalCTA, Footer, Integrations, Pricing, Testimonials } from "@/co
 
 export default function Landing() {
   return (
-    <>
-      <Nav />
-      <main>
-        <Hero />
-        <TrustedBy />
-        <Benefits />
-        <ProductPreview />
-        <Features />
-        <AISection />
-        <AutomationSection />
-        <AnalyticsSection />
-        <Integrations />
-        <Testimonials />
-        <Pricing />
-        <FAQ />
-        <FinalCTA />
-      </main>
-      <Footer />
-    </>
+    <ForceTheme resolved="dark">
+      <div className="dark noir min-h-dvh">
+        <Nav />
+        <main>
+          <Hero />
+          <TrustedBy />
+          <Benefits />
+          <ProductPreview />
+          <Features />
+          <AISection />
+          <AutomationSection />
+          <AnalyticsSection />
+          <Integrations />
+          <Testimonials />
+          <Pricing />
+          <FAQ />
+          <FinalCTA />
+        </main>
+        <Footer />
+      </div>
+    </ForceTheme>
   );
 }

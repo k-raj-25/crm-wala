@@ -2,7 +2,8 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { BarChart3, CalendarDays, Kanban, Mail, Phone, ShieldCheck, Target, Users, Workflow, Zap, Building2, Handshake, CheckCircle2, Clock } from "lucide-react";
 import { useState } from "react";
-import { Avatar, Badge, Card, Segmented, cn } from "@crm/ui";
+import { Avatar, Badge, Segmented, cn } from "@crm/ui";
+import { TowerArt, MatchArt, HoldArt, VisitArt, CloseArt } from "./panel-art";
 import { Container, Reveal, Section, Window } from "./primitives";
 
 export function TrustedBy() {
@@ -20,25 +21,42 @@ export function TrustedBy() {
 }
 
 const BENEFITS = [
-  { icon: Building2, title: "See the whole building", body: "Every tower, floor and flat drawn the way you see it. Vacant, listed, held, sold or rented — in colour, in a second.", color: "var(--series-1)" },
-  { icon: Target, title: "Match clients to flats", body: "Note a client's budget and size once. We show the flats that fit — and the clients who fit a flat.", color: "var(--series-3)" },
-  { icon: Clock, title: "Hold with a countdown", body: "Hold a flat for a client for 24 hours or a week. It returns to stock by itself when time runs out.", color: "var(--series-2)" },
-  { icon: CalendarDays, title: "Never miss a site visit", body: "Schedule visits against the exact flat. Today's visits and follow-ups sit on your home screen.", color: "var(--series-7)" },
-  { icon: Handshake, title: "Close with one drag", body: "Move a deal to Closed and the flat turns sold on the building. No double entry, ever.", color: "var(--series-5)" },
+  { icon: Building2, title: "See the whole building", body: "Every tower, floor and flat drawn the way you see it. Vacant, listed, held, sold or rented — in colour, in a second.", art: TowerArt },
+  { icon: Target, title: "Match clients to flats", body: "Note a client's budget and size once. We show the flats that fit — and the clients who fit a flat.", art: MatchArt },
+  { icon: Clock, title: "Hold with a countdown", body: "Hold a flat for a client for 24 hours or a week. It returns to stock by itself when time runs out.", art: HoldArt },
+  { icon: CalendarDays, title: "Never miss a site visit", body: "Schedule visits against the exact flat. Today's visits and follow-ups sit on your home screen.", art: VisitArt },
+  { icon: Handshake, title: "Close with one drag", body: "Move a deal to Closed and the flat turns sold on the building. No double entry, ever.", art: CloseArt },
 ];
+/** Five dark panels side by side; the one you point at (or tap) opens wide, the rest fold into slim numbered strips. Stacks as rows on phones. */
 export function Benefits() {
+  const [active, setActive] = useState(2);
   return (
-    <Section eyebrow="Why realtors switch" title="Everything you need to sell property. Nothing you don't." subtitle="Most CRMs are built for software sales and make you learn them. CRM Wala speaks real estate and makes it obvious what to do next.">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
-        {BENEFITS.map((b, i) => (
-          <Reveal key={b.title} delay={i * 0.06} className={cn("lg:col-span-2", i >= 3 && "lg:col-span-3")}>
-            <Card hover className="h-full p-6">
-              <span className="mb-4 flex size-10 items-center justify-center rounded-xl" style={{ background: `color-mix(in srgb, ${b.color} 14%, transparent)`, color: b.color }}><b.icon className="size-5" /></span>
-              <h3 className="text-[17px] font-semibold tracking-tight">{b.title}</h3><p className="mt-1.5 text-[15px] text-fg-muted">{b.body}</p>
-            </Card>
-          </Reveal>
-        ))}
-      </div>
+    <Section id="why" index="01" eyebrow="Why realtors switch" title="Everything you need to sell property. Nothing you don't." subtitle="Most CRMs are built for software sales and make you learn them. CRM Wala speaks real estate and makes it obvious what to do next.">
+      <Reveal>
+        <div className="flex h-[600px] flex-col gap-2.5 md:h-[520px] md:flex-row">
+          {BENEFITS.map((b, i) => {
+            const on = i === active;
+            return (
+              <button key={b.title} type="button" aria-expanded={on} aria-label={`${b.title}. ${b.body}`}
+                onMouseEnter={() => setActive(i)} onFocus={() => setActive(i)} onClick={() => setActive(i)}
+                className="group relative min-h-0 min-w-0 basis-0 overflow-hidden rounded-[14px] border border-white/[0.06] bg-[#08080b] text-left transition-[flex-grow] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] focus-visible:outline-offset-4"
+                style={{ flexGrow: on ? 6 : 1 }}>
+                <div className={cn("absolute inset-0 transition-[opacity,filter,transform] duration-700", on ? "scale-100 opacity-100" : "scale-[1.04] opacity-50 saturate-[0.7] group-hover:opacity-70")}><b.art /></div>
+                <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-[#07070a] via-[#07070a]/80 to-transparent" />
+                <span className={cn("absolute left-4 top-[21px] text-[11px] font-semibold tabular tracking-wide transition-colors duration-500 md:top-4", on ? "text-white" : "text-white/55")}>{String(i + 1).padStart(2, "0")}</span>
+                {/* folded: a slim strip shows just the number and the icon (rows on phones also show the title) */}
+                <span className={cn("absolute left-12 top-[18px] text-[13px] font-medium text-white/70 transition-opacity duration-300 md:hidden", on && "opacity-0")}>{b.title}</span>
+                <b.icon className={cn("absolute right-4 top-5 size-4 text-white/60 transition-opacity duration-300 md:bottom-5 md:left-1/2 md:right-auto md:top-auto md:-translate-x-1/2", on && "opacity-0")} strokeWidth={1.6} />
+                {/* opened: caption and label fade in once the panel has room */}
+                <div className={cn("absolute inset-x-0 bottom-0 p-5 transition-all", on ? "translate-y-0 opacity-100 delay-300 duration-500" : "pointer-events-none translate-y-2 opacity-0 duration-200")}>
+                  <p className="mx-auto max-w-sm text-pretty text-center text-[13px] leading-relaxed text-[#9a9aa6] md:min-w-[300px]">{b.body}</p>
+                  <p className="mt-4 flex items-center gap-2.5 whitespace-nowrap text-[13px] font-medium text-[#c9c9d1]"><b.icon className="size-4 text-white/70" strokeWidth={1.6} />{b.title}</p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </Reveal>
     </Section>
   );
 }
@@ -105,7 +123,7 @@ function PreviewContact() {
 export function ProductPreview() {
   const [tab, setTab] = useState<"building" | "today" | "pipeline" | "customer">("building");
   return (
-    <Section id="product" tone="subtle" eyebrow="Product tour" title="Clear at a glance. Powerful when you need it." subtitle="Click through the product. The building comes first; the detail is one tap away.">
+    <Section id="product" index="02" tone="subtle" eyebrow="Product tour" title="Clear at a glance. Powerful when you need it." subtitle="Click through the product. The building comes first; the detail is one tap away.">
       <Reveal className="mx-auto max-w-4xl">
         <div className="mb-5 flex justify-center"><Segmented value={tab} onChange={setTab} options={[{ value: "building", label: "Building" }, { value: "today", label: "Today" }, { value: "pipeline", label: "Pipeline" }, { value: "customer", label: "Client" }]} /></div>
         <Window>
@@ -134,7 +152,7 @@ const FEATURES = [
 ] as const;
 export function Features() {
   return (
-    <Section id="features" eyebrow="Features" title="A complete real estate CRM, without the clutter" subtitle="Strong where it counts, quiet everywhere else.">
+    <Section id="features" index="03" eyebrow="Features" title="A complete real estate CRM, without the clutter" subtitle="Strong where it counts, quiet everywhere else.">
       <div className="grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
         {FEATURES.map(([I, t, b], i) => (
           <Reveal key={t} delay={(i % 3) * 0.06} className="flex gap-4">
