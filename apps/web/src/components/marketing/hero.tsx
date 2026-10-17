@@ -6,14 +6,16 @@ import { useState } from "react";
 import { Button } from "@crm/ui";
 import { BuildingHero } from "./building-preview";
 import { DemoDialog } from "./demo-dialog";
+import { DotField } from "./dot-field";
 import { Container } from "./primitives";
 
 export function Hero() {
   const [demo, setDemo] = useState(false);
   return (
-    <section className="relative overflow-hidden pb-16 pt-32 sm:pb-24 sm:pt-40">
+    <section className="relative isolate overflow-hidden pb-16 pt-32 sm:pb-24 sm:pt-40">
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[620px]" aria-hidden
         style={{ background: "radial-gradient(42% 38% at 50% 0%, rgba(70, 110, 240, 0.24), transparent 70%), radial-gradient(20% 18% at 50% 6%, rgba(160, 190, 255, 0.10), transparent 70%)" }} />
+      <DotField className="pointer-events-none absolute inset-0 -z-10 size-full [mask-image:linear-gradient(180deg,#000_55%,transparent)]" />
       <span aria-hidden className="orb pointer-events-none absolute right-[12%] top-28 hidden size-6 sm:block" />
       <span aria-hidden className="orb pointer-events-none absolute left-[9%] top-[46%] hidden size-3.5 opacity-80 sm:block" style={{ animationDelay: "-3s" }} />
       <Container>
