@@ -436,7 +436,7 @@ class UnitEvent(Base, UUIDPk, Tenant, Serializable):
     __tablename__ = "unit_events"
 
     unit_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("units.id", ondelete="CASCADE"), index=True)
-    type: Mapped[str] = mapped_column(String(20))  # created|status|note|visit
+    type: Mapped[str] = mapped_column(String(20))  # created|status|note|visit|whatsapp|compared|price
     from_status: Mapped[str | None] = mapped_column(String(15))
     to_status: Mapped[str | None] = mapped_column(String(15))
     note: Mapped[str | None] = mapped_column(String(500))
@@ -444,6 +444,27 @@ class UnitEvent(Base, UUIDPk, Tenant, Serializable):
     lead_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("leads.id", ondelete="SET NULL"))
     contact_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("contacts.id", ondelete="SET NULL"))
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=text("now()"), index=True)
+
+
+class PriceChange(Base, UUIDPk, Timestamps, Tenant, Serializable):
+    """A price suggestion the owner acted on: applied to a group of flats (with every flat's old and new price), dismissed, or later undone.
+    Applied changes are what the CRM watches afterwards to say whether sales sped up or slowed down."""
+
+    __tablename__ = "price_changes"
+
+    project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    tower_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("towers.id", ondelete="SET NULL"))
+    status: Mapped[str] = mapped_column(String(12), default="applied", server_default="applied", index=True)  # applied|dismissed|undone
+    rule: Mapped[str] = mapped_column(String(20))  # raise_hot|cut_cold
+    segment_key: Mapped[str] = mapped_column(String(200), index=True)
+    segment_label: Mapped[str] = mapped_column(String(200))
+    pct: Mapped[decimal.Decimal] = mapped_column(Numeric(6, 2))
+    headline: Mapped[str | None] = mapped_column(String(400))
+    evidence: Mapped[dict] = mapped_column(JSONB, default=dict, server_default=text("'{}'::jsonb"))
+    units: Mapped[list] = mapped_column(JSONB, default=list, server_default=text("'[]'::jsonb"))  # [{id, number, before, after}]
+    decided_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    undone_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    undone_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
 
 
 class WhatsAppMessage(Base, UUIDPk, Timestamps, Tenant, Related, Serializable):

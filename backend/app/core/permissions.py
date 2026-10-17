@@ -31,6 +31,8 @@ PERMISSIONS.update(
         "data.export": ("data", "Export data"),
         "reports.read": ("reports", "View reports"),
         "reports.manage": ("reports", "Save and schedule reports"),
+        "pricing.read": ("pricing", "See demand for flats and price suggestions"),
+        "pricing.apply": ("pricing", "Change flat prices from suggestions"),
         "ai.use": ("ai", "Use the AI assistant"),
         "integrations.manage": ("integrations", "Manage integrations"),
         "team.read": ("team", "View team members"),
@@ -70,7 +72,7 @@ SYSTEM_ROLES: dict[str, dict] = {
     "manager": {
         "name": "Manager", "rank": 60, "description": "Manage the team's pipeline, automations and reports.",
         "permissions": _rw(*_CORE, "pipelines", "automations")
-        + ["leads.convert", "deals.close", "data.import", "data.export", "reports.read", "reports.manage", "ai.use",
+        + ["leads.convert", "deals.close", "data.import", "data.export", "reports.read", "reports.manage", "pricing.read", "ai.use",
            "team.read", "integrations.manage", "phones.reveal"],
     },
     "sales_rep": {
