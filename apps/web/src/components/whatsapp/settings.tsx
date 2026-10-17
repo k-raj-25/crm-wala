@@ -8,7 +8,7 @@ import { useWaTemplates } from "./whatsapp";
 
 export type WaCreds = { phone_number_id: string; waba_id: string; access_token: string; app_secret: string };
 export type WaWebhook = { url: string; verify_token: string };
-type Settings = { account_label: string; webhook: WaWebhook; media_template: { name: string; language: string } | null };
+type Settings = { account_label: string; webhook: WaWebhook; media_template: { name: string; language: string } | null; recap_template: { name: string; language: string } | null };
 
 function CopyRow({ label, text }: { label: string; text: string }) {
   const [ok, setOk] = React.useState(false);
@@ -54,10 +54,12 @@ export function WhatsAppManage() {
   if (s.isLoading) return <Skeleton className="h-32 w-full" />;
   if (!s.data) return null;
   const media = (templates.data ?? []).filter((t) => (t.header === "DOCUMENT" || t.header === "IMAGE") && t.supported && t.body_params <= 2);
-  const current = s.data.media_template ? `${s.data.media_template.name}|${s.data.media_template.language}` : "";
-  const save = async (v: string) => {
+  const recapTemplates = (templates.data ?? []).filter((t) => (!t.header || t.header === "TEXT") && t.supported && t.body_params >= 1 && t.body_params <= 2);
+  const key = (t: { name: string; language: string } | null) => (t ? `${t.name}|${t.language}` : "");
+  const current = key(s.data.media_template);
+  const save = async (v: string, field: "media_template" | "recap_template" = "media_template") => {
     setBusy(true);
-    try { await api.patch("/api/v1/whatsapp/settings", { media_template: v || null }); qc.invalidateQueries({ queryKey: ["wa-settings"] }); toast.success("Saved"); }
+    try { await api.patch("/api/v1/whatsapp/settings", { [field]: v || null }); qc.invalidateQueries({ queryKey: ["wa-settings"] }); toast.success("Saved"); }
     catch (e) { toast.error("Couldn't save", (e as Error).message); } finally { setBusy(false); }
   };
   return (
@@ -67,6 +69,12 @@ export function WhatsAppManage() {
         <NativeSelect value={current} disabled={busy || templates.isLoading} onChange={(e) => save(e.target.value)}>
           <option value="">None: only send files after the client replies</option>
           {media.map((t) => <option key={`${t.name}|${t.language}`} value={`${t.name}|${t.language}`}>{t.name.replace(/_/g, " ")} ({t.language})</option>)}
+        </NativeSelect>
+      </Field>
+      <Field label="Visit recap template" hint="Used to send the visit recap link when the buyer hasn't written to you in 24 hours. Pick an approved text template with one or two placeholders: the client's first name, then the link. Without one, the recap opens in your own WhatsApp instead.">
+        <NativeSelect value={key(s.data.recap_template)} disabled={busy || templates.isLoading} onChange={(e) => save(e.target.value, "recap_template")}>
+          <option value="">None: open the recap in my WhatsApp</option>
+          {recapTemplates.map((t) => <option key={`${t.name}|${t.language}`} value={`${t.name}|${t.language}`}>{t.name.replace(/_/g, " ")} ({t.language})</option>)}
         </NativeSelect>
       </Field>
     </div>

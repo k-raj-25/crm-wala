@@ -464,3 +464,26 @@ class WhatsAppMessage(Base, UUIDPk, Timestamps, Tenant, Related, Serializable):
     wa_message_id: Mapped[str | None] = mapped_column(String(200))
     error: Mapped[str | None] = mapped_column(String(400))
     data: Mapped[dict] = mapped_column(JSONB, default=dict, server_default=text("'{}'::jsonb"))
+
+
+class VisitRecap(Base, UUIDPk, Timestamps, Tenant, Related, Serializable):
+    """What a buyer gets after a site visit: the flats they saw, the rep's photos, prices and a "hold this flat" button,
+    on a read-only page behind an unguessable link (no login, so the family can open it at home)."""
+
+    __tablename__ = "visit_recaps"
+    __hidden__ = ("token",)
+
+    meeting_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("meetings.id", ondelete="SET NULL"), index=True)
+    project_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("projects.id", ondelete="SET NULL"))
+    unit_ids: Mapped[list] = mapped_column(JSONB, default=list, server_default=text("'[]'::jsonb"))  # flats seen, in the order shown
+    photo_ids: Mapped[list] = mapped_column(JSONB, default=list, server_default=text("'[]'::jsonb"))  # image files the rep took
+    message: Mapped[str | None] = mapped_column(Text)
+    token: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    sent_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    sent_via: Mapped[str | None] = mapped_column(String(15))  # whatsapp|whatsapp_link|link
+    views: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    first_viewed_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    last_viewed_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    hold_requests: Mapped[list] = mapped_column(JSONB, default=list, server_default=text("'[]'::jsonb"))  # [{unit_id, at, name, note}]
+    revoked_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
