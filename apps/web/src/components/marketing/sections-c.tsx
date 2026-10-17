@@ -119,7 +119,7 @@ export function FinalCTA() {
     <section className="py-20 sm:py-28">
       <Container>
         <Reveal>
-          <div className="relative overflow-hidden rounded-[20px] border border-border bg-[#060609] px-6 pb-16 pt-32 text-center sm:px-16 sm:pt-36">
+          <div className="relative overflow-hidden glass rounded-[22px] border border-border bg-surface px-6 pb-16 pt-32 text-center sm:px-16 sm:pt-36">
             <div className="pointer-events-none absolute left-1/2 top-[-140px] size-[420px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(242,200,121,0.28),rgba(124,108,240,0.16)_42%,transparent_70%)] blur-2xl" aria-hidden />
             <div className="pointer-events-none absolute left-1/2 top-12 size-14 -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_40%_35%,#fffaf0,#ecd3a2_55%,#a2814f)] shadow-[0_0_70px_14px_rgba(243,194,122,0.3)]" aria-hidden />
             <h2 className="relative text-balance text-3xl font-semibold tracking-[-0.02em] sm:text-5xl">See your first tower in two minutes</h2>

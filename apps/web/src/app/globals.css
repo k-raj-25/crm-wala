@@ -74,10 +74,18 @@
 }
 
 /* ---- Landing page: "noir" glass ----------------------------------------------------------------------------------------- */
-/* The marketing page is always dark: deep night blue with one big blue bloom, frosted glass panels with soft hairline edges,
-   quiet grey type and white pill buttons, so the glowing artwork carries the colour. Wraps the page (and its dialogs) with
-   `.dark.noir`; the app keeps its own theme. */
+/* The marketing page follows the visitor's light/dark choice, like the app. Light: soft frosted periwinkle with ink pill buttons.
+   Dark: deep night blue with one big blue bloom and white pill buttons. Both use frosted glass panels with hairline edges.
+   `.noir` wraps the page and its dialogs; the gallery panels stay night-dark in both themes because their art is night scenes. */
 .noir {
+  --primary: #0c1024; --primary-hover: #000000; --primary-soft: rgba(12, 16, 36, 0.07); --primary-fg: #ffffff;
+  --ring: rgba(12, 16, 36, 0.25);
+  --display: rgba(42, 79, 214, 0.08);
+  --nav-idle: rgba(255, 255, 255, 0.45);
+  --accent: #5b45d6;
+  color: var(--fg);
+}
+.dark .noir {
   --bg: #03060e; --bg-subtle: rgba(255, 255, 255, 0.04);
   --surface: rgba(30, 40, 66, 0.36); --surface-2: rgba(30, 40, 66, 0.24); --surface-hover: rgba(255, 255, 255, 0.06);
   --surface-solid: #0b1120; --surface-pop: rgba(14, 20, 38, 0.82);
@@ -86,18 +94,28 @@
   --primary: #f4f5fa; --primary-hover: #ffffff; --primary-soft: rgba(255, 255, 255, 0.08); --primary-fg: #050914;
   --ring: rgba(255, 255, 255, 0.3);
   --display: rgba(110, 145, 255, 0.11);
+  --nav-idle: rgba(255, 255, 255, 0.04);
+  --accent: #b6a8ff;
   --grid: rgba(255, 255, 255, 0.06);
-  color: var(--fg);
 }
 /* the violet that runs through the artwork, for the few accents that should stay coloured */
-.noir .accent { color: #b6a8ff; }
-body:has(.noir) {
+.noir .accent { color: var(--accent); }
+.hero-gradient { background-image: linear-gradient(90deg, #2a4fd6, #6d4fe0 50%, #c27a1c); }
+.dark .hero-gradient { background-image: linear-gradient(90deg, #ece8ff, #b6a8ff 50%, #f2c879); }
+html.dark body:has(.noir) {
   background: #03060e;
   --glow:
     radial-gradient(55% 50% at 50% 62%, rgba(32, 76, 205, 0.5), transparent 72%),
     radial-gradient(35% 30% at 18% 8%, rgba(45, 85, 210, 0.2), transparent 70%),
     radial-gradient(28% 26% at 88% 30%, rgba(70, 110, 245, 0.14), transparent 70%),
     linear-gradient(180deg, #02040b 0%, #050b1c 100%);
+}
+html:not(.dark) body:has(.noir) {
+  --glow:
+    radial-gradient(55% 50% at 50% 62%, rgba(80, 125, 255, 0.3), transparent 72%),
+    radial-gradient(35% 30% at 15% 6%, rgba(150, 130, 255, 0.24), transparent 70%),
+    radial-gradient(30% 28% at 88% 28%, rgba(70, 170, 255, 0.2), transparent 70%),
+    linear-gradient(180deg, #f3f5fc 0%, #e8ecf8 100%);
 }
 /* a small glowing glass orb, like the one floating in the reference */
 .orb { border-radius: 9999px; background: radial-gradient(circle at 32% 30%, #9cc0ff 0%, #3b6cf0 38%, #1a3aa8 70%, #0b1c5c 100%); box-shadow: 0 0 40px 6px rgba(59, 108, 240, 0.45), inset -4px -6px 12px rgba(0, 0, 0, 0.35); }

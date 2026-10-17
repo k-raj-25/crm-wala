@@ -2,7 +2,7 @@
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Button, Logo, cn } from "@crm/ui";
+import { Button, Logo, ThemeToggle, cn } from "@crm/ui";
 import { Container } from "./primitives";
 
 const LINKS = [["Building view", "#product"], ["Features", "#features"], ["AI", "#ai"], ["Automation", "#automation"], ["Pricing", "#pricing"], ["FAQ", "#faq"]];
@@ -17,12 +17,13 @@ export function Nav() {
   }, []);
   return (
     <header className="fixed inset-x-0 top-3 z-40 px-3 sm:top-4">
-      <div className={cn("glass mx-auto flex h-14 max-w-5xl items-center justify-between rounded-full border border-border pl-5 pr-2 transition-[background-color,box-shadow] duration-200", scrolled || open ? "bg-[var(--surface-pop)] shadow-lg" : "bg-white/[0.04] shadow-sm")}>
+      <div className={cn("glass mx-auto flex h-14 max-w-5xl items-center justify-between rounded-full border border-border pl-5 pr-2 transition-[background-color,box-shadow] duration-200", scrolled || open ? "bg-[var(--surface-pop)] shadow-lg" : "bg-[var(--nav-idle)] shadow-sm")}>
         <Link href="/" aria-label="CRM Wala home"><Logo /></Link>
         <nav className="hidden items-center gap-1 md:flex" aria-label="Primary">
-          {LINKS.map(([l, h]) => <a key={h} href={h} className="rounded-full px-3 py-1.5 text-[13px] font-medium text-fg-muted transition-colors hover:bg-white/[0.06] hover:text-fg">{l}</a>)}
+          {LINKS.map(([l, h]) => <a key={h} href={h} className="rounded-full px-3 py-1.5 text-[13px] font-medium text-fg-muted transition-colors hover:bg-surface-hover hover:text-fg">{l}</a>)}
         </nav>
         <div className="flex items-center gap-1.5">
+          <ThemeToggle />
           <Button asChild variant="ghost" className="hidden sm:inline-flex"><Link href="/login">Sign in</Link></Button>
           <Button asChild className="hidden sm:inline-flex"><Link href="/signup">Start free trial</Link></Button>
           <Button variant="ghost" size="icon" className="md:hidden" aria-label="Menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>{open ? <X /> : <Menu />}</Button>

@@ -18,12 +18,12 @@ export function Hero() {
       <span aria-hidden className="orb pointer-events-none absolute left-[9%] top-[46%] hidden size-3.5 opacity-80 sm:block" style={{ animationDelay: "-3s" }} />
       <Container>
         <div className="mx-auto max-w-3xl text-center">
-          <motion.a href="#ai" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mb-7 inline-flex items-center gap-2 rounded-full glass border border-border bg-white/[0.05] px-3.5 py-1.5 text-[12px] font-medium text-fg-muted transition-colors hover:border-border-strong hover:text-fg">
+          <motion.a href="#ai" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mb-7 inline-flex items-center gap-2 rounded-full glass border border-border bg-[var(--nav-idle)] px-3.5 py-1.5 text-[12px] font-medium text-fg-muted transition-colors hover:border-border-strong hover:text-fg">
             <Sparkles className="accent size-3.5" /> Built only for real estate — no more bloated CRMs <ArrowRight className="size-3.5" />
           </motion.a>
           <motion.h1 initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05, duration: 0.6 }} className="text-balance text-[40px] font-semibold leading-[1.04] tracking-[-0.035em] sm:text-[68px]">
             See every flat you sell.{" "}
-            <span className="bg-gradient-to-r from-[#ece8ff] via-[#b6a8ff] to-[#f2c879] bg-clip-text text-transparent">In one glance.</span>
+            <span className="hero-gradient bg-clip-text text-transparent">In one glance.</span>
           </motion.h1>
           <motion.p initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12, duration: 0.6 }} className="mx-auto mt-6 max-w-xl text-pretty text-base leading-relaxed text-fg-muted sm:text-lg">
             The CRM for realtors who are tired of complicated CRMs. Look at the building, see what is vacant, held, sold or rented, and get on with the call. No filters, no spreadsheets.
