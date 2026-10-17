@@ -44,7 +44,7 @@ services:
     build: ./backend
     environment: *api-env
     depends_on: { postgres: { condition: service_healthy } }
-    command: ["sh", "-c", "flask db upgrade && flask seed-platform"]
+    command: ["sh", "-c", "flask db upgrade heads && flask seed-platform"]
   api:
     build: ./backend
     environment: *api-env

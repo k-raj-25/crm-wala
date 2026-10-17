@@ -396,6 +396,12 @@ def _receive(i: Integration, m: dict, profile_name: str | None) -> bool:
     found = find_record(ws_id, phone)
     created_lead = False
     if found is None:
+        from app.services import family
+
+        when = dt.datetime.fromtimestamp(int(m["timestamp"]), dt.timezone.utc) if str(m.get("timestamp", "")).isdigit() else utcnow()
+        if family.receive(ws_id, phone, kind, text, wamid, m, profile_name, when):  # a buyer's family member, not a new lead
+            return True
+    if found is None:
         from app.services import audit
 
         # Never put the number in the name: names are shown to everyone, numbers only to those allowed to see them.

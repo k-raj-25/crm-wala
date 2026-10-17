@@ -10,6 +10,7 @@ import { INDUSTRIES, COMPANY_SIZES } from "@/lib/constants";
 import { useAccess, useMe, useRoles, keys } from "@/lib/queries";
 import type { Me, Member, Role } from "@/lib/types";
 import { Divided, FieldRow, SettingsSection } from "./ui";
+import { ExchangeRates } from "../family/family";
 
 export function WorkspaceSettings() {
   const { data: me } = useMe(); const qc = useQueryClient(); const toast = useToast(); const { can } = useAccess(); const w = me?.workspace;
@@ -34,6 +35,7 @@ export function WorkspaceSettings() {
         <FieldRow label="Brand color"><div className="flex items-center gap-3"><input type="color" value={f.brand_color} onChange={(e) => setF({ ...f, brand_color: e.target.value })} disabled={ro} className="size-9 cursor-pointer rounded-md border border-border bg-surface p-1" aria-label="Brand color" /><code className="text-xs text-fg-muted">{f.brand_color}</code></div></FieldRow></Divided>
         <p className="mt-2 text-xs text-fg-subtle">Save changes above to apply branding.</p></SettingsSection>
       <PhonePrivacy />
+      <ExchangeRates />
       {me?.role?.key === "owner" && <SettingsSection title="Danger zone" description="These actions are permanent."><div className="flex items-center justify-between gap-4"><div><p className="text-sm font-medium">Delete this workspace</p><p className="text-xs text-fg-muted">Everyone loses access. Export your data first from Data settings.</p></div><Button variant="danger-soft" onClick={() => setDel(true)}>Delete workspace</Button></div></SettingsSection>}
       <ConfirmDialog open={del} onOpenChange={setDel} title="Delete workspace?" typeToConfirm={w.name} confirmLabel="Delete workspace" description="All members will lose access. The data is retained for a short recovery window, then purged." onConfirm={async () => { await api.raw("DELETE", "/api/v1/workspace", { confirm_name: w.name }).then(async (r) => { if (!r.ok) throw new Error((await r.json()).error?.message); }); window.location.href = "/login"; }} />
     </div>

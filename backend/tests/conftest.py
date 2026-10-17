@@ -17,7 +17,7 @@ def app():
 
         db.session.execute(text("DROP SCHEMA public CASCADE; CREATE SCHEMA public;"))
         db.session.commit()
-        upgrade(directory="migrations")
+        upgrade(directory="migrations", revision="heads")
         from app.core.tenant import bypass_scope
 
         with bypass_scope():

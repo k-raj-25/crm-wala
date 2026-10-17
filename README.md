@@ -18,7 +18,7 @@ If you run Postgres in Docker for local development, use the volume-backed file 
 ```powershell
 docker rm -f crm-pg                                  # remove any old container started without a volume
 docker compose -f docker-compose.dev.yml up -d       # Postgres + Redis with persistent volumes
-cd backend; flask db upgrade; flask seed-demo        # one-time: create tables and (optionally) demo data
+cd backend; flask db upgrade heads; flask seed-demo        # one-time: create tables and (optionally) demo data
 ```
 
 After that, restarting the apps, Docker or your PC keeps your accounts and data. Never run `docker compose down -v` unless you want to erase everything.

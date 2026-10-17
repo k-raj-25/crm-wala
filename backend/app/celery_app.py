@@ -14,6 +14,7 @@ celery.conf.update(
         "billing-lifecycle": {"task": "jobs.billing_lifecycle", "schedule": crontab(minute="*/10")},
         "resume-automations": {"task": "jobs.resume_automations", "schedule": crontab(minute="*")},
         "send-scheduled-emails": {"task": "jobs.send_scheduled_emails", "schedule": crontab(minute="*")},
+        "send-family-messages": {"task": "jobs.send_family_messages", "schedule": crontab(minute="*")},
         "reminders": {"task": "jobs.send_reminders", "schedule": crontab(minute="*/5")},
         "scheduled-reports": {"task": "jobs.send_scheduled_reports", "schedule": crontab(minute=5, hour="*")},
         "release-expired-holds": {"task": "jobs.release_expired_holds", "schedule": crontab(minute="*/10")},
