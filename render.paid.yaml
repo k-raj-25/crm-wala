@@ -25,7 +25,7 @@ services:
     rootDir: backend
     buildCommand: pip install -r requirements.txt
     # Idempotent: applies migrations, then creates any missing plans/roles/flags/templates (never overwrites admin edits).
-    startCommand: flask db upgrade && flask seed-platform && gunicorn -c gunicorn.conf.py wsgi:app
+    startCommand: flask db upgrade heads && flask seed-platform && gunicorn -c gunicorn.conf.py wsgi:app
     envVars:
       - fromGroup: crm-shared
       - key: DATABASE_URL        # references to other resources can't live in an env group, so they are set per service

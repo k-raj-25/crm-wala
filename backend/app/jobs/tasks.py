@@ -95,6 +95,14 @@ def send_scheduled_emails():
     return {"sent": sent}
 
 
+@job("send_family_messages")
+def send_family_messages():
+    """WhatsApp messages to buyers' family members that were held until morning where they live."""
+    from app.services import family
+
+    return family.send_due()
+
+
 @job("send_reminders")
 def send_reminders():
     """Meeting reminders (30 min before) and task-due reminders (when due within the hour)."""

@@ -10,6 +10,8 @@ CUSTOMER_MODULES = [
     "interactions", "comparisons", "activity", "analytics", "billing", "data", "automations", "integrations", "whatsapp", "ai", "public", "internal",
 ]
 
+CUSTOMER_MODULES.append("family")  # family members and NRI mode, plus the members' own pages under /api/v1/public/family/
+
 
 def register_blueprints(app: Flask) -> None:
     from flask import Blueprint

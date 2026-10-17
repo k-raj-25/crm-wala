@@ -4,7 +4,7 @@ help: ## list targets
 install: ## install JS + Python deps
 	npm install && cd backend && python -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt
 migrate: ## apply DB migrations and platform defaults (plans, flags, email templates)
-	cd backend && . .venv/bin/activate && FLASK_APP=wsgi.py flask db upgrade && FLASK_APP=wsgi.py flask seed-platform
+	cd backend && . .venv/bin/activate && FLASK_APP=wsgi.py flask db upgrade heads && FLASK_APP=wsgi.py flask seed-platform
 seed: ## demo workspace + synthetic customers for the admin dashboards (dev only)
 	cd backend && . .venv/bin/activate && FLASK_APP=wsgi.py flask seed-demo --reset && FLASK_APP=wsgi.py flask seed-sample
 api: ## dev API on :5000

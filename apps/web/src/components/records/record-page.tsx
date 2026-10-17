@@ -23,6 +23,7 @@ import { InlineField } from "./inline-field";
 import { PhoneField, isMasked } from "./phone-field";
 import { CallsTab, ContactsTab, DealsTab, EmailsTab, FilesTab, MeetingsTab, NotesTab, TasksTab, type Scope } from "./related";
 import { Timeline } from "./timeline";
+import { FamilyTab } from "../family/family";
 import { WA_GREEN, WhatsAppTab } from "../whatsapp/whatsapp";
 import { ScorePill } from "../list/cells";
 
@@ -113,6 +114,8 @@ export function RecordPage({ entity }: { entity: Entity }) {
   const wa = (entity === "lead" || entity === "contact") && has("whatsapp_integration");
   const tabs: [string, string][] = [["overview", "Activity"], ["notes", "Notes"], ["tasks", "Tasks"], ["emails", "Emails"], ["calls", "Calls"], ["meetings", "Site visits"], ...(wa ? [["whatsapp", "WhatsApp"] as [string, string]] : []), ...(entity === "contact" || entity === "company" ? [["deals", "Deals"] as [string, string]] : []), ...(entity === "company" ? [["contacts", "Contacts"] as [string, string]] : []), ["files", "Files"]];
 
+  if (entity !== "company") tabs.splice(tabs.findIndex(([k]) => k === "files"), 0, ["family", "Family"]); // the people who decide with the buyer
+
   return (
     <PageContainer wide>
       <Link href={`/app/${plural}`} className="mb-4 inline-flex items-center gap-1.5 text-[13px] font-medium text-fg-muted hover:text-fg"><ArrowLeft className="size-3.5" /> {label(plural)}</Link>
@@ -162,6 +165,7 @@ export function RecordPage({ entity }: { entity: Entity }) {
               <TabsContent value="tasks"><TasksTab scope={scope} /></TabsContent>
               <TabsContent value="emails"><EmailsTab scope={scope} defaults={composeDefaults} /></TabsContent>
               <TabsContent value="calls"><CallsTab scope={scope} /></TabsContent>
+              {entity !== "company" && <TabsContent value="family"><FamilyTab record={{ entity: entity as "lead" | "contact" | "deal", id }} /></TabsContent>}
               <TabsContent value="meetings"><MeetingsTab scope={scope} /></TabsContent>
               {wa && <TabsContent value="whatsapp"><WhatsAppTab entity={entity as "lead" | "contact"} id={id} firstName={rec.first_name as string} /></TabsContent>}
               {(entity === "contact" || entity === "company") && <TabsContent value="deals"><DealsTab scope={scope} /></TabsContent>}

@@ -31,7 +31,7 @@ function Ticks({ m }: { m: WaMessage }) {
 }
 
 /** Template picker with one input per {{n}} placeholder and a live preview. */
-function TemplateComposer({ templates, defaults, onSend, busy }: { templates: WaTemplate[]; defaults: string[]; onSend: (t: WaTemplate, params: string[]) => void; busy: boolean }) {
+export function TemplateComposer({ templates, defaults, onSend, busy }: { templates: WaTemplate[]; defaults: string[]; onSend: (t: WaTemplate, params: string[]) => void; busy: boolean }) {
   const usable = templates.filter((t) => t.supported && (!t.header || t.header === "TEXT"));
   const [key, setKey] = React.useState("");
   const t = usable.find((x) => templateKey(x) === key);
