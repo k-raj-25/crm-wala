@@ -166,6 +166,10 @@
 .dark .lg-on { --surface: rgba(32, 42, 68, 0.24); --surface-2: rgba(32, 42, 68, 0.16); --surface-pop: rgba(18, 25, 44, 0.58); --glass-btn: rgba(255, 255, 255, 0.1); }
 .glass, .glass-pop { -webkit-backdrop-filter: blur(var(--glass-blur, 22px)) saturate(170%); backdrop-filter: blur(var(--glass-blur, 22px)) saturate(170%); }
 .glass-pop { background-color: var(--surface-pop); }
+/* Refracting glass draws its filter on a pseudo-element that exactly fills it. On the element itself, Chromium would anchor
+   the filter at the edge of the drop shadow, and where that anchor sits differs between Chrome versions. */
+.lg-on { -webkit-backdrop-filter: none; backdrop-filter: none; isolation: isolate; }
+.lg-on::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; -webkit-backdrop-filter: var(--lg-filter); backdrop-filter: var(--lg-filter); }
 /* a huge faint word behind a heading, like a watermark */
 .display-word { color: var(--display); font-weight: 700; letter-spacing: -0.05em; line-height: 0.85; white-space: nowrap; pointer-events: none; user-select: none; }
 .hide-scrollbar { scrollbar-width: none; } .hide-scrollbar::-webkit-scrollbar { display: none; }

@@ -1,7 +1,8 @@
 "use client";
 import * as React from "react";
 
-/* Liquid glass refraction. Every floating `.glass` / `.glass-pop` element gets its own SVG displacement filter as its backdrop-filter,
+/* Liquid glass refraction. Every floating `.glass` / `.glass-pop` element gets an SVG displacement filter as its backdrop-filter
+   (drawn on its `::before`, see `.lg-on` in styles.css),
    so whatever sits behind it bends like light through a water droplet: strongly pulled and magnified in a band along the
    rounded edge, with a slight lens magnification in the middle. Red, green and blue are displaced by slightly different
    amounts, so the edges fringe with colour. `.glass` stays fairly clear, while `.glass-pop` (menus, dialogs) is frosted over.
@@ -58,11 +59,11 @@ function el<K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<string, 
   const n = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, String(v)); parent?.appendChild(n); return n;
 }
 
-function buildFilter(id: string, w: number, h: number, radius: number, frost: boolean, blur: number, ox: number, oy: number) {
+function buildFilter(id: string, w: number, h: number, radius: number, frost: boolean, blur: number) {
   const band = Math.max(6, Math.min(30, Math.min(w, h) * 0.34));
   const shift = Math.min(band * 1.1, 28);
-  const f = el("filter", { id, x: -ox - PAD, y: -oy - PAD, width: w + 2 * PAD, height: h + 2 * PAD, filterUnits: "userSpaceOnUse", primitiveUnits: "userSpaceOnUse", "color-interpolation-filters": "sRGB" });
-  el("feImage", { href: makeMap(w, h, radius, band, shift), x: -ox - PAD, y: -oy - PAD, width: w + 2 * PAD, height: h + 2 * PAD, preserveAspectRatio: "none", result: "map" }, f);
+  const f = el("filter", { id, x: -PAD, y: -PAD, width: w + 2 * PAD, height: h + 2 * PAD, filterUnits: "userSpaceOnUse", primitiveUnits: "userSpaceOnUse", "color-interpolation-filters": "sRGB" });
+  el("feImage", { href: makeMap(w, h, radius, band, shift), x: -PAD, y: -PAD, width: w + 2 * PAD, height: h + 2 * PAD, preserveAspectRatio: "none", result: "map" }, f);
   // one displacement per colour channel, each a touch weaker: the colour fringe along the rim
   const channels: [string, number, string][] = [["r", 2 * shift, "1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0"], ["g", 2 * shift * 0.96, "0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0"], ["b", 2 * shift * 0.92, "0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0"]];
   for (const [c, scale, m] of channels) {
@@ -85,29 +86,6 @@ function floats(node: HTMLElement) {
   return false;
 }
 
-/* Chromium places a backdrop filter's user space at the top-left of the element's visual overflow, not its border box, so a
-   drop shadow or a child sticking out would shift the map off the element. Measure that overflow (box shadows reach about
-   1.5x their blur) and offset the filter by it. */
-function inkOffset(node: HTMLElement) {
-  let left = 0, top = 0;
-  const cs = getComputedStyle(node);
-  for (const part of cs.boxShadow === "none" ? [] : cs.boxShadow.split(/,(?![^(]*\))/)) {
-    if (/inset/.test(part)) continue;
-    const n = (part.replace(/rgba?\([^)]*\)|#[0-9a-f]+/gi, "").match(/-?[\d.]+px/g) ?? []).map(parseFloat);
-    const [x = 0, y = 0, blur = 0, spread = 0] = n;
-    left = Math.max(left, blur * 1.5 + spread - x); top = Math.max(top, blur * 1.5 + spread - y);
-  }
-  if (cs.overflow === "visible") {
-    const box = node.getBoundingClientRect();
-    const walk = document.createTreeWalker(node, NodeFilter.SHOW_ELEMENT, { acceptNode: (e) => (getComputedStyle(e as Element).overflow !== "visible" ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT) });
-    for (let i = 0, e = walk.nextNode() as Element | null; e && i < 600; i++, e = walk.nextNode() as Element | null) {
-      const r = e.getBoundingClientRect(); if (!r.width && !r.height) continue;
-      left = Math.max(left, box.left - r.left); top = Math.max(top, box.top - r.top);
-    }
-  }
-  return [Math.max(0, Math.round(left)), Math.max(0, Math.round(top))];
-}
-
 export function LiquidGlass() {
   const svgRef = React.useRef<SVGSVGElement>(null);
   React.useEffect(() => {
@@ -117,28 +95,38 @@ export function LiquidGlass() {
     const current = new WeakMap<Element, string>();
     let seq = 0;
 
+    const off = (node: HTMLElement) => {
+      node.classList.remove("lg-on"); node.style.removeProperty("--lg-filter");
+      if (node.dataset.lgPos !== undefined) { node.style.removeProperty("position"); delete node.dataset.lgPos; }
+    };
     const release = (key: string | undefined) => {
       if (!key) return; const e = cache.get(key); if (!e) return;
       e.refs--;
       if (e.refs <= 0 && cache.size > MAX_FILTERS) { e.node.remove(); cache.delete(key); }
     };
     const apply = (node: HTMLElement) => {
-      const w = node.offsetWidth, h = node.offsetHeight;
-      if (w < 8 || h < 8) return;
-      if (!floats(node)) { release(current.get(node)); current.delete(node); if (node.classList.contains("lg-on")) { node.style.removeProperty("backdrop-filter"); node.classList.remove("lg-on"); } return; }
-      const bw = Math.round(w / BUCKET) * BUCKET || BUCKET, bh = Math.round(h / BUCKET) * BUCKET || BUCKET;
       const cs = getComputedStyle(node);
-      const radius = Math.min(parseFloat(cs.borderTopLeftRadius) || 0, bw / 2, bh / 2);
+      // the filter fills the padding box (inside the border), see `.lg-on::before` in styles.css
+      const bl = parseFloat(cs.borderLeftWidth) || 0, bt = parseFloat(cs.borderTopWidth) || 0;
+      const w = node.offsetWidth - bl - (parseFloat(cs.borderRightWidth) || 0), h = node.offsetHeight - bt - (parseFloat(cs.borderBottomWidth) || 0);
+      if (w < 8 || h < 8) return;
+      if (!floats(node)) { release(current.get(node)); current.delete(node); if (node.classList.contains("lg-on")) off(node); return; }
+      const bw = Math.round(w / BUCKET) * BUCKET || BUCKET, bh = Math.round(h / BUCKET) * BUCKET || BUCKET;
+      const radius = Math.min(Math.max(0, (parseFloat(cs.borderTopLeftRadius) || 0) - Math.max(bl, bt)), bw / 2, bh / 2);
       const frost = node.classList.contains("glass-pop");
       // `--lg-blur` lets a panel that carries text over busy content (the landing nav) frost a little more
       const blur = parseFloat(cs.getPropertyValue("--lg-blur")) || (frost ? 9 : 2.5);
-      const [ox, oy] = inkOffset(node);
-      const key = `${bw}x${bh}r${Math.round(radius)}${frost ? "f" : "c"}b${blur}o${ox},${oy}`;
+      const key = `${bw}x${bh}r${Math.round(radius)}${frost ? "f" : "c"}b${blur}`;
       if (current.get(node) === key) return;
       let e = cache.get(key);
-      if (!e) { const id = `lg-${++seq}`; e = { id, refs: 0, node: buildFilter(id, bw, bh, radius, frost, blur, ox, oy) }; defs.appendChild(e.node); cache.set(key, e); }
+      if (!e) { const id = `lg-${++seq}`; e = { id, refs: 0, node: buildFilter(id, bw, bh, radius, frost, blur) }; defs.appendChild(e.node); cache.set(key, e); }
       e.refs++; release(current.get(node)); current.set(node, key);
-      node.style.setProperty("backdrop-filter", `url(#${e.id})`); if (!node.classList.contains("lg-on")) node.classList.add("lg-on");
+      node.style.setProperty("--lg-filter", `url(#${e.id})`);
+      if (!node.classList.contains("lg-on")) {
+        // the filter's pseudo-element is absolutely placed, so the panel must be positioned
+        if (cs.position === "static") { node.style.position = "relative"; node.dataset.lgPos = ""; }
+        node.classList.add("lg-on");
+      }
     };
 
     const pending = new Set<HTMLElement>(); let raf = 0;
@@ -156,10 +144,7 @@ export function LiquidGlass() {
       }
     });
     mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
-    // a hover that grows a shadow changes the overflow too, so re-measure when a shadow transition ends
-    const onTransition = (e: TransitionEvent) => { const t = e.target as HTMLElement; if ((e.propertyName === "box-shadow" || e.propertyName === "all") && t.matches?.(".glass, .glass-pop")) queue(t); };
-    document.addEventListener("transitionend", onTransition);
-    return () => { document.removeEventListener("transitionend", onTransition); mo.disconnect(); ro.disconnect(); cancelAnimationFrame(raf); };
+    return () => { mo.disconnect(); ro.disconnect(); cancelAnimationFrame(raf); };
   }, []);
   return <svg ref={svgRef} aria-hidden width="0" height="0" style={{ position: "absolute", width: 0, height: 0, pointerEvents: "none" }}><defs /></svg>;
 }
