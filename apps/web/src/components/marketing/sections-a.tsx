@@ -9,7 +9,7 @@ import { Container, Reveal, Section, Window } from "./primitives";
 export function TrustedBy() {
   const names = ["Independent agents", "Brokerage teams", "Channel partners", "Developer sales desks", "Rental specialists", "Property consultants"];
   return (
-    <section className="border-y border-border bg-surface/50 py-10" aria-label="Who it's for">
+    <section className="glass border-y border-border bg-surface/50 py-10" aria-label="Who it's for">
       <Container>
         <p className="mb-6 text-center text-sm font-medium text-fg-subtle">Made for people who sell and rent property</p>
         <div className="grid grid-cols-2 items-center gap-x-8 gap-y-4 text-center sm:grid-cols-3 lg:grid-cols-6">
@@ -31,7 +31,7 @@ const BENEFITS = [
 export function Benefits() {
   const [active, setActive] = useState(2);
   return (
-    <Section id="why" index="01" eyebrow="Why realtors switch" title="Everything you need to sell property. Nothing you don't." subtitle="Most CRMs are built for software sales and make you learn them. CRM Wala speaks real estate and makes it obvious what to do next.">
+    <Section display="Switch" id="why" index="01" eyebrow="Why realtors switch" title="Everything you need to sell property. Nothing you don't." subtitle="Most CRMs are built for software sales and make you learn them. CRM Wala speaks real estate and makes it obvious what to do next.">
       <Reveal>
         <div className="flex h-[600px] flex-col gap-2.5 md:h-[520px] md:flex-row">
           {BENEFITS.map((b, i) => {
@@ -39,10 +39,10 @@ export function Benefits() {
             return (
               <button key={b.title} type="button" aria-expanded={on} aria-label={`${b.title}. ${b.body}`}
                 onMouseEnter={() => setActive(i)} onFocus={() => setActive(i)} onClick={() => setActive(i)}
-                className="group relative min-h-0 min-w-0 basis-0 overflow-hidden rounded-[14px] border border-white/[0.06] bg-[#08080b] text-left transition-[flex-grow] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] focus-visible:outline-offset-4"
+                className="group relative min-h-0 min-w-0 basis-0 overflow-hidden rounded-[18px] border border-white/[0.09] bg-[#070c19] text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-[flex-grow] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] focus-visible:outline-offset-4"
                 style={{ flexGrow: on ? 6 : 1 }}>
                 <div className={cn("absolute inset-0 transition-[opacity,filter,transform] duration-700", on ? "scale-100 opacity-100" : "scale-[1.04] opacity-50 saturate-[0.7] group-hover:opacity-70")}><b.art /></div>
-                <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-[#07070a] via-[#07070a]/80 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-[#060a16] via-[#060a16]/80 to-transparent" />
                 <span className={cn("absolute left-4 top-[21px] text-[11px] font-semibold tabular tracking-wide transition-colors duration-500 md:top-4", on ? "text-white" : "text-white/55")}>{String(i + 1).padStart(2, "0")}</span>
                 {/* folded: a slim strip shows just the number and the icon (rows on phones also show the title) */}
                 <span className={cn("absolute left-12 top-[18px] text-[13px] font-medium text-white/70 transition-opacity duration-300 md:hidden", on && "opacity-0")}>{b.title}</span>
@@ -123,7 +123,7 @@ function PreviewContact() {
 export function ProductPreview() {
   const [tab, setTab] = useState<"building" | "today" | "pipeline" | "customer">("building");
   return (
-    <Section id="product" index="02" tone="subtle" eyebrow="Product tour" title="Clear at a glance. Powerful when you need it." subtitle="Click through the product. The building comes first; the detail is one tap away.">
+    <Section display="Tour" id="product" index="02" tone="subtle" eyebrow="Product tour" title="Clear at a glance. Powerful when you need it." subtitle="Click through the product. The building comes first; the detail is one tap away.">
       <Reveal className="mx-auto max-w-4xl">
         <div className="mb-5 flex justify-center"><Segmented value={tab} onChange={setTab} options={[{ value: "building", label: "Building" }, { value: "today", label: "Today" }, { value: "pipeline", label: "Pipeline" }, { value: "customer", label: "Client" }]} /></div>
         <Window>
@@ -152,7 +152,7 @@ const FEATURES = [
 ] as const;
 export function Features() {
   return (
-    <Section id="features" index="03" eyebrow="Features" title="A complete real estate CRM, without the clutter" subtitle="Strong where it counts, quiet everywhere else.">
+    <Section display="Features" id="features" index="03" eyebrow="Features" title="A complete real estate CRM, without the clutter" subtitle="Strong where it counts, quiet everywhere else.">
       <div className="grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
         {FEATURES.map(([I, t, b], i) => (
           <Reveal key={t} delay={(i % 3) * 0.06} className="flex gap-4">

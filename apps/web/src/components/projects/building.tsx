@@ -282,7 +282,7 @@ export function BuildingView({ data, spot, onOpen, flashFloor, registerFloor, pi
       <AnimatePresence>
         {hover && (
           <motion.div key="hc" initial={{ opacity: 0, y: 6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, transition: { duration: 0.08 } }} transition={{ type: "spring", stiffness: 500, damping: 34 }}
-            className="pointer-events-none absolute z-30 w-[236px] rounded-xl border border-border bg-surface p-3.5 shadow-lg"
+            className="pointer-events-none absolute z-30 glass-pop w-[236px] rounded-xl border border-border p-3.5 shadow-lg"
             style={{ left: Math.min(Math.max(hover.x - 118, 4), Math.max(hover.w - 240, 4)), top: Math.max(hover.y - 8, 0), transform: "translateY(-100%)" }}>
             <HoverCard u={hover.u} hint={picked ? (picked.has(hover.u.id) ? "Click to remove from comparison" : "Click to add to comparison") : "Click to open"} />
           </motion.div>

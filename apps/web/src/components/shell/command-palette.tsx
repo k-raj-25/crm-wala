@@ -41,7 +41,7 @@ export function CommandPalette() {
     <D.Root open={ui.command} onOpenChange={ui.setCommand}>
       <D.Portal>
         <D.Overlay className="anim-overlay fixed inset-0 z-[110] bg-[var(--overlay)] backdrop-blur-[2px]" />
-        <D.Content aria-label="Command palette" className="anim-pop fixed left-1/2 top-[12vh] z-[111] w-[calc(100vw-24px)] max-w-[640px] -translate-x-1/2 overflow-hidden rounded-xl border border-border bg-surface shadow-lg focus:outline-none">
+        <D.Content aria-label="Command palette" className="anim-pop fixed left-1/2 top-[12vh] z-[111] w-[calc(100vw-24px)] max-w-[640px] -translate-x-1/2 glass-pop overflow-hidden rounded-xl border border-border shadow-lg focus:outline-none">
           <D.Title className="sr-only">Command palette</D.Title><D.Description className="sr-only">Search records or run a command</D.Description>
           <Command shouldFilter={false} loop>
             <div className="flex items-center gap-3 border-b border-border px-4">

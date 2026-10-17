@@ -9,7 +9,7 @@ import { Container, Reveal, Section } from "./primitives";
 const INTEGRATIONS = [["Gmail", "#ea4335"], ["Outlook", "#0a64c8"], ["Google Calendar", "#4285f4"], ["Slack", "#611f69"], ["Microsoft Teams", "#5b5fc7"], ["WhatsApp", "#25d366"], ["Zoom", "#2d8cff"], ["Stripe", "#635bff"], ["Razorpay", "#0c2451"], ["Zapier", "#ff4a00"], ["Webhooks", "#475569"], ["Google Sheets", "#0f9d58"]];
 export function Integrations() {
   return (
-    <Section id="integrations" index="07" tone="subtle" eyebrow="Integrations" title="Plays well with the tools you already use" subtitle="Connect email, calendar, chat and payments — or build your own with signed webhooks.">
+    <Section display="Connect" id="integrations" index="07" tone="subtle" eyebrow="Integrations" title="Plays well with the tools you already use" subtitle="Connect email, calendar, chat and payments — or build your own with signed webhooks.">
       <div className="mx-auto grid max-w-4xl grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {INTEGRATIONS.map(([n, c], i) => (
           <Reveal key={n} delay={(i % 4) * 0.05}>
@@ -28,7 +28,7 @@ const QUOTES = [
 ];
 export function Testimonials() {
   return (
-    <Section index="08" eyebrow="Loved by realtors" title="Simple enough to adopt in a day">
+    <Section display="Loved" index="08" eyebrow="Loved by realtors" title="Simple enough to adopt in a day">
       <div className="grid gap-4 md:grid-cols-3">
         {QUOTES.map((t, i) => (
           <Reveal key={t.n} delay={i * 0.08}>
@@ -56,7 +56,7 @@ export function Pricing() {
   const [plans, setPlans] = useState<PublicPlan[]>(FALLBACK);
   useEffect(() => { fetch("/api/v1/public/plans").then((r) => r.json()).then((j) => j?.data?.plans?.length && setPlans(j.data.plans)).catch(() => {}); }, []);
   return (
-    <Section id="pricing" index="09" tone="subtle" eyebrow="Pricing" title="Start free for 3 days. Pick a plan when you're ready." subtitle="No credit card to start. No long-term commitment. Your data is never deleted if your trial ends.">
+    <Section display="Pricing" id="pricing" index="09" tone="subtle" eyebrow="Pricing" title="Start free for 3 days. Pick a plan when you're ready." subtitle="No credit card to start. No long-term commitment. Your data is never deleted if your trial ends.">
       <div className="mb-10 flex items-center justify-center gap-3">
         <Segmented value={annual ? "annual" : "monthly"} onChange={(v) => setAnnual(v === "annual")} options={[{ value: "monthly", label: "Monthly" }, { value: "annual", label: "Annual" }]} />
         <Badge tone="success">Save ~17% yearly</Badge>
@@ -67,7 +67,7 @@ export function Pricing() {
           const price = annual ? p.price_annual : p.price_monthly;
           return (
             <Reveal key={p.key} delay={i * 0.06}>
-              <Card className={cn("relative flex h-full flex-col rounded-[14px] p-6", featured && "border-border-strong bg-[linear-gradient(180deg,rgba(124,108,240,0.12),transparent_45%)] shadow-md")}>
+              <Card className={cn("relative flex h-full flex-col rounded-[22px] p-6", featured && "border-border-strong bg-[radial-gradient(90%_70%_at_50%_100%,rgba(48,98,240,0.38),transparent_72%)] shadow-md")}>
                 {featured && <Badge tone="primary" className="absolute -top-3 left-6 bg-primary text-primary-fg">Most popular</Badge>}
                 <h3 className="text-lg font-semibold">{p.name}</h3><p className="mt-1 min-h-10 text-sm text-fg-muted">{p.tagline}</p>
                 <div className="my-5 h-14">
@@ -101,8 +101,8 @@ const FAQS = [
 export function FAQ() {
   const [open, setOpen] = useState<number | null>(0);
   return (
-    <Section id="faq" index="10" eyebrow="FAQ" title="Questions, answered">
-      <div className="mx-auto max-w-3xl divide-y divide-border rounded-[14px] border border-border bg-surface">
+    <Section display="FAQ" id="faq" index="10" eyebrow="FAQ" title="Questions, answered">
+      <div className="mx-auto max-w-3xl glass divide-y divide-border overflow-hidden rounded-[22px] border border-border bg-surface">
         {FAQS.map(([q, a], i) => (
           <div key={q}>
             <h3><button className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left font-medium hover:bg-surface-hover" aria-expanded={open === i} onClick={() => setOpen(open === i ? null : i)}>{q}{open === i ? <Minus className="size-4 shrink-0 text-fg-subtle" /> : <Plus className="size-4 shrink-0 text-fg-subtle" />}</button></h3>

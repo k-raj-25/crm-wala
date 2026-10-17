@@ -6,12 +6,12 @@ import { cn } from "../lib/cn";
 import { Spinner } from "./spinner";
 
 export const buttonVariants = cva(
-  "relative inline-flex shrink-0 select-none items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium transition-[background-color,box-shadow,transform,color,border-color] duration-150 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0",
+  "relative inline-flex shrink-0 select-none items-center justify-center gap-2 whitespace-nowrap rounded-full font-medium transition-[background-color,box-shadow,transform,color,border-color] duration-150 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
         primary: "bg-primary text-primary-fg shadow-xs hover:bg-primary-hover hover:shadow-sm",
-        secondary: "border border-border bg-surface text-fg shadow-xs hover:border-border-strong hover:bg-surface-hover",
+        secondary: "glass border border-border bg-[var(--glass-btn)] text-fg shadow-xs hover:border-border-strong hover:bg-[var(--glass-btn-hover)]",
         soft: "bg-primary-soft text-primary hover:brightness-95",
         ghost: "text-fg-muted hover:bg-surface-hover hover:text-fg",
         danger: "bg-danger text-white shadow-xs hover:brightness-110",

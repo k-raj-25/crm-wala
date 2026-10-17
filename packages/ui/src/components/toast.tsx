@@ -41,7 +41,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         <AnimatePresence initial={false}>
           {items.map((t) => (
             <motion.div key={t.id} layout initial={{ opacity: 0, y: 16, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.12 } }} transition={{ type: "spring", stiffness: 500, damping: 36 }}
-              className="pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-lg border border-border bg-surface p-3.5 shadow-lg">
+              className="pointer-events-auto flex w-full max-w-sm items-start gap-3 glass-pop rounded-lg border border-border p-3.5 shadow-lg">
               <span className={cn("mt-0.5 shrink-0", t.tone === "error" && "text-danger", t.tone === "info" && "text-info", t.tone === "warning" && "text-warning")}>
                 {t.tone === "success" ? <SuccessCheck /> : t.tone === "info" ? <Info className="size-5" /> : <AlertTriangle className="size-5" />}
               </span>

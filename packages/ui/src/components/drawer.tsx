@@ -16,7 +16,7 @@ export function Drawer({ open, onOpenChange, title, description, children, foote
       <D.Portal>
         <D.Overlay className="anim-overlay fixed inset-0 z-50 bg-[var(--overlay)]" />
         <D.Content
-          className={cn("fixed z-50 flex flex-col bg-surface shadow-lg focus:outline-none", mobile ? "anim-sheet inset-x-0 bottom-0 max-h-[92vh] rounded-t-2xl border-t border-border" : "anim-drawer inset-y-0 right-0 w-full border-l border-border")}
+          className={cn("glass-pop fixed z-50 flex flex-col shadow-lg focus:outline-none", mobile ? "anim-sheet inset-x-0 bottom-0 max-h-[92vh] rounded-t-2xl border-t border-border" : "anim-drawer inset-y-0 right-0 w-full border-l border-border")}
           style={mobile ? undefined : { maxWidth: width }}>
           <div className="flex items-start justify-between gap-4 border-b border-border px-6 py-4">
             <div className="min-w-0">
@@ -26,7 +26,7 @@ export function Drawer({ open, onOpenChange, title, description, children, foote
             <D.Close asChild><Button variant="ghost" size="icon-sm" aria-label="Close"><X /></Button></D.Close>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">{children}</div>
-          {footer && <div className="flex items-center justify-end gap-2 border-t border-border bg-surface-2 px-6 py-3.5">{footer}</div>}
+          {footer && <div className="flex items-center justify-end gap-2 border-t border-border px-6 py-3.5">{footer}</div>}
         </D.Content>
       </D.Portal>
     </D.Root>

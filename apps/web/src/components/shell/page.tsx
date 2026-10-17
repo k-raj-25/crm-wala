@@ -4,7 +4,9 @@ import { cn } from "@crm/ui";
 
 export function PageHeader({ title, description, actions, tabs, className, back }: { title: React.ReactNode; description?: React.ReactNode; actions?: React.ReactNode; tabs?: React.ReactNode; className?: string; back?: React.ReactNode }) {
   return (
-    <div className={cn("mb-6", className)}>
+    <div className={cn("relative isolate mb-6", className)}>
+      {/* the page's name again, huge and faint behind the header, like the reference's watermark headings */}
+      {typeof title === "string" && <span aria-hidden className="display-word absolute -left-1 -top-12 -z-10 hidden max-w-full overflow-hidden text-[104px] [mask-image:linear-gradient(180deg,#000_35%,transparent_92%)] sm:block">{title}</span>}
       {back}
       <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
         <div className="min-w-0"><h1 className="truncate text-2xl font-semibold tracking-tight sm:text-[28px]">{title}</h1>{description && <p className="mt-1 text-[15px] text-fg-muted">{description}</p>}</div>

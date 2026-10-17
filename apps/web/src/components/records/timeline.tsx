@@ -40,7 +40,7 @@ export function Timeline({ entity, id, types, userId, showRelated }: { entity?: 
     <div>
       {groupByDay(items).map((g) => (
         <section key={g.day} className="mb-6">
-          <h3 className="sticky top-14 z-[1] mb-3 bg-bg/90 py-1 text-xs font-semibold uppercase tracking-wider text-fg-subtle backdrop-blur">{g.day}</h3>
+          <h3 className="sticky top-[72px] z-[1] mb-3 bg-surface-pop py-1 text-xs font-semibold uppercase tracking-wider text-fg-subtle backdrop-blur">{g.day}</h3>
           <ol className="relative space-y-0">
             {g.items.map((a, i) => (
               <li key={a.id} className="relative flex gap-3.5 pb-5 last:pb-0">
