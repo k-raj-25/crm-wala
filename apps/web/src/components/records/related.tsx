@@ -1,6 +1,6 @@
 "use client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Calendar, CheckCircle2, Download, FileText, Mail, Paperclip, Phone, Pin, Plus, Trash2, UploadCloud } from "lucide-react";
+import { Calendar, CheckCircle2, Download, FileText, Mail, MessageCircle, Paperclip, Phone, Pin, Plus, Trash2, UploadCloud } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
 import { Avatar, Badge, Button, Card, ColorChip, ConfirmDialog, EmptyState, Input, SkeletonRows, Textarea, cn, formatDate, formatMoney, timeAgo, useToast } from "@crm/ui";
@@ -8,6 +8,7 @@ import { api } from "@/lib/api";
 import { CALL_OUTCOMES, label } from "@/lib/constants";
 import { useAccess } from "@/lib/queries";
 import type { Call, Contact, Deal, EmailMsg, Meeting, Note, Task } from "@/lib/types";
+import { RecapDialog } from "../recap/recap-dialog";
 import { useUI } from "../shell/ui-context";
 
 export type Scope = { entity: "lead" | "contact" | "company" | "deal"; id: string; label?: string };
@@ -103,7 +104,9 @@ export function CallsTab({ scope }: { scope: Scope }) {
 
 export function MeetingsTab({ scope }: { scope: Scope }) {
   const q = useList<Meeting>("meetings", "/api/v1/meetings", scope, { sort: "-starts_at" }); const ui = useUI(); const { can, has } = useAccess(); const qc = useQueryClient(); const toast = useToast();
-  const done = useMutation({ mutationFn: (m: Meeting) => api.patch(`/api/v1/meetings/${m.id}`, { status: "completed" }), onSuccess: () => { qc.invalidateQueries({ queryKey: ["meetings"] }); qc.invalidateQueries({ queryKey: ["timeline"] }); } });
+  const [recap, setRecap] = React.useState<string | null>(null);
+  // marking a site visit done goes straight on to the recap, while the visit is fresh
+  const done = useMutation({ mutationFn: (m: Meeting) => api.patch(`/api/v1/meetings/${m.id}`, { status: "completed" }), onSuccess: (_r, m) => { qc.invalidateQueries({ queryKey: ["meetings"] }); qc.invalidateQueries({ queryKey: ["timeline"] }); if (m.kind === "site_visit" && can("meetings.create")) setRecap(m.id); } });
   const sum = useMutation({ mutationFn: (m: Meeting) => api.post<{ summary: string }>("/api/v1/ai/meeting-summary", { meeting_id: m.id }), onError: (e) => toast.error("Couldn't summarize", (e as Error).message) });
   const [summaries, setSummaries] = React.useState<Record<string, string>>({});
   return (
@@ -114,7 +117,8 @@ export function MeetingsTab({ scope }: { scope: Scope }) {
           <li key={m.id} className="px-4 py-3.5"><div className="flex items-start gap-3"><span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary"><Calendar className="size-4" /></span>
             <div className="min-w-0 flex-1"><p className="flex flex-wrap items-center gap-2 text-sm font-medium">{m.title}<Badge tone={m.status === "completed" ? "success" : m.status === "canceled" ? "neutral" : "primary"}>{label(m.status)}</Badge></p><p className="mt-0.5 text-xs text-fg-muted">{formatDate(m.starts_at, "datetime")} – {formatDate(m.ends_at, "time")}{m.meeting_url && <> · <a className="text-primary hover:underline" href={m.meeting_url} target="_blank" rel="noreferrer">Join link</a></>}</p>
               {(summaries[m.id] ?? m.summary) && <p className="mt-2 whitespace-pre-line rounded-lg bg-bg-subtle p-3 text-[13px] text-fg-muted">{summaries[m.id] ?? m.summary}</p>}</div>
-            <div className="flex shrink-0 gap-1">{m.status === "scheduled" && can("meetings.update") && <Button variant="ghost" size="xs" onClick={() => done.mutate(m)}>Mark done</Button>}{has("ai_assistant") && m.summary && <Button variant="ghost" size="xs" loading={sum.isPending} onClick={async () => { const r = await sum.mutateAsync(m); setSummaries((s) => ({ ...s, [m.id]: r.summary })); }}>Summarize</Button>}</div></div></li>))}</ul>)}
+            <div className="flex shrink-0 flex-wrap justify-end gap-1">{m.status === "scheduled" && can("meetings.update") && <Button variant="ghost" size="xs" onClick={() => done.mutate(m)}>Mark done</Button>}{m.kind === "site_visit" && m.status !== "canceled" && can("meetings.create") && <Button variant="ghost" size="xs" onClick={() => setRecap(m.id)}><MessageCircle /> Visit recap</Button>}{has("ai_assistant") && m.summary && <Button variant="ghost" size="xs" loading={sum.isPending} onClick={async () => { const r = await sum.mutateAsync(m); setSummaries((s) => ({ ...s, [m.id]: r.summary })); }}>Summarize</Button>}</div></div></li>))}</ul>)}
+      {recap && <RecapDialog open onOpenChange={(o) => !o && setRecap(null)} target={{ meeting_id: recap }} />}
     </div>
   );
 }

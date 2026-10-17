@@ -1,12 +1,13 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import { addDays, addMonths, endOfMonth, endOfWeek, format, isSameDay, isSameMonth, isToday, startOfDay, startOfMonth, startOfWeek } from "date-fns";
-import { Calendar as CalIcon, CheckSquare, ChevronLeft, ChevronRight, MapPin, Phone, Repeat, Flag, Video } from "lucide-react";
+import { Calendar as CalIcon, CheckSquare, ChevronLeft, ChevronRight, MapPin, MessageCircle, Phone, Repeat, Flag, Video } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
 import { Button, Dialog, DialogContent, ErrorState, Segmented, cn, formatDate } from "@crm/ui";
 import { api } from "@/lib/api";
 import type { CalendarEvent } from "@/lib/types";
+import { RecapDialog } from "../recap/recap-dialog";
 import { useToggleTask } from "../records/related";
 import { useUI } from "../shell/ui-context";
 
@@ -93,8 +94,9 @@ function MonthGrid({ date, events, onEvent, onDay }: { date: Date; events: Calen
 }
 
 function EventDialog({ e, onClose }: { e: CalendarEvent | null; onClose: () => void }) {
-  const toggle = useToggleTask();
+  const toggle = useToggleTask(); const [recap, setRecap] = React.useState(false);
   if (!e) return null; const k = KIND[e.kind];
+  if (recap) return <RecapDialog open onOpenChange={(o) => { if (!o) { setRecap(false); onClose(); } }} target={{ meeting_id: e.id }} />;
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent size="sm" title={e.title} description={`${k.label} · ${formatDate(e.start, "long")}`}>
@@ -104,6 +106,7 @@ function EventDialog({ e, onClose }: { e: CalendarEvent | null; onClose: () => v
           <p className="text-fg-muted">Status: <span className="font-medium capitalize text-fg">{e.status.replace("_", " ")}</span></p>
           <div className="flex gap-2 pt-2">
             {e.entity.type === "task" && <Button size="sm" onClick={() => { toggle.mutate({ id: e.id, status: e.status } as never, { onSuccess: onClose }); }}>{e.status === "completed" ? "Reopen task" : "Mark complete"}</Button>}
+            {e.kind === "site_visit" && e.status !== "canceled" && <Button size="sm" onClick={() => setRecap(true)}><MessageCircle /> Visit recap</Button>}
             {href(e) && <Button size="sm" variant="secondary" asChild><Link href={href(e)}>Open</Link></Button>}
           </div>
         </div>

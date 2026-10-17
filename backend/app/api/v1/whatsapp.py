@@ -66,11 +66,20 @@ def get_settings():
     _feature()
     i = svc.connection(g.workspace.id)
     return ok({"account_label": i.account_label, "webhook": {"url": webhook_url(i), "verify_token": (i.config or {}).get("verify_token")},
-               "media_template": (i.config or {}).get("media_template")})
+               "media_template": (i.config or {}).get("media_template"), "recap_template": (i.config or {}).get("recap_template")})
 
 
 class SettingsIn(Schema):
     media_template: str | None = Field(default=None, max_length=120)  # "name|language", or null to clear
+    recap_template: str | None = Field(default=None, max_length=120)  # same, for visit recaps; only changed when sent
+
+
+def _pick_template(i: Integration, value: str, ok_, error: str, field: str) -> dict:
+    name, _, lang = value.partition("|")
+    t = next((t for t in svc.list_templates(i) if t["name"] == name and (not lang or t["language"] == lang)), None)
+    if t is None or not ok_(t):
+        raise ApiError(422, "validation_error", error, {field: "Not a usable template"})
+    return {k: t[k] for k in ("name", "language", "body", "body_params", "param_names", "header")}
 
 
 @bp.patch("/settings")
@@ -80,18 +89,25 @@ def update_settings():
     i = svc.connection(g.workspace.id)
     d = parse(SettingsIn)
     cfg = dict(i.config or {})
-    if d.media_template:
-        name, _, lang = d.media_template.partition("|")
-        t = next((t for t in svc.list_templates(i) if t["name"] == name and (not lang or t["language"] == lang)), None)
-        if t is None or t["header"] not in ("DOCUMENT", "IMAGE") or not t["supported"] or t["body_params"] > 2:
-            raise ApiError(422, "validation_error", "Pick an approved template with a document or image header and at most two placeholders "
-                           "(client's first name, then the flat or project).", {"media_template": "Not a usable brochure template"})
-        cfg["media_template"] = {k: t[k] for k in ("name", "language", "body", "body_params", "param_names", "header")}
-    else:
-        cfg.pop("media_template", None)
+    if "media_template" in d.model_fields_set or "recap_template" not in d.model_fields_set:  # older clients send only media_template
+        if d.media_template:
+            cfg["media_template"] = _pick_template(
+                i, d.media_template, lambda t: t["header"] in ("DOCUMENT", "IMAGE") and t["supported"] and t["body_params"] <= 2,
+                "Pick an approved template with a document or image header and at most two placeholders "
+                "(client's first name, then the flat or project).", "media_template")
+        else:
+            cfg.pop("media_template", None)
+    if "recap_template" in d.model_fields_set:
+        if d.recap_template:
+            cfg["recap_template"] = _pick_template(
+                i, d.recap_template, lambda t: t["header"] in (None, "TEXT") and t["supported"] and 1 <= t["body_params"] <= 2,
+                "Pick an approved template without a document header, with one or two placeholders "
+                "(client's first name, then the recap link).", "recap_template")
+        else:
+            cfg.pop("recap_template", None)
     i.config = cfg
     db.session.commit()
-    return ok({"media_template": cfg.get("media_template")})
+    return ok({"media_template": cfg.get("media_template"), "recap_template": cfg.get("recap_template")})
 
 
 @bp.get("/templates")
