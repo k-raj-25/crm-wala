@@ -7,6 +7,8 @@ import * as React from "react";
 import { Badge, Button, Input, NativeSelect, Textarea, cn, useToast } from "@crm/ui";
 import { type AiChange, type AiProposal, fillText, reportOutcome, runProposal, runUndo } from "@/lib/ai";
 
+/** Options arrive as {value, label} or as [value, label] pairs (how the server writes them). */
+const opts = (c: AiChange) => (c.options ?? []).map((o) => (Array.isArray(o) ? { value: String(o[0]), label: String(o[1]) } : o));
 const show = (v: unknown) => v === null || v === undefined || v === "" ? "—" : Array.isArray(v) ? v.join(", ") || "—" : String(v);
 const toLocal = (iso: unknown) => { if (!iso) return ""; const d = new Date(String(iso)); if (isNaN(+d)) return ""; const p = (n: number) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
 const fmtWhen = (iso: unknown) => { const d = new Date(String(iso)); return isNaN(+d) ? show(iso) : d.toLocaleString("en-IN", { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }); };
@@ -14,7 +16,7 @@ const fmtWhen = (iso: unknown) => { const d = new Date(String(iso)); return isNa
 function Editor({ c, value, onChange }: { c: AiChange; value: unknown; onChange: (v: unknown) => void }) {
   const id = `ai-${c.key}`;
   switch (c.input) {
-    case "select": return <NativeSelect id={id} value={String(value ?? "")} onChange={(e) => onChange(e.target.value)}>{(c.options ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</NativeSelect>;
+    case "select": return <NativeSelect id={id} value={String(value ?? "")} onChange={(e) => onChange(e.target.value)}>{opts(c).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</NativeSelect>;
     case "textarea": return <Textarea id={id} rows={3} value={String(value ?? "")} onChange={(e) => onChange(e.target.value)} />;
     case "number": case "money": return <Input id={id} type="number" inputMode="decimal" value={value === null || value === undefined ? "" : String(value)} onChange={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))} />;
     case "datetime": return <Input id={id} type="datetime-local" value={toLocal(value)} onChange={(e) => onChange(e.target.value ? new Date(e.target.value).toISOString() : null)} />;
@@ -34,7 +36,7 @@ export function ProposalCard({ p, onDone, compact }: { p: AiProposal; onDone?: (
   const [err, setErr] = React.useState<string | null>(null); const [result, setResult] = React.useState<string | null>(p.result_url ?? null);
   const editable = p.changes.some((c) => c.input !== "readonly");
   const changed = (c: AiChange) => JSON.stringify(vals[c.key]) !== JSON.stringify(c.to);
-  const display = (c: AiChange) => changed(c) ? (c.input === "datetime" ? fmtWhen(vals[c.key]) : c.input === "select" ? c.options?.find((o) => o.value === vals[c.key])?.label ?? show(vals[c.key]) : show(vals[c.key])) : show(c.display_to);
+  const display = (c: AiChange) => changed(c) ? (c.input === "datetime" ? fmtWhen(vals[c.key]) : c.input === "select" ? opts(c).find((o) => o.value === vals[c.key])?.label ?? show(vals[c.key]) : show(vals[c.key])) : show(c.display_to);
   const refresh = () => qc.invalidateQueries();
 
   const approve = async () => {

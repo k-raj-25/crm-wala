@@ -23,6 +23,7 @@ import { InlineField } from "./inline-field";
 import { PhoneField, isMasked } from "./phone-field";
 import { CallsTab, ContactsTab, DealsTab, EmailsTab, FilesTab, MeetingsTab, NotesTab, TasksTab, type Scope } from "./related";
 import { Timeline } from "./timeline";
+import { PromisesTab } from "../promises/promises";
 import { WA_GREEN, WhatsAppTab } from "../whatsapp/whatsapp";
 import { ScorePill } from "../list/cells";
 
@@ -111,7 +112,7 @@ export function RecordPage({ entity }: { entity: Entity }) {
   const custom = rec.custom as Record<string, unknown>;
 
   const wa = (entity === "lead" || entity === "contact") && has("whatsapp_integration");
-  const tabs: [string, string][] = [["overview", "Activity"], ["notes", "Notes"], ["tasks", "Tasks"], ["emails", "Emails"], ["calls", "Calls"], ["meetings", "Site visits"], ...(wa ? [["whatsapp", "WhatsApp"] as [string, string]] : []), ...(entity === "contact" || entity === "company" ? [["deals", "Deals"] as [string, string]] : []), ...(entity === "company" ? [["contacts", "Contacts"] as [string, string]] : []), ["files", "Files"]];
+  const tabs: [string, string][] = [["overview", "Activity"], ["notes", "Notes"], ["tasks", "Tasks"], ["emails", "Emails"], ["calls", "Calls"], ["meetings", "Site visits"], ...(wa ? [["whatsapp", "WhatsApp"] as [string, string]] : []), ...(entity === "contact" || entity === "company" ? [["deals", "Deals"] as [string, string]] : []), ...(entity === "company" ? [["contacts", "Contacts"] as [string, string]] : []), ...(entity !== "company" && can("promises.read") ? [["promises", "Promises"] as [string, string]] : []), ["files", "Files"]];
 
   return (
     <PageContainer wide>
@@ -166,6 +167,7 @@ export function RecordPage({ entity }: { entity: Entity }) {
               {wa && <TabsContent value="whatsapp"><WhatsAppTab entity={entity as "lead" | "contact"} id={id} firstName={rec.first_name as string} /></TabsContent>}
               {(entity === "contact" || entity === "company") && <TabsContent value="deals"><DealsTab scope={scope} /></TabsContent>}
               {entity === "company" && <TabsContent value="contacts"><ContactsTab companyId={id} companyName={name} /></TabsContent>}
+              {entity !== "company" && can("promises.read") && <TabsContent value="promises"><PromisesTab record={{ entity: entity as "lead" | "contact" | "deal", id }} /></TabsContent>}
               <TabsContent value="files"><FilesTab scope={scope} /></TabsContent>
             </div>
           </Tabs>

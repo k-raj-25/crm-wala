@@ -464,3 +464,32 @@ class WhatsAppMessage(Base, UUIDPk, Timestamps, Tenant, Related, Serializable):
     wa_message_id: Mapped[str | None] = mapped_column(String(200))
     error: Mapped[str | None] = mapped_column(String(400))
     data: Mapped[dict] = mapped_column(JSONB, default=dict, server_default=text("'{}'::jsonb"))
+
+
+class Promise(Base, UUIDPk, Timestamps, Tenant, SoftDelete, Serializable):
+    """Something a rep promised a buyer (a discount, free parking, a modular kitchen, a possession date, a payment plan).
+
+    A promise is pending until a manager approves or rejects it. Only approved promises print on the booking form, and
+    approved ones are never edited or deleted: they are cancelled with a reason, so the record of what was agreed stays.
+    """
+
+    __tablename__ = "promises"
+
+    lead_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("leads.id", ondelete="SET NULL"), index=True)
+    contact_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("contacts.id", ondelete="SET NULL"), index=True)
+    deal_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("deals.id", ondelete="SET NULL"), index=True)
+    project_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("projects.id", ondelete="SET NULL"))
+    unit_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("units.id", ondelete="SET NULL"))
+    kind: Mapped[str] = mapped_column(String(20), default="other", server_default="other")  # discount|parking|fittings|possession|payment_plan|waiver|other
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    details: Mapped[str | None] = mapped_column(Text)
+    value: Mapped[decimal.Decimal | None] = mapped_column(Numeric(16, 2))  # what it's worth in rupees, when it has a price
+    promised_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
+    promised_on: Mapped[dt.date | None] = mapped_column(Date)
+    source: Mapped[str] = mapped_column(String(15), default="manual", server_default="manual")  # manual|whatsapp|call|visit|note|chat
+    source_text: Mapped[str | None] = mapped_column(Text)  # the words it was picked up from
+    status: Mapped[str] = mapped_column(String(12), default="pending", server_default="pending", index=True)  # pending|approved|rejected|cancelled
+    created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    decided_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    decided_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
+    decision_note: Mapped[str | None] = mapped_column(String(500))

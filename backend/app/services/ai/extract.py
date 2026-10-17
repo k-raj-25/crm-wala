@@ -214,3 +214,91 @@ def lead_from_text(text: str) -> dict:
         "intent": intent(t), "property_type": property_type(t), "bhk": bhk(t), "budget_min": lo, "budget_max": hi, "location": location(t),
     }
     return {k: v for k, v in out.items() if v not in (None, "")}
+
+
+# ---- promises made to buyers -------------------------------------------------------------------------------------------
+
+_PROMISE_TALK = re.compile(
+    r"\b(free|complimentary|no (?:extra )?(?:charge|cost)|at no cost|waive[ds]?|waiver|included|include|will (?:give|provide|add|include|get|arrange|do|reduce|adjust|match)|"
+    r"(?:i|we)(?:'ll| will| can| shall)|promise[ds]?|guarantee[ds]?|assure[ds]?|confirm(?:ed)?|done|pakka|de denge|kar denge|mil jayega|milega|offer(?:ed)?|extra discount)\b",
+    re.I,
+)
+_FITTINGS = [("modular kitchen", r"modular\s+kitchen"), ("wardrobes", r"wardrobes?"), ("air conditioners", r"\b(?:acs?|air[\s-]?condition(?:er|ers|ing))\b"),
+             ("false ceiling", r"false\s+ceiling"), ("chimney", r"chimney"), ("light fittings", r"light\s+fittings?"), ("furnishing", r"(?:fully|semi)[\s-]?furnish\w*|furnish(?:ed|ing)"),
+             ("water purifier", r"water\s+purifier|\bro\b"), ("geyser", r"geysers?"), ("solar panels", r"solar")]
+_MONTHS = r"(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*"
+
+
+def _sentences(text: str) -> list[str]:
+    return [s.strip(" -•*\t") for s in re.split(r"(?<=[.!?])\s+|\n+", text or "") if len(s.strip()) > 6]
+
+
+def _short_money(v: float) -> str:
+    if v >= CRORE:
+        return f"₹{v / CRORE:.2f}".rstrip("0").rstrip(".") + " Cr"
+    if v >= LAKH:
+        return f"₹{v / LAKH:.2f}".rstrip("0").rstrip(".") + " L"
+    return f"₹{v:,.0f}"
+
+
+def promises_from_text(text: str) -> list[dict]:
+    """Promises a rep made, read sentence by sentence: [{kind, title, value, quote}]. Questions and plain facts are skipped,
+    so "does it have parking?" is not a promise but "I'll give you free covered parking" is."""
+    out: list[dict] = []
+    for s in _sentences(text):
+        low = s.lower()
+        if not _PROMISE_TALK.search(low) or re.search(r"\?\s*$", s) and not re.search(r"\b(i|we)(?:'ll| will)\b", low):
+            continue
+        free = bool(re.search(r"\b(free|complimentary|no (?:extra )?(?:charge|cost)|at no cost|included|muft)\b", low))
+        found: list[dict] = []
+        if re.search(r"\bparking\b|\bcar\s*park", low):
+            kind = "covered " if re.search(r"covered|basement|stilt", low) else "open " if "open parking" in low else ""
+            extra = "second " if re.search(r"\b(second|2nd|extra|additional|two|2)\b.{0,12}park", low) else ""
+            found.append({"kind": "parking", "title": (f"Free {extra}{kind}parking" if free else f"{(extra + kind).strip().capitalize() or 'Reserved'} parking").replace("  ", " ")})
+        items = [name for name, pat in _FITTINGS if re.search(pat, low)]
+        if items:
+            names = ", ".join(items[:-1]) + (" and " if len(items) > 1 else "") + items[-1]
+            found.append({"kind": "fittings", "title": (f"Free {names}" if free or re.search(r"\b(give|provide|add|install)\b", low) else names[:1].upper() + names[1:])})
+        if re.search(r"\bdiscount|\boff\b|reduce|less(?:er)? (?:price|rate)|kam kar|best price|price match|rate of\b", low):
+            vals = [v for v in money_values(s) if v >= 1000]
+            pct = re.search(r"(\d+(?:\.\d+)?)\s*%", s)
+            per_sqft = re.search(r"(?:₹|rs\.?\s*)?(\d+)\s*(?:rs\.?\s*)?(?:per|/)\s*(?:sq\.?\s*ft|sqft|sft)", low)
+            if per_sqft:
+                vals = [float(per_sqft.group(1))]
+            if pct:
+                found.append({"kind": "discount", "title": f"{pct.group(1)}% discount"})
+            elif vals:
+                found.append({"kind": "discount", "title": f"Discount of ₹{vals[0]:,.0f} per sq ft" if per_sqft else f"Discount of {_short_money(vals[0])}",
+                              "value": None if per_sqft else vals[0]})
+            elif "discount" in low:
+                found.append({"kind": "discount", "title": "Extra discount"})
+        m = re.search(rf"possession\b.{{0,40}}?\b(?:by|in|before|within|till|until)\s+((?:{_MONTHS}\s*,?\s*)?(?:20\d\d)|\d+\s+(?:months?|years?)|diwali(?:\s+20\d\d)?|{_MONTHS})", low)
+        if m:
+            when = m.group(1).strip()
+            found.append({"kind": "possession", "title": f"Possession by {when.title() if not when[0].isdigit() else when}"})
+        if re.search(r"payment plan|subvention|no emi|pre[\s-]?emi|construction[\s-]linked|\b\d{2}\s*:\s*\d{2}\b|pay (?:the )?(?:rest|balance) (?:later|on possession)|flexi", low):
+            ratio = re.search(r"\b(\d{2})\s*:\s*(\d{2})\b", s)
+            if ratio and int(ratio.group(1)) + int(ratio.group(2)) == 100:
+                title = f"{ratio.group(1)}:{ratio.group(2)} payment plan"
+            elif re.search(r"no emi|pre[\s-]?emi|subvention", low):
+                title = "No EMI till possession" if re.search(r"till|until|before", low) and "possession" in low else "Subvention plan (builder pays pre-EMI)"
+            else:
+                title = "Flexible payment plan"
+            found.append({"kind": "payment_plan", "title": title})
+        for pat, title in ((r"floor[\s-]?rise", "Floor rise charge waived"), (r"\bplc\b|preferential location", "PLC waived"),
+                           (r"club(?:house)?\s*(?:membership|charges?)", "Free club membership"), (r"stamp duty", "Stamp duty paid by the builder"),
+                           (r"registration (?:charges?|fees?|cost)", "Registration charges paid by the builder"),
+                           (r"maintenance", "Free maintenance"), (r"\bgst\b", "GST included in the price"), (r"\bifms|\bsinking fund", "IFMS waived")):
+            if re.search(pat, low) and (free or re.search(r"waive|no\s|include|pay|bear|absorb", low)):
+                if title == "Free maintenance":
+                    yrs = re.search(r"(\d+|one|two|three)\s*(?:years?|yrs?)", low)
+                    title = f"Free maintenance for {yrs.group(1)} year{'s' if yrs.group(1) not in ('1', 'one') else ''}" if yrs else title
+                found.append({"kind": "waiver", "title": title})
+        if not found and re.search(r"\b(promise[ds]?|guarantee[ds]?|assure[ds]?)\b", low):
+            found.append({"kind": "other", "title": s[:120]})
+        for f in found:
+            f.setdefault("value", None)
+            f["quote"] = s[:400]
+            if not any(o["kind"] == f["kind"] and o["title"].lower() == f["title"].lower() for o in out):
+                out.append(f)
+    return out

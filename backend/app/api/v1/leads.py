@@ -219,6 +219,11 @@ def convert(ident):
     for model in (Activity, Task, Note, Call, Meeting, Email, FileAsset):
         db.session.query(model).filter(model.lead_id == lead.id, model.contact_id.is_(None)).update(
             {"contact_id": contact.id, **({"company_id": company.id} if company else {})}, synchronize_session=False)
+    from app.models import Promise
+
+    db.session.query(Promise).filter(Promise.lead_id == lead.id, Promise.contact_id.is_(None)).update({"contact_id": contact.id}, synchronize_session=False)
+    if deal:  # promises made while they were a lead belong to the booking
+        db.session.query(Promise).filter(Promise.lead_id == lead.id, Promise.deal_id.is_(None)).update({"deal_id": deal.id}, synchronize_session=False)
     activities.log_activity("converted", f"Lead converted to contact{' and deal' if deal else ''}", lead_id=lead.id, contact_id=contact.id,
                             company_id=company.id if company else None, deal_id=deal.id if deal else None)
     audit.record("lead.converted", entity_type="lead", entity_id=lead.id, summary=f"Converted lead “{lead.name}”",

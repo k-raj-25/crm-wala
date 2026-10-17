@@ -17,6 +17,7 @@ RESOURCES = {
     "files": "Files",
     "pipelines": "Pipelines",
     "automations": "Automations",
+    "promises": "Promises to buyers",
 }
 
 PERMISSIONS: dict[str, tuple[str, str]] = {}
@@ -41,6 +42,7 @@ PERMISSIONS.update(
         "audit.read": ("settings", "View audit log"),
         "phones.view": ("phones", "See phone numbers of leads and clients"),
         "phones.reveal": ("phones", "Reveal phone numbers one at a time (each reveal is logged)"),
+        "promises.approve": ("promises", "Approve or reject promises made to buyers"),
     }
 )
 
@@ -56,7 +58,7 @@ def _rw(*resources: str, delete: bool = True) -> list[str]:
     return out
 
 
-_CORE = ["projects", "units", "leads", "contacts", "companies", "deals", "tasks", "notes", "activities", "meetings", "emails", "files"]
+_CORE = ["projects", "units", "leads", "contacts", "companies", "deals", "tasks", "notes", "activities", "meetings", "emails", "files", "promises"]
 
 SYSTEM_ROLES: dict[str, dict] = {
     "owner": {
@@ -71,7 +73,7 @@ SYSTEM_ROLES: dict[str, dict] = {
         "name": "Manager", "rank": 60, "description": "Manage the team's pipeline, automations and reports.",
         "permissions": _rw(*_CORE, "pipelines", "automations")
         + ["leads.convert", "deals.close", "data.import", "data.export", "reports.read", "reports.manage", "ai.use",
-           "team.read", "integrations.manage", "phones.reveal"],
+           "team.read", "integrations.manage", "phones.reveal", "promises.approve"],
     },
     "sales_rep": {
         "name": "Sales Representative", "rank": 40, "description": "Work leads, contacts, deals and tasks.",

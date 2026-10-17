@@ -388,6 +388,21 @@ def whatsapp_assist():
     return ok(features.whatsapp_assist(d.conversation, d.lead_id, d.goal))
 
 
+class PromiseScanIn(Schema):
+    record: str = Field(pattern=r"^(lead|contact|deal):[0-9a-fA-F-]{36}$")
+    text: str | None = Field(default=None, max_length=8000)
+
+
+@bp.post("/promises/scan")
+@protect("promises.create", feature="ai_assistant")
+@limiter.limit("20 per minute")
+def promise_scan():
+    """Promises in the buyer's WhatsApp messages and call/visit notes (or pasted text), as cards to confirm."""
+    d = parse(PromiseScanIn)
+    entity, _, ident = d.record.partition(":")
+    return ok(features.promise_scan(entity, uuid.UUID(ident), d.text))
+
+
 @bp.get("/my-day")
 @protect("ai.use", feature="ai_assistant")
 def my_day():
