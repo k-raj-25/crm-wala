@@ -25,7 +25,7 @@ export function DemoDialog({ open, onOpenChange }: { open: boolean; onOpenChange
   }, [open, playing]);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="xl" title="See CRM Wala in 30 seconds" description="A quick guided tour of the product.">
+      <DialogContent size="xl" className="dark noir" title="See CRM Wala in 30 seconds" description="A quick guided tour of the product.">
         <AnimatePresence mode="wait">
           <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
             {STEPS[i].node}

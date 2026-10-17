@@ -72,3 +72,22 @@
 @media (prefers-reduced-motion: reduce) {
   .facade-sky *, .facade-sky { animation: none !important; transition: none !important; }
 }
+
+/* ---- Landing page: "noir" --------------------------------------------------------------------------------------------- */
+/* The marketing page is always dark: pure black that lifts to a faint blue-black, hairline panels, quiet grey type and white
+   buttons, so the glowing artwork carries the colour. Wraps the page (and its dialogs) with `.dark.noir`; the app keeps its own theme. */
+.noir {
+  --bg: #000000; --bg-subtle: #08090c; --surface: #0a0a0d; --surface-2: #0d0d11; --surface-hover: #131318;
+  --border: rgba(255, 255, 255, 0.07); --border-strong: rgba(255, 255, 255, 0.14);
+  --fg: #f4f4f6; --fg-muted: #9a9aa6; --fg-subtle: #62626d;
+  --primary: #f4f4f6; --primary-hover: #ffffff; --primary-soft: rgba(255, 255, 255, 0.07); --primary-fg: #000000;
+  --ring: rgba(255, 255, 255, 0.3);
+  --shadow-xs: none; --shadow-sm: 0 0 0 1px rgba(255, 255, 255, 0.02);
+  --shadow-md: 0 20px 40px -20px rgba(0, 0, 0, 0.9); --shadow-lg: 0 30px 80px -30px rgba(0, 0, 0, 1);
+  --grid: rgba(255, 255, 255, 0.06);
+  background: linear-gradient(180deg, #000 0%, #000 60%, #08090c 100%);
+  color: var(--fg);
+}
+/* the violet that runs through the artwork, for the few accents that should stay coloured */
+.noir .accent { color: #b6a8ff; }
+body:has(.noir) { background: #000; }
