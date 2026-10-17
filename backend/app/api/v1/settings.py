@@ -17,7 +17,7 @@ from app.models import CustomFieldDef, Lead, SavedView, Tag
 from app.schemas.common import Schema, parse, provided
 from app.services import audit
 from app.services.custom_fields import TYPES
-from app.services.notifications import DEFAULT_PREFS, NOTIFICATION_TYPES, prefs_for
+from app.services.notifications import DEFAULT_PREFS, NOTIFICATION_TYPES, OWNER_ONLY_TYPES, prefs_for
 
 bp = Blueprint("settings", __name__, url_prefix="/api/v1")
 
@@ -259,10 +259,18 @@ def update_preferences():
     return ok(build_me())
 
 
+def _notif_prefs() -> list[dict]:
+    from app.core.permissions import has_permission
+
+    perms = getattr(g, "permissions", set())
+    return [{"type": t, "label": label, **prefs_for(g.member, t)} for t, label in NOTIFICATION_TYPES.items()
+            if t not in OWNER_ONLY_TYPES or has_permission(perms, OWNER_ONLY_TYPES[t])]
+
+
 @bp.get("/me/notification-preferences")
 @protect()
 def get_notification_prefs():
-    return ok([{"type": t, "label": label, **prefs_for(g.member, t)} for t, label in NOTIFICATION_TYPES.items()])
+    return ok(_notif_prefs())
 
 
 class NotifPrefsIn(Schema):
@@ -276,4 +284,4 @@ def put_notification_prefs():
     clean = {t: {"in_app": bool(v.get("in_app", True)), "email": bool(v.get("email", False))} for t, v in d.prefs.items() if t in NOTIFICATION_TYPES}
     g.member.notification_prefs = {**(g.member.notification_prefs or {}), **clean}
     db.session.commit()
-    return ok([{"type": t, "label": label, **prefs_for(g.member, t)} for t, label in NOTIFICATION_TYPES.items()])
+    return ok(_notif_prefs())

@@ -11,10 +11,12 @@ from app.services import email as email_service
 NOTIFICATION_TYPES = {
     "new_lead": "New lead", "task_assigned": "Assigned task", "deal_update": "Deal update", "mention": "Mention",
     "meeting_reminder": "Meeting reminder", "automation": "Automation result", "payment_issue": "Payment issue",
-    "trial_ending": "Trial ending", "system": "System notification",
+    "trial_ending": "Trial ending", "leakage_report": "Weekly lead leakage report", "system": "System notification",
 }
+# Types only some members ever get, so only they see them in their preferences: type -> permission needed.
+OWNER_ONLY_TYPES = {"leakage_report": "audit.read"}
 # Defaults when a member hasn't customised preferences: in-app on, email only for important ones.
-DEFAULT_PREFS = {t: {"in_app": True, "email": t in {"payment_issue", "trial_ending", "mention", "task_assigned"}} for t in NOTIFICATION_TYPES}
+DEFAULT_PREFS = {t: {"in_app": True, "email": t in {"payment_issue", "trial_ending", "mention", "task_assigned", "leakage_report"}} for t in NOTIFICATION_TYPES}
 
 
 def prefs_for(member: WorkspaceMember | None, ntype: str) -> dict:

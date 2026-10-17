@@ -16,6 +16,8 @@ celery.conf.update(
         "send-scheduled-emails": {"task": "jobs.send_scheduled_emails", "schedule": crontab(minute="*")},
         "reminders": {"task": "jobs.send_reminders", "schedule": crontab(minute="*/5")},
         "scheduled-reports": {"task": "jobs.send_scheduled_reports", "schedule": crontab(minute=5, hour="*")},
+        # Monday 9:00 IST (03:30 UTC)
+        "leakage-reports": {"task": "jobs.send_leakage_reports", "schedule": crontab(minute=30, hour=3, day_of_week=1)},
         "release-expired-holds": {"task": "jobs.release_expired_holds", "schedule": crontab(minute="*/10")},
         "housekeeping": {"task": "jobs.housekeeping", "schedule": crontab(minute=30, hour=3)},
     },
