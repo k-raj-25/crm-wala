@@ -1,7 +1,7 @@
 "use client";
 import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertCircle, AtSign, Bell, CalendarClock, CheckSquare, Handshake, Settings2, Sparkles, UserPlus, Workflow } from "lucide-react";
+import { AlertCircle, AtSign, Bell, CalendarClock, CheckSquare, Handshake, Radar, Settings2, Sparkles, UserPlus, Workflow } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
@@ -11,8 +11,8 @@ import { useNotifications } from "@/lib/queries";
 import type { NotificationItem } from "@/lib/types";
 import { navigate } from "./pending-nav";
 
-const ICONS: Record<string, React.ElementType> = { new_lead: UserPlus, task_assigned: CheckSquare, deal_update: Handshake, mention: AtSign, meeting_reminder: CalendarClock, automation: Workflow, payment_issue: AlertCircle, trial_ending: Sparkles, system: Settings2 };
-const TONES: Record<string, string> = { payment_issue: "bg-danger-soft text-danger", trial_ending: "bg-warning-soft text-warning", new_lead: "bg-success-soft text-success", deal_update: "bg-primary-soft text-primary" };
+const ICONS: Record<string, React.ElementType> = { new_lead: UserPlus, task_assigned: CheckSquare, deal_update: Handshake, mention: AtSign, meeting_reminder: CalendarClock, automation: Workflow, payment_issue: AlertCircle, trial_ending: Sparkles, leakage_report: Radar, system: Settings2 };
+const TONES: Record<string, string> = { payment_issue: "bg-danger-soft text-danger", trial_ending: "bg-warning-soft text-warning", new_lead: "bg-success-soft text-success", deal_update: "bg-primary-soft text-primary", leakage_report: "bg-warning-soft text-warning" };
 
 export function NotificationRow({ n, onOpen }: { n: NotificationItem; onOpen: (n: NotificationItem) => void }) {
   const I = ICONS[n.type] ?? Bell;

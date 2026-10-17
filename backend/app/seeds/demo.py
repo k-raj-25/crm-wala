@@ -9,7 +9,7 @@ from app.core.passwords import hash_password
 from app.core.tenant import bypass_scope, tenant_scope
 from app.extensions import db
 from app.models import (
-    Activity, Automation, Call, Company, Contact, CustomFieldDef, Deal, Email, Lead, Meeting, Note, Notification, Pipeline, PipelineStage,
+    Activity, AuditLog, Automation, Call, Company, Contact, CustomFieldDef, Deal, Email, Lead, Meeting, Note, Notification, Pipeline, PipelineStage,
     Project, Tag, Task, Tower, Unit, UnitEvent, User, Workspace, WorkspaceMember,
 )
 from app.models.base import utcnow
@@ -68,6 +68,7 @@ STAGE_PLAN = [("Enquiry", 3), ("Site Visit", 3), ("Shortlisted", 2), ("Negotiati
 def _wipe() -> None:
     with bypass_scope():
         for ws in db.session.query(Workspace).filter(Workspace.slug.in_((SLUG, "acme-demo"))).all():  # "acme-demo" = the pre-real-estate demo
+            db.session.query(AuditLog).filter(AuditLog.workspace_id == ws.id).delete(synchronize_session=False)
             db.session.delete(ws)
         db.session.flush()
         db.session.query(User).filter(User.email.like("%@demo.crmwala.dev")).delete(synchronize_session=False)
@@ -267,6 +268,9 @@ def seed_demo(reset: bool = False, plan: str = "trial") -> dict:
                 done = rnd.random() < 0.8
                 db.session.add(Meeting(workspace_id=ws.id, title=f"Site visit — {ld.name}, {u.name}", kind="site_visit", starts_at=when, ends_at=when + dt.timedelta(minutes=45),
                                        status="completed" if done else "canceled", organizer_id=users[i % 3].id, lead_id=ld.id, unit_id=u.id, project_id=u.project_id))
+                if done and i % 3 != 2:  # Aarav and Priya follow up after their visits; Rohit's visited leads go quiet (the leakage radar notices)
+                    db.session.add(Activity(workspace_id=ws.id, type="call", title="Call logged — follow-up after site visit", lead_id=ld.id, user_id=users[i % 3].id,
+                                            occurred_at=when + dt.timedelta(days=2), is_demo=True))
             task_rows = [
                 ("Call back {0} about the floor plan", 0, 0, 0, "high", "todo", "follow_up"), ("Send brochure and price sheet to {0}", 0, 2, 0, "medium", "todo", "follow_up"),
                 ("Confirm site visit with {0}", 3, 4, 0, "urgent", "todo", "follow_up"), ("Collect token cheque from {0}", 0, 6, 1, "high", "todo", "follow_up"),
@@ -310,6 +314,17 @@ def seed_demo(reset: bool = False, plan: str = "trial") -> dict:
             for title, body, ntype, link in [("New enquiry: Aarti Desai", "99acres · 3 BHK · ₹2–2.8 Cr", "new_lead", "/app/leads"), ("A hold expires today", "Unit 604, Tower D-13", "deal_update", "/app/projects"),
                                              ("Site visit today: Gautam Bhatt", None, "task_assigned", "/app/calendar"), ("Your trial ends in 2 days", "Choose a plan to keep access", "trial_ending", "/app/billing")]:
                 db.session.add(Notification(workspace_id=ws.id, user_id=users[0].id, type=ntype, title=title, body=body, link=link, created_at=now - dt.timedelta(hours=rnd.randint(1, 30))))
+            # ---- lead leakage radar: a lost lead back through a broker, and a manager revealing many numbers ----------
+            kritika = next(x for x in leads if x.first_name == "Kritika")
+            kritika.owner_id = users[2].id
+            db.session.add(Activity(workspace_id=ws.id, type="status_changed", title="Status changed from contacted to lost", lead_id=kritika.id, user_id=users[2].id,
+                                    occurred_at=now - dt.timedelta(days=26), data={"from": "contacted", "to": "lost"}, is_demo=True))
+            db.session.add(Lead(workspace_id=ws.id, first_name="Kritika", last_name="J.", phone=kritika.phone, source="broker", status="new", intent="rent", bhk="2 BHK",
+                                location="Gurgaon", owner_id=users[3].id, description="Registered by Sharma Realty (broker).", created_at=now - dt.timedelta(days=3)))
+            for i in range(9):
+                ld = leads[(i * 5 + 1) % len(leads)]
+                db.session.add(AuditLog(workspace_id=ws.id, actor_type="user", actor_id=users[1].id, actor_label=users[1].name, action="phone.revealed", entity_type="lead",
+                                        entity_id=str(ld.id), summary=f"Viewed the phone number of {ld.name}", created_at=now - dt.timedelta(days=i % 6, hours=i)))
             ws.last_activity_at = now
             db.session.commit()
             counts = {"projects": len(projects), "units": len(all_units), "leads": len(leads), "contacts": len(contacts), "deals": db.session.query(Deal).count()}

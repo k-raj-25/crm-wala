@@ -1,4 +1,4 @@
-import { Activity, BarChart3, Bot, Building2, CalendarDays, CheckSquare, Home, Inbox, Kanban, Landmark, Plug, Settings, UserRound, Users, Workflow } from "lucide-react";
+import { Activity, BarChart3, Bot, Building2, CalendarDays, CheckSquare, Home, Inbox, Kanban, Landmark, Plug, Radar, Settings, UserRound, Users, Workflow } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export type NavItem = { href: string; label: string; icon: LucideIcon; perm?: string; feature?: string; chord?: string; more?: boolean };
@@ -13,6 +13,7 @@ export const NAV: NavItem[] = [
   { href: "/app/tasks", label: "Daily Plan", icon: CheckSquare, perm: "tasks.read", chord: "t" },
   { href: "/app/inbox", label: "Inbox", icon: Inbox, perm: "emails.read", chord: "i" },
   { href: "/app/reports", label: "Reports", icon: BarChart3, perm: "reports.read", chord: "r", more: true },
+  { href: "/app/radar", label: "Leakage radar", icon: Radar, perm: "audit.read" },
   { href: "/app/companies", label: "Builders", icon: Landmark, perm: "companies.read", chord: "o", more: true },
   { href: "/app/activities", label: "Activities", icon: Activity, perm: "activities.read", chord: "a", more: true },
   { href: "/app/automations", label: "Automations", icon: Workflow, perm: "automations.read", chord: "u", more: true },

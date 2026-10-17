@@ -165,6 +165,28 @@ def send_scheduled_reports():
     return {"sent": sent}
 
 
+@job("send_leakage_reports")
+def send_leakage_reports():
+    """Monday morning: the weekly lead leakage report to each workspace's owner and admins."""
+    from app.core.tenant import tenant_scope
+    from app.models import Workspace
+    from app.models.base import utcnow
+    from app.services import leakage
+
+    now = utcnow()
+    sent = 0
+    for wid in [w.id for w in db.session.query(Workspace).filter(Workspace.deleted_at.is_(None), Workspace.status == "active", Workspace.is_demo.is_(False))]:
+        with tenant_scope(wid):
+            ws = db.session.get(Workspace, wid)
+            last = (ws.settings or {}).get("leakage_report_sent_at")
+            if not leakage.weekly_enabled(ws) or (last and now - dt.datetime.fromisoformat(last) < dt.timedelta(days=6)):
+                continue
+            leakage.send_weekly(ws, now)
+            db.session.commit()
+            sent += 1
+    return {"sent": sent}
+
+
 @job("release_expired_holds")
 def release_expired_holds():
     from app.services import inventory
