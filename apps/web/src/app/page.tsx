@@ -6,7 +6,7 @@ import { FAQ, FinalCTA, Footer, Integrations, Pricing, Testimonials } from "@/co
 
 export default function Landing() {
   return (
-    <>
+    <div className="noir min-h-dvh">
       <Nav />
       <main>
         <Hero />
@@ -24,6 +24,6 @@ export default function Landing() {
         <FinalCTA />
       </main>
       <Footer />
-    </>
+    </div>
   );
 }

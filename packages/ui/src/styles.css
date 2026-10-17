@@ -4,79 +4,106 @@
    Design tokens. Light is default; `.dark` swaps every role. Components only reference roles.
    Type scale: 12 / 13 / 14 (body) / 16 / 18 / 24 / 32 / 44 / 60.  Radius: 8 / 12 / 16 / 20.  Spacing: 4px grid.
    ------------------------------------------------------------------------------------------------ */
+/* Liquid glass: every surface is frosted and translucent, floating over a glowing backdrop (`--glow`, painted by body::before).
+   `--surface-solid` is for things that must hide what scrolls under them (sticky headers, frozen columns);
+   `--surface-pop` is the denser glass of menus, dialogs and toasts that sit over busy content. */
 :root {
   color-scheme: light;
-  --bg: #f6f6f9;
-  --bg-subtle: #efeff4;
-  --surface: #ffffff;
-  --surface-2: #fafafc;
-  --surface-hover: #f4f4f8;
-  --border: #e7e7ee;
-  --border-strong: #d3d4df;
-  --fg: #0e0f1f;
-  --fg-muted: #565a72;
-  --fg-subtle: #878aa0;
-  --primary: #4f46e5;
-  --primary-hover: #4338ca;
-  --primary-soft: #eceafe;
+  --bg: #eef1f8;
+  --bg-subtle: rgba(30, 41, 94, 0.05);
+  --surface: rgba(255, 255, 255, 0.56);
+  --surface-2: rgba(255, 255, 255, 0.38);
+  --surface-hover: rgba(30, 41, 94, 0.055);
+  --surface-solid: #f7f8fc;
+  --surface-pop: rgba(250, 251, 255, 0.84);
+  --border: rgba(30, 41, 94, 0.1);
+  --border-strong: rgba(30, 41, 94, 0.18);
+  --fg: #0c1024;
+  --fg-muted: #4f5672;
+  --fg-subtle: #7d839d;
+  --primary: #2a4fd6;
+  --primary-hover: #1f40bb;
+  --primary-soft: rgba(42, 79, 214, 0.1);
   --primary-fg: #ffffff;
-  --ring: rgba(79, 70, 229, 0.35);
-  --success: #0f9d58; --success-soft: #e6f6ee;
-  --warning: #c26a00; --warning-soft: #fff3df;
-  --danger: #d92d2d; --danger-soft: #fdeaea;
-  --info: #0a7bb8; --info-soft: #e5f3fa;
-  --overlay: rgba(14, 15, 31, 0.45);
-  --shadow-xs: 0 1px 2px rgba(16, 17, 40, 0.05);
-  --shadow-sm: 0 1px 2px rgba(16, 17, 40, 0.04), 0 2px 8px rgba(16, 17, 40, 0.05);
-  --shadow-md: 0 2px 4px rgba(16, 17, 40, 0.04), 0 8px 24px rgba(16, 17, 40, 0.08);
-  --shadow-lg: 0 4px 8px rgba(16, 17, 40, 0.05), 0 24px 56px rgba(16, 17, 40, 0.16);
+  --ring: rgba(42, 79, 214, 0.3);
+  --success: #0f9d58; --success-soft: rgba(15, 157, 88, 0.11);
+  --warning: #c26a00; --warning-soft: rgba(230, 140, 20, 0.13);
+  --danger: #d92d2d; --danger-soft: rgba(217, 45, 45, 0.1);
+  --info: #0a7bb8; --info-soft: rgba(10, 123, 184, 0.1);
+  --overlay: rgba(20, 26, 60, 0.28);
+  --glass-blur: 22px;
+  --glass-edge: inset 0 1px 0 rgba(255, 255, 255, 0.85), inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+  --glass-btn: rgba(255, 255, 255, 0.62);
+  --glass-btn-hover: rgba(255, 255, 255, 0.85);
+  --display: rgba(30, 41, 94, 0.07);
+  --shadow-xs: var(--glass-edge), 0 1px 2px rgba(30, 41, 94, 0.04);
+  --shadow-sm: var(--glass-edge), 0 2px 10px rgba(30, 41, 94, 0.06);
+  --shadow-md: var(--glass-edge), 0 10px 30px -6px rgba(30, 41, 94, 0.14);
+  --shadow-lg: var(--glass-edge), 0 24px 60px -12px rgba(30, 41, 94, 0.25);
+  --glow:
+    radial-gradient(55% 45% at 12% 0%, rgba(96, 135, 255, 0.34), transparent 70%),
+    radial-gradient(45% 40% at 92% 12%, rgba(160, 130, 255, 0.24), transparent 70%),
+    radial-gradient(60% 50% at 55% 105%, rgba(70, 170, 255, 0.24), transparent 70%),
+    linear-gradient(180deg, #f2f4fb 0%, #e9edf8 100%);
   /* categorical chart palette (validated: adjacent CVD ΔE ≥ 8.4, see dataviz palette reference) */
   --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a; --series-4: #eda100;
   --series-5: #e87ba4; --series-6: #008300; --series-7: #4a3aa7; --series-8: #e34948;
   --seq-1: #dbe8fa; --seq-2: #b3d0f4; --seq-3: #82b2ec; --seq-4: #4f93e0; --seq-5: #2a78d6; --seq-6: #1d5cab;
-  --grid: #ececf2;
+  --grid: rgba(30, 41, 94, 0.08);
 }
 .dark {
   color-scheme: dark;
-  --bg: #0a0a11;
-  --bg-subtle: #0f0f18;
-  --surface: #12121b;
-  --surface-2: #161621;
-  --surface-hover: #1a1a27;
-  --border: #23243a;
-  --border-strong: #33354f;
-  --fg: #f3f3fa;
-  --fg-muted: #a6a9c2;
-  --fg-subtle: #747793;
-  --primary: #7c74ff;
-  --primary-hover: #918bff;
-  --primary-soft: rgba(124, 116, 255, 0.16);
-  --primary-fg: #0a0a11;
-  --ring: rgba(124, 116, 255, 0.45);
+  --bg: #050914;
+  --bg-subtle: rgba(255, 255, 255, 0.045);
+  --surface: rgba(32, 42, 68, 0.38);
+  --surface-2: rgba(32, 42, 68, 0.26);
+  --surface-hover: rgba(255, 255, 255, 0.065);
+  --surface-solid: #0e1424;
+  --surface-pop: rgba(18, 25, 44, 0.8);
+  --border: rgba(255, 255, 255, 0.09);
+  --border-strong: rgba(255, 255, 255, 0.17);
+  --fg: #f2f4fb;
+  --fg-muted: #a4abc4;
+  --fg-subtle: #6f7794;
+  /* white pills, like the reference: the glow carries the colour */
+  --primary: #eef1fb;
+  --primary-hover: #ffffff;
+  --primary-soft: rgba(255, 255, 255, 0.1);
+  --primary-fg: #070b18;
+  --ring: rgba(255, 255, 255, 0.32);
   --success: #2fd18a; --success-soft: rgba(47, 209, 138, 0.14);
   --warning: #f5a524; --warning-soft: rgba(245, 165, 36, 0.14);
   --danger: #ff6b6b; --danger-soft: rgba(255, 107, 107, 0.14);
   --info: #4cb8f0; --info-soft: rgba(76, 184, 240, 0.14);
-  --overlay: rgba(0, 0, 0, 0.62);
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.35), 0 8px 24px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.4), 0 24px 56px rgba(0, 0, 0, 0.55);
+  --overlay: rgba(2, 4, 12, 0.5);
+  --glass-edge: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  --glass-btn: rgba(255, 255, 255, 0.12);
+  --glass-btn-hover: rgba(255, 255, 255, 0.19);
+  --display: rgba(120, 150, 255, 0.09);
+  --shadow-xs: var(--glass-edge);
+  --shadow-sm: var(--glass-edge), 0 4px 14px rgba(0, 0, 0, 0.25);
+  --shadow-md: var(--glass-edge), 0 14px 34px -8px rgba(0, 0, 0, 0.5);
+  --shadow-lg: var(--glass-edge), 0 30px 70px -14px rgba(0, 0, 0, 0.7);
+  --glow:
+    radial-gradient(50% 45% at 55% 78%, rgba(37, 82, 210, 0.42), transparent 72%),
+    radial-gradient(40% 40% at 8% 4%, rgba(40, 80, 200, 0.22), transparent 70%),
+    radial-gradient(35% 35% at 95% 20%, rgba(60, 110, 240, 0.14), transparent 70%),
+    linear-gradient(180deg, #03060e 0%, #060b1a 100%);
   --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70; --series-4: #c98500;
   --series-5: #d55181; --series-6: #008300; --series-7: #9085e9; --series-8: #e66767;
   --seq-1: #1a2a44; --seq-2: #1f3d6b; --seq-3: #2a5a9e; --seq-4: #3987e5; --seq-5: #6aa5ee; --seq-6: #9bc2f4;
-  --grid: #20212f;
+  --grid: rgba(255, 255, 255, 0.07);
 }
 
 @theme inline {
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --color-bg: var(--bg); --color-bg-subtle: var(--bg-subtle); --color-surface: var(--surface); --color-surface-2: var(--surface-2);
-  --color-surface-hover: var(--surface-hover); --color-border: var(--border); --color-border-strong: var(--border-strong);
+  --color-surface-hover: var(--surface-hover); --color-surface-solid: var(--surface-solid); --color-surface-pop: var(--surface-pop); --color-border: var(--border); --color-border-strong: var(--border-strong);
   --color-fg: var(--fg); --color-fg-muted: var(--fg-muted); --color-fg-subtle: var(--fg-subtle);
   --color-primary: var(--primary); --color-primary-hover: var(--primary-hover); --color-primary-soft: var(--primary-soft); --color-primary-fg: var(--primary-fg);
   --color-success: var(--success); --color-success-soft: var(--success-soft); --color-warning: var(--warning); --color-warning-soft: var(--warning-soft);
   --color-danger: var(--danger); --color-danger-soft: var(--danger-soft); --color-info: var(--info); --color-info-soft: var(--info-soft);
-  --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-xl: 20px;
+  --radius-sm: 8px; --radius-md: 12px; --radius-lg: 18px; --radius-xl: 22px;
   --shadow-xs: var(--shadow-xs); --shadow-sm: var(--shadow-sm); --shadow-md: var(--shadow-md); --shadow-lg: var(--shadow-lg);
   --animate-fade-in: fade-in 160ms ease-out;
   --animate-pop-in: pop-in 180ms cubic-bezier(0.16, 1, 0.3, 1);
@@ -104,6 +131,8 @@
   * { border-color: var(--border); }
   html { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; font-feature-settings: "cv11", "ss01"; }
   body { background: var(--bg); color: var(--fg); font-size: 14px; line-height: 1.5; }
+  /* the glowing backdrop the glass floats over; a fixed layer, so it stays put while pages scroll (and works on iOS) */
+  body::before { content: ""; position: fixed; inset: 0; z-index: -1; background: var(--glow); pointer-events: none; }
   ::selection { background: var(--primary-soft); color: var(--fg); }
   :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 6px; }
   button, [role="button"], a { -webkit-tap-highlight-color: transparent; }
@@ -132,4 +161,15 @@
   background: linear-gradient(90deg, var(--bg-subtle) 25%, var(--surface-hover) 50%, var(--bg-subtle) 75%);
   background-size: 200% 100%; animation: var(--animate-shimmer); border-radius: 8px;
 }
+/* Glass that refracts (Chromium, see liquid-glass.tsx) can be clearer: the bending carries the effect, not the tint. */
+.lg-on { --surface: rgba(255, 255, 255, 0.36); --surface-2: rgba(255, 255, 255, 0.26); --surface-pop: rgba(250, 251, 255, 0.62); --glass-btn: rgba(255, 255, 255, 0.45); }
+.dark .lg-on { --surface: rgba(32, 42, 68, 0.24); --surface-2: rgba(32, 42, 68, 0.16); --surface-pop: rgba(18, 25, 44, 0.58); --glass-btn: rgba(255, 255, 255, 0.1); }
+.glass, .glass-pop { -webkit-backdrop-filter: blur(var(--glass-blur, 22px)) saturate(170%); backdrop-filter: blur(var(--glass-blur, 22px)) saturate(170%); }
+.glass-pop { background-color: var(--surface-pop); }
+/* Refracting glass draws its filter on a pseudo-element that exactly fills it. On the element itself, Chromium would anchor
+   the filter at the edge of the drop shadow, and where that anchor sits differs between Chrome versions. */
+.lg-on { -webkit-backdrop-filter: none; backdrop-filter: none; isolation: isolate; }
+.lg-on::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; -webkit-backdrop-filter: var(--lg-filter); backdrop-filter: var(--lg-filter); }
+/* a huge faint word behind a heading, like a watermark */
+.display-word { color: var(--display); font-weight: 700; letter-spacing: -0.05em; line-height: 0.85; white-space: nowrap; pointer-events: none; user-select: none; }
 .hide-scrollbar { scrollbar-width: none; } .hide-scrollbar::-webkit-scrollbar { display: none; }

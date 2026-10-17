@@ -32,6 +32,12 @@ export function ThemeProvider({ children, initial }: { children: React.ReactNode
   return <Ctx.Provider value={{ pref, resolved, setPref }}>{children}</Ctx.Provider>;
 }
 
+/** Pins `resolved` for a subtree (e.g. a page that is always dark) without touching the user's saved preference. */
+export function ForceTheme({ resolved, children }: { resolved: "light" | "dark"; children: React.ReactNode }) {
+  const parent = useTheme();
+  return <Ctx.Provider value={{ ...parent, resolved }}>{children}</Ctx.Provider>;
+}
+
 export function ThemeToggle({ onChange }: { onChange?: (p: Pref) => void }) {
   const { pref, resolved, setPref } = useTheme();
   const set = (p: Pref) => { setPref(p); onChange?.(p); };

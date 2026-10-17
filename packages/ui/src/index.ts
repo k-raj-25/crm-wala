@@ -23,3 +23,4 @@ export * from "./components/table";
 export * from "./components/theme";
 export * from "./components/confirm";
 export * from "./charts/charts";
+export * from "./components/liquid-glass";
