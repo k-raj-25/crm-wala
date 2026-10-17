@@ -4,6 +4,7 @@ import { Check, Clipboard } from "lucide-react";
 import * as React from "react";
 import { Button, Field, Input, NativeSelect, Skeleton, useToast } from "@crm/ui";
 import { api } from "@/lib/api";
+import { TeamAlertTemplate } from "./team";
 import { useWaTemplates } from "./whatsapp";
 
 export type WaCreds = { phone_number_id: string; waba_id: string; access_token: string; app_secret: string };
@@ -69,6 +70,7 @@ export function WhatsAppManage() {
           {media.map((t) => <option key={`${t.name}|${t.language}`} value={`${t.name}|${t.language}`}>{t.name.replace(/_/g, " ")} ({t.language})</option>)}
         </NativeSelect>
       </Field>
+      <TeamAlertTemplate />
     </div>
   );
 }

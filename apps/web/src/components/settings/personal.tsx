@@ -8,6 +8,7 @@ import { api } from "@/lib/api";
 import { useMe, usePipelines, keys } from "@/lib/queries";
 import type { Me } from "@/lib/types";
 import { PasswordInput, StrengthMeter } from "../auth/auth-shell";
+import { WhatsAppForMe } from "../whatsapp/team";
 import { Divided, FieldRow, SettingsSection } from "./ui";
 
 const TZ = ["Asia/Kolkata", "Asia/Dubai", "Asia/Singapore", "Europe/London", "Europe/Berlin", "America/New_York", "America/Chicago", "America/Los_Angeles", "Australia/Sydney", "UTC"];
@@ -46,11 +47,14 @@ export function NotificationSettings() {
     try { await api.put("/api/v1/me/notification-preferences", { prefs: Object.fromEntries(rows.map((r) => [r.type, { in_app: r.in_app, email: r.email }])) }); q.refetch(); } catch (e) { toast.error("Couldn't save", (e as Error).message); }
   };
   return (
+    <div className="space-y-6">
     <SettingsSection title="Notifications" description="Choose how you want to hear about activity. Payment and security alerts to owners can't be fully disabled.">
       {q.isLoading ? <Skeleton className="h-64" /> : (
         <div><div className="grid grid-cols-[1fr_72px_72px] gap-2 border-b border-border pb-2 text-xs font-medium uppercase tracking-wide text-fg-subtle"><span /><span className="text-center">In-app</span><span className="text-center">Email</span></div>
           {q.data!.map((r) => <div key={r.type} className="grid grid-cols-[1fr_72px_72px] items-center gap-2 border-b border-border py-3.5 last:border-0"><span className="text-sm font-medium">{r.label}</span><span className="flex justify-center"><Switch checked={r.in_app} onCheckedChange={(v) => set(r.type, "in_app", v)} aria-label={`${r.label} in-app`} /></span><span className="flex justify-center"><Switch checked={r.email} onCheckedChange={(v) => set(r.type, "email", v)} aria-label={`${r.label} email`} /></span></div>)}</div>)}
     </SettingsSection>
+    <WhatsAppForMe />
+    </div>
   );
 }
 

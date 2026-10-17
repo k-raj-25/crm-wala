@@ -172,6 +172,20 @@ def release_expired_holds():
     return {"released": inventory.release_expired_holds()}
 
 
+@job("whatsapp_lead_alerts")
+def whatsapp_lead_alerts():
+    from app.services import whatsapp_crm
+
+    return whatsapp_crm.send_lead_alerts()
+
+
+@job("whatsapp_morning_plans")
+def whatsapp_morning_plans():
+    from app.services import whatsapp_crm
+
+    return whatsapp_crm.send_morning_plans()
+
+
 @job("housekeeping")
 def housekeeping():
     from app.models import AnalyticsEvent, ApiErrorLog, AuthEvent, EmailLog, ImpersonationGrant, JobLog, UserSession, WebhookEvent
