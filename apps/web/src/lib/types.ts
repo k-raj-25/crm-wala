@@ -1,6 +1,7 @@
+import type { Accent } from "@crm/ui";
 export type Id = string;
 export type User = { id: Id; name: string; email: string; avatar_url?: string | null; job_role?: string | null; phone?: string | null; email_verified: boolean; mfa_enabled: boolean; preferences: Preferences };
-export type Preferences = { theme?: "light" | "dark" | "system"; date_format?: string; currency?: string; timezone?: string; locale?: string; default_pipeline_id?: string; dashboard_widgets?: string[]; sidebar_collapsed?: boolean };
+export type Preferences = { theme?: "light" | "dark" | "system"; accent?: Accent; date_format?: string; currency?: string; timezone?: string; locale?: string; default_pipeline_id?: string; dashboard_widgets?: string[]; sidebar_collapsed?: boolean };
 export type LeadStatus = { key: string; label: string; color: string };
 export type Access = { state: "full" | "grace" | "restricted" | "suspended"; reason: string | null; seconds_left: number | null; trial_stage: "day1" | "day2" | "final" | "expired" | null; ends_at: string | null };
 export type Subscription = { plan_key: string; plan_name: string; status: string; interval: string | null; trial_ends_at: string | null; trial_started_at: string | null; current_period_end: string | null; grace_ends_at: string | null; cancel_at_period_end: boolean; access: Access };

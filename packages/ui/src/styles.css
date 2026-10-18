@@ -95,6 +95,74 @@
   --grid: rgba(255, 255, 255, 0.07);
 }
 
+/* Accent colours, chosen per person in Settings (`data-accent` on <html>, see theme.tsx). Blue is the default above.
+   Light mode recolours the buttons; dark mode keeps near-white pills, tinted, and moves the colour into the glow and highlights.
+   The landing page (`.noir`) sets its own values for every one of these, so it never changes. */
+[data-accent="violet"] {
+  --bg: #f5f2fc; --primary: #6d3fd9; --primary-hover: #5a2fc0; --primary-soft: rgba(109, 63, 217, 0.1); --primary-fg: #ffffff; --ring: rgba(109, 63, 217, 0.3);
+  --glow:
+    radial-gradient(55% 45% at 12% 0%, rgba(140, 100, 255, 0.34), transparent 70%),
+    radial-gradient(45% 40% at 92% 12%, rgba(230, 120, 200, 0.2), transparent 70%),
+    radial-gradient(60% 50% at 55% 105%, rgba(120, 110, 255, 0.22), transparent 70%),
+    linear-gradient(180deg, #f5f2fc 0%, #ece8f8 100%);
+}
+.dark[data-accent="violet"] {
+  --bg: #06040f; --primary: #f1ecff; --primary-hover: #ffffff; --primary-soft: rgba(170, 140, 255, 0.16); --primary-fg: #070b18; --ring: rgba(190, 170, 255, 0.4); --display: rgba(160, 130, 255, 0.1);
+  --glow:
+    radial-gradient(50% 45% at 55% 78%, rgba(110, 60, 220, 0.42), transparent 72%),
+    radial-gradient(40% 40% at 8% 4%, rgba(100, 60, 210, 0.22), transparent 70%),
+    radial-gradient(35% 35% at 95% 20%, rgba(150, 90, 250, 0.14), transparent 70%),
+    linear-gradient(180deg, #06040f 0%, #0b0820 100%);
+}
+[data-accent="teal"] {
+  --bg: #eff8f7; --primary: #0f766e; --primary-hover: #0b5f58; --primary-soft: rgba(15, 118, 110, 0.1); --primary-fg: #ffffff; --ring: rgba(15, 118, 110, 0.3);
+  --glow:
+    radial-gradient(55% 45% at 12% 0%, rgba(40, 180, 170, 0.3), transparent 70%),
+    radial-gradient(45% 40% at 92% 12%, rgba(90, 160, 255, 0.2), transparent 70%),
+    radial-gradient(60% 50% at 55% 105%, rgba(40, 200, 180, 0.22), transparent 70%),
+    linear-gradient(180deg, #eff8f7 0%, #e5f1f0 100%);
+}
+.dark[data-accent="teal"] {
+  --bg: #020a0b; --primary: #e6faf6; --primary-hover: #ffffff; --primary-soft: rgba(80, 220, 200, 0.14); --primary-fg: #070b18; --ring: rgba(120, 230, 210, 0.38); --display: rgba(80, 220, 200, 0.08);
+  --glow:
+    radial-gradient(50% 45% at 55% 78%, rgba(14, 130, 120, 0.4), transparent 72%),
+    radial-gradient(40% 40% at 8% 4%, rgba(20, 110, 110, 0.22), transparent 70%),
+    radial-gradient(35% 35% at 95% 20%, rgba(40, 150, 170, 0.14), transparent 70%),
+    linear-gradient(180deg, #020a0b 0%, #05121a 100%);
+}
+[data-accent="rose"] {
+  --bg: #fcf2f5; --primary: #c42a55; --primary-hover: #a8204a; --primary-soft: rgba(196, 42, 85, 0.1); --primary-fg: #ffffff; --ring: rgba(196, 42, 85, 0.3);
+  --glow:
+    radial-gradient(55% 45% at 12% 0%, rgba(240, 90, 140, 0.28), transparent 70%),
+    radial-gradient(45% 40% at 92% 12%, rgba(255, 150, 120, 0.2), transparent 70%),
+    radial-gradient(60% 50% at 55% 105%, rgba(220, 100, 170, 0.2), transparent 70%),
+    linear-gradient(180deg, #fcf2f5 0%, #f6e8ee 100%);
+}
+.dark[data-accent="rose"] {
+  --bg: #0b0408; --primary: #fdebf1; --primary-hover: #ffffff; --primary-soft: rgba(255, 120, 160, 0.15); --primary-fg: #070b18; --ring: rgba(255, 150, 180, 0.38); --display: rgba(255, 110, 150, 0.08);
+  --glow:
+    radial-gradient(50% 45% at 55% 78%, rgba(190, 40, 90, 0.4), transparent 72%),
+    radial-gradient(40% 40% at 8% 4%, rgba(170, 40, 90, 0.22), transparent 70%),
+    radial-gradient(35% 35% at 95% 20%, rgba(220, 80, 120, 0.14), transparent 70%),
+    linear-gradient(180deg, #0b0408 0%, #140812 100%);
+}
+[data-accent="amber"] {
+  --bg: #fcf6ee; --primary: #b84f0a; --primary-hover: #9a4108; --primary-soft: rgba(184, 79, 10, 0.1); --primary-fg: #ffffff; --ring: rgba(184, 79, 10, 0.3);
+  --glow:
+    radial-gradient(55% 45% at 12% 0%, rgba(250, 160, 60, 0.3), transparent 70%),
+    radial-gradient(45% 40% at 92% 12%, rgba(255, 120, 90, 0.2), transparent 70%),
+    radial-gradient(60% 50% at 55% 105%, rgba(240, 190, 80, 0.22), transparent 70%),
+    linear-gradient(180deg, #fcf6ee 0%, #f6ede1 100%);
+}
+.dark[data-accent="amber"] {
+  --bg: #0a0603; --primary: #fdf1df; --primary-hover: #ffffff; --primary-soft: rgba(255, 170, 80, 0.15); --primary-fg: #070b18; --ring: rgba(255, 190, 120, 0.38); --display: rgba(255, 170, 80, 0.08);
+  --glow:
+    radial-gradient(50% 45% at 55% 78%, rgba(190, 100, 20, 0.38), transparent 72%),
+    radial-gradient(40% 40% at 8% 4%, rgba(170, 80, 20, 0.2), transparent 70%),
+    radial-gradient(35% 35% at 95% 20%, rgba(220, 140, 40, 0.14), transparent 70%),
+    linear-gradient(180deg, #0a0603 0%, #140c06 100%);
+}
+
 @theme inline {
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --color-bg: var(--bg); --color-bg-subtle: var(--bg-subtle); --color-surface: var(--surface); --color-surface-2: var(--surface-2);

@@ -111,6 +111,7 @@ html.dark body:has(.noir) {
     linear-gradient(180deg, #02040b 0%, #050b1c 100%);
 }
 html:not(.dark) body:has(.noir) {
+  background: #eef1f8;
   --glow:
     radial-gradient(55% 50% at 50% 62%, rgba(80, 125, 255, 0.3), transparent 72%),
     radial-gradient(35% 30% at 15% 6%, rgba(150, 130, 255, 0.24), transparent 70%),

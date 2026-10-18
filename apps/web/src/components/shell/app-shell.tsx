@@ -5,7 +5,7 @@ import { AlertTriangle, Ban, CreditCard, Download, LifeBuoy, MailWarning, Menu, 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import * as React from "react";
-import { Button, Dialog, DialogContent, ErrorState, Kbd, Logo, Skeleton, cn, humanDuration, useChord, useHotkey, useLocalStorage, useToast } from "@crm/ui";
+import { Button, Dialog, DialogContent, ErrorState, Kbd, Logo, Skeleton, cn, humanDuration, useChord, useHotkey, useLocalStorage, useTheme, useToast } from "@crm/ui";
 import { api } from "@/lib/api";
 import { MOBILE_PRIMARY, NAV } from "@/lib/nav";
 import { useAccess, useMe } from "@/lib/queries";
@@ -133,6 +133,9 @@ function Shell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useLocalStorage("sidebar-collapsed", false);
   const { data: me, isLoading, error } = useMe();
   const { restricted } = useAccess();
+  // the colour picked in Settings follows the person to every device they sign in on
+  const { accent, setAccent } = useTheme(); const savedAccent = me?.user.preferences?.accent;
+  React.useEffect(() => { if (savedAccent && savedAccent !== accent) setAccent(savedAccent); }, [savedAccent]); // eslint-disable-line react-hooks/exhaustive-deps
   const cfg = useQuery({ queryKey: ["auth-config"], queryFn: () => api.get<{ require_email_verification: boolean }>("/api/v1/auth/config"), staleTime: Infinity });
   const items = useNavItems();
   useHotkey("mod+k", (e) => { e.preventDefault(); ui.openCommand(); });
