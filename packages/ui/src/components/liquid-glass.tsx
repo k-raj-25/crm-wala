@@ -15,7 +15,7 @@ const NS = "http://www.w3.org/2000/svg";
 const BUCKET = 4; // px; sizes are rounded so near-identical cards share a filter
 const MAX_FILTERS = 120;
 
-type Entry = { id: string; refs: number; node: SVGFilterElement };
+type Entry = { id: string; refs: number; node: SVGFilterElement; ready: boolean };
 
 function supported() {
   if (typeof window === "undefined") return false;
@@ -95,22 +95,56 @@ export function LiquidGlass() {
     const current = new WeakMap<Element, string>();
     let seq = 0;
 
+    // A floating panel always starts with the plain CSS frost (`.lg-glass` matches its blur to the filter's). Refraction
+    // (`.lg-on`) switches on only once the filter's map has loaded and nothing is fading the panel: while the panel or an
+    // ancestor has opacity below 1 (every open and close animation), Chromium gives the `::before` an empty backdrop, which
+    // would show the page behind unblurred.
+    const tracked = new Set<HTMLElement>();
     const off = (node: HTMLElement) => {
-      node.classList.remove("lg-on"); node.style.removeProperty("--lg-filter");
+      node.classList.remove("lg-on", "lg-glass"); node.style.removeProperty("--lg-filter"); node.style.removeProperty("--glass-blur");
       if (node.dataset.lgPos !== undefined) { node.style.removeProperty("position"); delete node.dataset.lgPos; }
+      tracked.delete(node);
     };
     const release = (key: string | undefined) => {
       if (!key) return; const e = cache.get(key); if (!e) return;
       e.refs--;
       if (e.refs <= 0 && cache.size > MAX_FILTERS) { e.node.remove(); cache.delete(key); }
     };
+    const opaque = (node: HTMLElement) => {
+      for (let e: HTMLElement | null = node; e && e !== document.body; e = e.parentElement) if (getComputedStyle(e).opacity !== "1") return false;
+      return true;
+    };
+    // an opacity animation makes Chromium treat the panel as faded even on the frames where its value is still 1
+    const fades = new WeakMap<Animation, boolean>();
+    const fadesOpacity = (a: Animation) => {
+      let v = fades.get(a);
+      if (v === undefined) { v = (a as CSSTransition).transitionProperty === "opacity" || !!(a.effect as KeyframeEffect | null)?.getKeyframes().some((k) => "opacity" in k); fades.set(a, v); }
+      return v;
+    };
+    // decide, for every floating panel, whether refraction can show this frame; true while something is still moving
+    const settle = () => {
+      if (!tracked.size) return false;
+      const anims = document.getAnimations().filter((a) => a.playState === "running");
+      let busy = false;
+      tracked.forEach((node) => {
+        const e = cache.get(current.get(node) ?? "");
+        const mine = anims.filter((a) => { const t = (a.effect as KeyframeEffect | null)?.target; return !!t && (t === node || t.contains(node)); });
+        if (mine.length || !e?.ready) busy = true;
+        const on = !!e?.ready && !mine.some(fadesOpacity) && opaque(node);
+        if (on !== node.classList.contains("lg-on")) node.classList.toggle("lg-on", on);
+      });
+      return busy;
+    };
+    let loop = 0;
+    const tick = () => { loop = settle() ? requestAnimationFrame(tick) : 0; };
+    const kick = () => { if (!loop) loop = requestAnimationFrame(tick); };
     const apply = (node: HTMLElement) => {
       const cs = getComputedStyle(node);
       // the filter fills the padding box (inside the border), see `.lg-on::before` in styles.css
       const bl = parseFloat(cs.borderLeftWidth) || 0, bt = parseFloat(cs.borderTopWidth) || 0;
       const w = node.offsetWidth - bl - (parseFloat(cs.borderRightWidth) || 0), h = node.offsetHeight - bt - (parseFloat(cs.borderBottomWidth) || 0);
       if (w < 8 || h < 8) return;
-      if (!floats(node)) { release(current.get(node)); current.delete(node); if (node.classList.contains("lg-on")) off(node); return; }
+      if (!floats(node)) { release(current.get(node)); current.delete(node); if (tracked.has(node)) off(node); return; }
       const bw = Math.round(w / BUCKET) * BUCKET || BUCKET, bh = Math.round(h / BUCKET) * BUCKET || BUCKET;
       const radius = Math.min(Math.max(0, (parseFloat(cs.borderTopLeftRadius) || 0) - Math.max(bl, bt)), bw / 2, bh / 2);
       const frost = node.classList.contains("glass-pop");
@@ -119,15 +153,28 @@ export function LiquidGlass() {
       const key = `${bw}x${bh}r${Math.round(radius)}${frost ? "f" : "c"}b${blur}`;
       if (current.get(node) === key) return;
       let e = cache.get(key);
-      if (!e) { const id = `lg-${++seq}`; e = { id, refs: 0, node: buildFilter(id, bw, bh, radius, frost, blur) }; defs.appendChild(e.node); cache.set(key, e); }
+      if (!e) {
+        const id = `lg-${++seq}`, f = buildFilter(id, bw, bh, radius, frost, blur), entry: Entry = { id, refs: 0, node: f, ready: false };
+        defs.appendChild(f); cache.set(key, entry); e = entry;
+        // the map is a data URL; decode it before the filter is used, or the first frames bend with an empty map
+        const img = new Image(); img.src = f.querySelector("feImage")!.getAttribute("href")!;
+        img.decode().catch(() => {}).finally(() => { entry.ready = true; kick(); });
+      }
       e.refs++; release(current.get(node)); current.set(node, key);
       node.style.setProperty("--lg-filter", `url(#${e.id})`);
-      if (!node.classList.contains("lg-on")) {
+      if (!tracked.has(node)) {
         // the filter's pseudo-element is absolutely placed, so the panel must be positioned
         if (cs.position === "static") { node.style.position = "relative"; node.dataset.lgPos = ""; }
-        node.classList.add("lg-on");
+        node.style.setProperty("--glass-blur", `${blur}px`); node.classList.add("lg-glass"); tracked.add(node);
       }
+      kick();
     };
+    // every open/close animation (CSS keyframes, transitions, or a script's element.animate, which framer-motion uses) starts
+    // the check again; it then runs each frame until the animation ends
+    const onAnim = () => kick();
+    document.addEventListener("animationstart", onAnim, true); document.addEventListener("transitionrun", onAnim, true);
+    const animate = Element.prototype.animate;
+    Element.prototype.animate = function (this: Element, ...args: Parameters<Element["animate"]>) { kick(); return animate.apply(this, args); };
 
     const pending = new Set<HTMLElement>(); let raf = 0;
     const flush = () => { raf = 0; pending.forEach((n) => n.isConnected && apply(n)); pending.clear(); };
@@ -138,13 +185,21 @@ export function LiquidGlass() {
     watch(document);
     const mo = new MutationObserver((muts) => {
       for (const m of muts) {
-        if (m.type === "attributes") { const t = m.target as HTMLElement; if (t.classList.contains("glass") || t.classList.contains("glass-pop")) { if (!watched.has(t)) { watched.add(t); ro.observe(t); } queue(t); } continue; }
+        if (m.type === "attributes") {
+          const t = m.target as HTMLElement;
+          // a script fading a panel frame by frame (inline opacity), or Radix flipping data-state before its close animation
+          if (m.attributeName !== "class") { if (tracked.size && [...tracked].some((n) => t.contains(n))) kick(); continue; }
+          if (t.classList.contains("glass") || t.classList.contains("glass-pop")) { if (!watched.has(t)) { watched.add(t); ro.observe(t); } queue(t); } continue; }
         m.addedNodes.forEach((n) => { if (n instanceof HTMLElement) { if (n.matches(".glass, .glass-pop") && !watched.has(n)) { watched.add(n); ro.observe(n); queue(n); } watch(n); } });
-        m.removedNodes.forEach((n) => { if (n instanceof HTMLElement) { [n, ...n.querySelectorAll(".glass, .glass-pop")].forEach((x) => { release(current.get(x)); current.delete(x); ro.unobserve(x); watched.delete(x); }); } });
+        m.removedNodes.forEach((n) => { if (n instanceof HTMLElement) { [n, ...n.querySelectorAll<HTMLElement>(".glass, .glass-pop")].forEach((x) => { release(current.get(x)); current.delete(x); tracked.delete(x); ro.unobserve(x); watched.delete(x); }); } });
       }
     });
-    mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class"] });
-    return () => { mo.disconnect(); ro.disconnect(); cancelAnimationFrame(raf); };
+    mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["class", "data-state", "style"] });
+    return () => {
+      mo.disconnect(); ro.disconnect(); cancelAnimationFrame(raf); cancelAnimationFrame(loop);
+      document.removeEventListener("animationstart", onAnim, true); document.removeEventListener("transitionrun", onAnim, true);
+      Element.prototype.animate = animate;
+    };
   }, []);
   return <svg ref={svgRef} aria-hidden width="0" height="0" style={{ position: "absolute", width: 0, height: 0, pointerEvents: "none" }}><defs /></svg>;
 }

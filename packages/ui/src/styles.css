@@ -230,8 +230,8 @@
   background-size: 200% 100%; animation: var(--animate-shimmer); border-radius: 8px;
 }
 /* Glass that refracts (Chromium, see liquid-glass.tsx) can be clearer: the bending carries the effect, not the tint. */
-.lg-on { --surface: rgba(255, 255, 255, 0.36); --surface-2: rgba(255, 255, 255, 0.26); --surface-pop: rgba(250, 251, 255, 0.62); --glass-btn: rgba(255, 255, 255, 0.45); }
-.dark .lg-on { --surface: rgba(32, 42, 68, 0.24); --surface-2: rgba(32, 42, 68, 0.16); --surface-pop: rgba(18, 25, 44, 0.58); --glass-btn: rgba(255, 255, 255, 0.1); }
+.lg-glass { --surface: rgba(255, 255, 255, 0.36); --surface-2: rgba(255, 255, 255, 0.26); --surface-pop: rgba(250, 251, 255, 0.62); --glass-btn: rgba(255, 255, 255, 0.45); }
+.dark .lg-glass { --surface: rgba(32, 42, 68, 0.24); --surface-2: rgba(32, 42, 68, 0.16); --surface-pop: rgba(18, 25, 44, 0.58); --glass-btn: rgba(255, 255, 255, 0.1); }
 .glass, .glass-pop { -webkit-backdrop-filter: blur(var(--glass-blur, 22px)) saturate(170%); backdrop-filter: blur(var(--glass-blur, 22px)) saturate(170%); }
 .glass-pop { background-color: var(--surface-pop); }
 /* Refracting glass draws its filter on a pseudo-element that exactly fills it. On the element itself, Chromium would anchor
