@@ -40,7 +40,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       <div className="pointer-events-none fixed inset-x-0 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-[200] flex flex-col items-center gap-2 px-4 md:bottom-6 md:items-end md:px-6" role="region" aria-label="Notifications" aria-live="polite">
         <AnimatePresence initial={false}>
           {items.map((t) => (
-            <motion.div key={t.id} layout initial={{ opacity: 0, y: 16, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.12 } }} transition={{ type: "spring", stiffness: 500, damping: 36 }}
+            <motion.div key={t.id} layout initial={{ y: 16, scale: 0.96 }} animate={{ y: 0, scale: 1 }} exit={{ opacity: 0, transition: { duration: 0 } }} transition={{ type: "spring", stiffness: 500, damping: 36 }}
               className="pointer-events-auto flex w-full max-w-sm items-start gap-3 glass-pop rounded-lg border border-border p-3.5 shadow-lg">
               <span className={cn("mt-0.5 shrink-0", t.tone === "error" && "text-danger", t.tone === "info" && "text-info", t.tone === "warning" && "text-warning")}>
                 {t.tone === "success" ? <SuccessCheck /> : t.tone === "info" ? <Info className="size-5" /> : <AlertTriangle className="size-5" />}

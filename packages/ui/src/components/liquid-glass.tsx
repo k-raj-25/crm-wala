@@ -198,5 +198,12 @@ export function LiquidGlass() {
       Element.prototype.animate = animate;
     };
   }, []);
-  return <svg ref={svgRef} aria-hidden width="0" height="0" style={{ position: "absolute", width: 0, height: 0, pointerEvents: "none" }}><defs /></svg>;
+  return (
+    <>
+      <svg ref={svgRef} aria-hidden width="0" height="0" style={{ position: "absolute", width: 0, height: 0, pointerEvents: "none" }}><defs /></svg>
+      {/* A 2px speck of the pop-up frost, always on screen, so the browser has prepared that blur before the first menu opens
+          (preparing it on first use can stall a frame on some GPUs). */}
+      <div aria-hidden className="glass-pop" style={{ position: "fixed", left: 0, bottom: 0, width: 2, height: 2, pointerEvents: "none", background: "transparent", border: 0, zIndex: 2147483647 }} />
+    </>
+  );
 }

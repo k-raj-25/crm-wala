@@ -220,6 +220,15 @@
 [data-state="closed"].anim-sheet { animation: sheet-out 160ms ease-in; }
 [data-state="open"].anim-pop { animation: pop-in 150ms cubic-bezier(0.16, 1, 0.3, 1); }
 [data-state="closed"].anim-pop { animation: fade-in 80ms reverse ease-in; }
+/* Frosted pop-ups never fade. A fading panel blends its blur with the sharp page behind it, and if the browser stalls for a
+   moment (a slow GPU, a layout change) that half-faded frame stays on screen. So they only move into place, and close at once. */
+.glass-pop[data-state="open"].anim-pop { animation-name: pop-in-glass; }
+.glass-pop[data-state="open"].anim-dialog { animation-name: dialog-in-glass; }
+.glass-pop[data-state="open"].anim-drawer { animation-name: drawer-in-glass; }
+.glass-pop[data-state="closed"].anim-pop, .glass-pop[data-state="closed"].anim-dialog, .glass-pop[data-state="closed"].anim-drawer { animation: none; }
+@keyframes pop-in-glass { from { transform: translateY(4px) scale(0.97) } to { transform: none } }
+@keyframes dialog-in-glass { from { transform: translateY(8px) scale(0.97) } to { transform: none } }
+@keyframes drawer-in-glass { from { transform: translateX(24px) } to { transform: none } }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
