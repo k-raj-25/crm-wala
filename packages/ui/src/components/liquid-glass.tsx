@@ -1,7 +1,7 @@
 "use client";
 import * as React from "react";
 
-/* Liquid glass refraction. Every floating `.glass` / `.glass-pop` element gets an SVG displacement filter as its backdrop-filter
+/* Liquid glass refraction. Every `.glass` / `.glass-pop` bar marked `data-refract` gets an SVG displacement filter as its backdrop-filter
    (drawn on its `::before`, see `.lg-on` in styles.css),
    so whatever sits behind it bends like light through a water droplet: strongly pulled and magnified in a band along the
    rounded edge, with a slight lens magnification in the middle. Red, green and blue are displaced by slightly different
@@ -77,14 +77,11 @@ function buildFilter(id: string, w: number, h: number, radius: number, frost: bo
   return f;
 }
 
-/* Only glass that floats over content refracts: anything fixed or sticky (top bars, the sidebar, menus, dialogs, drawers,
-   toasts, the assistant). Cards in normal flow only ever sit on the soft background glow, where bending shows nothing,
-   and each refracting panel costs three displacement passes on every frame, so they keep the plain blur. */
-function floats(node: HTMLElement) {
-  if (node.hasAttribute("data-glass-still")) return false; // floats, but nothing ever passes behind it (the sidebar)
-  for (let e: HTMLElement | null = node; e && e !== document.body; e = e.parentElement) { const p = getComputedStyle(e).position; if (p === "fixed" || p === "sticky") return true; }
-  return false;
-}
+/* Only the bars that stay on screen while content scrolls under them refract, and they opt in with `data-refract`: the
+   app's top bar, the phone tab bar, the landing nav and the compare tray. Menus, dropdowns, dialogs, drawers, toasts and
+   the assistant keep the plain frost (Kamal preferred its softer, richer blur), and so do cards, which only ever sit on the
+   background glow. Each refracting panel also costs three displacement passes on every frame. */
+const refracts = (node: HTMLElement) => node.hasAttribute("data-refract");
 
 export function LiquidGlass() {
   const svgRef = React.useRef<SVGSVGElement>(null);
@@ -144,7 +141,7 @@ export function LiquidGlass() {
       const bl = parseFloat(cs.borderLeftWidth) || 0, bt = parseFloat(cs.borderTopWidth) || 0;
       const w = node.offsetWidth - bl - (parseFloat(cs.borderRightWidth) || 0), h = node.offsetHeight - bt - (parseFloat(cs.borderBottomWidth) || 0);
       if (w < 8 || h < 8) return;
-      if (!floats(node)) { release(current.get(node)); current.delete(node); if (tracked.has(node)) off(node); return; }
+      if (!refracts(node)) { release(current.get(node)); current.delete(node); if (tracked.has(node)) off(node); return; }
       const bw = Math.round(w / BUCKET) * BUCKET || BUCKET, bh = Math.round(h / BUCKET) * BUCKET || BUCKET;
       const radius = Math.min(Math.max(0, (parseFloat(cs.borderTopLeftRadius) || 0) - Math.max(bl, bt)), bw / 2, bh / 2);
       const frost = node.classList.contains("glass-pop");

@@ -17,7 +17,7 @@ export function Nav() {
   }, []);
   return (
     <header className="fixed inset-x-0 top-3 z-40 px-3 sm:top-4">
-      <div className={cn("glass mx-auto flex h-14 [--lg-blur:8] max-w-5xl items-center justify-between rounded-full border border-border pl-5 pr-2 transition-[background-color,box-shadow] duration-200", scrolled || open ? "bg-[var(--surface-pop)] shadow-lg" : "bg-[var(--nav-idle)] shadow-sm")}>
+      <div data-refract className={cn("glass mx-auto flex h-14 [--lg-blur:8] max-w-5xl items-center justify-between rounded-full border border-border pl-5 pr-2 transition-[background-color,box-shadow] duration-200", scrolled || open ? "bg-[var(--surface-pop)] shadow-lg" : "bg-[var(--nav-idle)] shadow-sm")}>
         <Link href="/" aria-label="CRM Wala home"><Logo /></Link>
         <nav className="hidden items-center gap-1 md:flex" aria-label="Primary">
           {LINKS.map(([l, h]) => <a key={h} href={h} className="rounded-full px-3 py-1.5 text-[13px] font-medium text-fg-muted transition-colors hover:bg-surface-hover hover:text-fg">{l}</a>)}

@@ -15,7 +15,7 @@
   --surface-2: rgba(255, 255, 255, 0.38);
   --surface-hover: rgba(30, 41, 94, 0.055);
   --surface-solid: #f7f8fc;
-  --surface-pop: rgba(250, 251, 255, 0.84);
+  --surface-pop: rgba(250, 251, 255, 0.62);
   --border: rgba(30, 41, 94, 0.1);
   --border-strong: rgba(30, 41, 94, 0.18);
   --fg: #0c1024;
@@ -59,7 +59,7 @@
   --surface-2: rgba(32, 42, 68, 0.26);
   --surface-hover: rgba(255, 255, 255, 0.065);
   --surface-solid: #0e1424;
-  --surface-pop: rgba(18, 25, 44, 0.8);
+  --surface-pop: rgba(18, 25, 44, 0.58);
   --border: rgba(255, 255, 255, 0.09);
   --border-strong: rgba(255, 255, 255, 0.17);
   --fg: #f2f4fb;
@@ -233,7 +233,7 @@
 .lg-glass { --surface: rgba(255, 255, 255, 0.36); --surface-2: rgba(255, 255, 255, 0.26); --surface-pop: rgba(250, 251, 255, 0.62); --glass-btn: rgba(255, 255, 255, 0.45); }
 .dark .lg-glass { --surface: rgba(32, 42, 68, 0.24); --surface-2: rgba(32, 42, 68, 0.16); --surface-pop: rgba(18, 25, 44, 0.58); --glass-btn: rgba(255, 255, 255, 0.1); }
 .glass, .glass-pop { -webkit-backdrop-filter: blur(var(--glass-blur, 22px)) saturate(170%); backdrop-filter: blur(var(--glass-blur, 22px)) saturate(170%); }
-.glass-pop { background-color: var(--surface-pop); }
+.glass-pop { --glass-blur: 9px; background-color: var(--surface-pop); } /* a lighter frost that keeps the colours behind it */
 /* Refracting glass draws its filter on a pseudo-element that exactly fills it. On the element itself, Chromium would anchor
    the filter at the edge of the drop shadow, and where that anchor sits differs between Chrome versions. */
 .lg-on { -webkit-backdrop-filter: none; backdrop-filter: none; isolation: isolate; }

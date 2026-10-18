@@ -17,7 +17,7 @@ export function CompareTray() {
       {show && (
         <motion.div key="tray" initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }} transition={{ type: "spring", stiffness: 420, damping: 34 }}
           className="fixed inset-x-4 bottom-[calc(88px+env(safe-area-inset-bottom))] z-30 mx-auto max-w-md md:inset-x-auto md:bottom-6 md:left-1/2 md:mx-0 md:w-auto md:max-w-none md:-translate-x-1/2" role="region" aria-label="Flats to compare">
-          <div className="flex items-center gap-2 glass-pop rounded-full border border-border p-2 pl-4 shadow-lg">
+          <div data-refract className="flex items-center gap-2 glass-pop rounded-full border border-border p-2 pl-4 shadow-lg">
             <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary-soft text-primary"><Scale className="size-4" /></span>
             <div className="min-w-0 flex-1 md:flex-none">
               <p className="text-sm font-medium leading-tight">{list.length} {list.length === 1 ? "flat" : "flats"} <span className="text-fg-muted">to compare</span></p>

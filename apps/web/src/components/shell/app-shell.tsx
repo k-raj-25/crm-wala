@@ -92,7 +92,7 @@ function MobileNav() {
   React.useEffect(() => setMore(false), [pathname]);
   return (
     <>
-      <nav className="glass-pop fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-40 rounded-full border border-border shadow-lg md:hidden" aria-label="Primary">
+      <nav data-refract className="glass-pop fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-40 rounded-full border border-border shadow-lg md:hidden" aria-label="Primary">
         <ul className="grid grid-cols-5">
           {primary.map((i) => <li key={i.href}><Link href={i.href} aria-current={act(i.href) ? "page" : undefined} className={cn("flex h-16 flex-col items-center justify-center gap-1 text-[11px] font-medium", act(i.href) ? "text-primary" : "text-fg-subtle")}><i.icon className="size-5" />{i.label}</Link></li>)}
           <li><button onClick={() => setMore(true)} className={cn("flex h-16 w-full flex-col items-center justify-center gap-1 text-[11px] font-medium", more ? "text-primary" : "text-fg-subtle")}><MoreHorizontal className="size-5" />More</button></li>
@@ -117,7 +117,7 @@ function MobileNav() {
 function Topbar() {
   const ui = useUI();
   return (
-    <header className="glass-pop sticky top-[calc(0.75rem+env(safe-area-inset-top))] z-30 mx-3 mt-[calc(0.75rem+env(safe-area-inset-top))] flex h-14 items-center gap-3 rounded-full border border-border px-2.5 pl-4 shadow-sm sm:mx-8 sm:pl-2.5">
+    <header data-refract className="glass-pop sticky top-[calc(0.75rem+env(safe-area-inset-top))] z-30 mx-3 mt-[calc(0.75rem+env(safe-area-inset-top))] flex h-14 items-center gap-3 rounded-full border border-border px-2.5 pl-4 shadow-sm sm:mx-8 sm:pl-2.5">
       <div className="md:hidden"><Link href="/app"><Logo collapsed /></Link></div>
       <button onClick={() => ui.openCommand()} className="group flex h-9 max-w-md flex-1 items-center gap-2.5 rounded-full border border-transparent bg-bg-subtle px-3.5 text-sm text-fg-subtle transition-colors hover:border-border-strong" aria-label="Search or run a command">
         <Search className="size-4" /><span className="flex-1 text-left">Search or jump to…</span><span className="hidden gap-1 sm:flex"><Kbd>⌘</Kbd><Kbd>K</Kbd></span>

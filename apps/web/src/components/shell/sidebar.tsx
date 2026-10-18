@@ -124,7 +124,7 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
   const showMore = moreOpen || more.some((n) => active(n.href)); // never hide the page you're on
   const trialLeft = me?.subscription?.status === "trialing" ? me.subscription.access.seconds_left : null;
   return (
-    <aside className={cn("glass sticky top-3 my-3 ml-3 hidden h-[calc(100dvh-24px)] shrink-0 flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-sm transition-[width] duration-200 ease-out md:flex", collapsed ? "w-[68px]" : "w-[248px]")} aria-label="Sidebar" data-glass-still>
+    <aside className={cn("glass sticky top-3 my-3 ml-3 hidden h-[calc(100dvh-24px)] shrink-0 flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-sm transition-[width] duration-200 ease-out md:flex", collapsed ? "w-[68px]" : "w-[248px]")} aria-label="Sidebar">
       <div className={cn("flex h-14 items-center px-4", collapsed ? "justify-center" : "justify-between")}>
         <Link href="/app" aria-label="Home">{collapsed ? <LogoMark /> : <Logo />}</Link>
         {!collapsed && <Tooltip content="Collapse sidebar" shortcut="["><Button variant="ghost" size="icon-sm" onClick={onToggle} aria-label="Collapse sidebar"><PanelLeftClose /></Button></Tooltip>}
