@@ -8,7 +8,7 @@ import * as React from "react";
 import { Avatar, Badge, Button, DropdownContent, DropdownItem, DropdownLabel, DropdownMenu, DropdownSeparator, DropdownTrigger, Logo, LogoMark, Tooltip, cn, humanDuration, useLocalStorage, useTheme } from "@crm/ui";
 import { api } from "@/lib/api";
 import { NAV } from "@/lib/nav";
-import { useAccess, useMe } from "@/lib/queries";
+import { useAccess, useMe, useSetTheme } from "@/lib/queries";
 import { NotificationsPopover } from "./notifications";
 import { usePendingPath } from "./pending-nav";
 import { useUI } from "./ui-context";
@@ -71,7 +71,7 @@ export function HelpMenu({ collapsed }: { collapsed?: boolean }) {
 export function UserMenu({ collapsed }: { collapsed?: boolean }) {
   const { data: me } = useMe();
   const router = useRouter();
-  const { resolved, setPref } = useTheme();
+  const { resolved } = useTheme(); const setTheme = useSetTheme();
   const logout = async () => { try { await api.post("/api/v1/auth/logout"); } finally { window.location.href = "/login"; } };
   const u = me?.user;
   return (
@@ -86,7 +86,7 @@ export function UserMenu({ collapsed }: { collapsed?: boolean }) {
         <div className="px-2.5 py-2"><p className="truncate text-sm font-medium">{u?.name}</p><p className="truncate text-xs text-fg-muted">{u?.email}</p></div>
         <DropdownSeparator />
         <DropdownItem icon={<User />} onSelect={() => router.push("/app/settings/profile")}>Profile & preferences</DropdownItem>
-        <DropdownItem icon={resolved === "dark" ? <Sun /> : <Moon />} onSelect={() => { const next = resolved === "dark" ? "light" : "dark"; setPref(next); api.patch("/api/v1/me/preferences", { theme: next }).catch(() => {}); }}>{resolved === "dark" ? "Light mode" : "Dark mode"}</DropdownItem>
+        <DropdownItem icon={resolved === "dark" ? <Sun /> : <Moon />} onSelect={() => { setTheme(resolved === "dark" ? "light" : "dark"); }}>{resolved === "dark" ? "Light mode" : "Dark mode"}</DropdownItem>
         <DropdownSeparator />
         <DropdownItem icon={<LogOut />} danger onSelect={logout}>Sign out</DropdownItem>
       </DropdownContent>

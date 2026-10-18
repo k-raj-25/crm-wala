@@ -5,7 +5,7 @@ import QRCode from "qrcode";
 import * as React from "react";
 import { Badge, Button, Dialog, DialogContent, DialogFooter, Field, Input, NativeSelect, Select, Skeleton, Switch, formatDate, timeAgo, useToast, useTheme, ACCENTS, cn } from "@crm/ui";
 import { api } from "@/lib/api";
-import { useMe, usePipelines, keys } from "@/lib/queries";
+import { useMe, usePipelines, useSetTheme, keys } from "@/lib/queries";
 import type { Me } from "@/lib/types";
 import { PasswordInput, StrengthMeter } from "../auth/auth-shell";
 import { Divided, FieldRow, SettingsSection } from "./ui";
@@ -13,7 +13,7 @@ import { Divided, FieldRow, SettingsSection } from "./ui";
 const TZ = ["Asia/Kolkata", "Asia/Dubai", "Asia/Singapore", "Europe/London", "Europe/Berlin", "America/New_York", "America/Chicago", "America/Los_Angeles", "Australia/Sydney", "UTC"];
 
 export function ProfileSettings() {
-  const { data: me } = useMe(); const qc = useQueryClient(); const toast = useToast(); const { setPref, accent, setAccent } = useTheme(); const pipelines = usePipelines();
+  const { data: me } = useMe(); const qc = useQueryClient(); const toast = useToast(); const { pref, accent, setAccent } = useTheme(); const setTheme = useSetTheme(); const pipelines = usePipelines();
   const u = me?.user; const p = u?.preferences ?? {};
   const [name, setName] = React.useState(""); const [role, setRole] = React.useState(""); const [phone, setPhone] = React.useState(""); const [busy, setBusy] = React.useState(false);
   React.useEffect(() => { if (u) { setName(u.name); setRole(u.job_role ?? ""); setPhone(u.phone ?? ""); } }, [u?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -26,7 +26,7 @@ export function ProfileSettings() {
       </SettingsSection>
       <SettingsSection title="Preferences" description="Personalise how CRM Wala looks and formats data for you.">
         <Divided>
-          <FieldRow label="Theme"><Select value={p.theme ?? "system"} onValueChange={(v) => { setPref(v as "light" | "dark" | "system"); save({ theme: v }); }} options={[{ value: "system", label: "Match my device" }, { value: "light", label: "Light" }, { value: "dark", label: "Dark" }]} /></FieldRow>
+          <FieldRow label="Theme"><Select value={pref} onValueChange={(v) => { setTheme(v as "light" | "dark" | "system"); toast.success("Saved"); }} options={[{ value: "system", label: "Match my device" }, { value: "light", label: "Light" }, { value: "dark", label: "Dark" }]} /></FieldRow>
           <FieldRow label="Colour" hint="Buttons, highlights and the background glow, in light and dark mode.">
             <div role="radiogroup" aria-label="Colour" className="flex flex-wrap gap-2">
               {ACCENTS.map((a) => (
