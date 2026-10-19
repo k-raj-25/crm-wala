@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   description: "The CRM for realtors who are tired of complicated CRMs. See every tower, floor and flat — vacant, held, sold or rented — in one picture. 3-day free trial.",
   applicationName: "CRM Wala",
 };
-export const viewport: Viewport = { themeColor: [{ media: "(prefers-color-scheme: light)", color: "#f6f6f9" }, { media: "(prefers-color-scheme: dark)", color: "#0a0a11" }], width: "device-width", initialScale: 1, viewportFit: "cover" };
+export const viewport: Viewport = { themeColor: [{ media: "(prefers-color-scheme: light)", color: "#eef1f8" }, { media: "(prefers-color-scheme: dark)", color: "#050914" }], width: "device-width", initialScale: 1, viewportFit: "cover" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

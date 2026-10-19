@@ -229,6 +229,7 @@ def delete_view(vid):
 
 class PrefsIn(Schema):
     theme: Literal["light", "dark", "system"] | None = None
+    accent: Literal["blue", "violet", "teal", "rose", "amber"] | None = None
     date_format: Literal["DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD"] | None = None
     currency: str | None = Field(default=None, min_length=3, max_length=3)
     timezone: str | None = Field(default=None, max_length=64)

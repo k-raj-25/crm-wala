@@ -5,7 +5,7 @@ import { AlertTriangle, Ban, CreditCard, Download, LifeBuoy, MailWarning, Menu, 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import * as React from "react";
-import { Button, Dialog, DialogContent, ErrorState, Kbd, Logo, Skeleton, cn, humanDuration, useChord, useHotkey, useLocalStorage, useToast } from "@crm/ui";
+import { Button, Dialog, DialogContent, ErrorState, Kbd, Logo, Skeleton, cn, humanDuration, useChord, useHotkey, useLocalStorage, useTheme, useToast } from "@crm/ui";
 import { api } from "@/lib/api";
 import { MOBILE_PRIMARY, NAV } from "@/lib/nav";
 import { useAccess, useMe } from "@/lib/queries";
@@ -37,8 +37,8 @@ function TrialBanner() {
   else if (sub.cancel_at_period_end && sub.current_period_end) { key = `cp-${sub.current_period_end}`; msg = <>Your plan is set to cancel on <strong>{new Date(sub.current_period_end).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</strong>.</>; cta = "Resume"; }
   if (!msg || dismissed[key]) return null;
   return (
-    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} className={cn("overflow-hidden text-[13px]", tone)} role="status">
-      <div className="mx-auto flex max-w-[1600px] items-center justify-center gap-3 px-4 py-2"><Sparkles className="hidden size-4 shrink-0 sm:block" /><span className="text-center">{msg}</span><Link href="/app/billing" className="shrink-0 rounded-md bg-current/10 px-2.5 py-1 font-semibold hover:bg-current/20"><span className="text-inherit">{cta} →</span></Link><button aria-label="Dismiss" onClick={() => setDismissed({ ...dismissed, [key]: true })} className="shrink-0 rounded p-1 opacity-70 hover:opacity-100"><X className="size-3.5" /></button></div>
+    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} className={cn("glass mx-3 mt-3 overflow-hidden rounded-2xl border border-border text-[13px] sm:mx-8 sm:rounded-full", tone)} role="status">
+      <div className="mx-auto flex max-w-[1600px] items-center justify-center gap-3 px-4 py-1.5"><Sparkles className="hidden size-4 shrink-0 sm:block" /><span className="text-center">{msg}</span><Link href="/app/billing" className="shrink-0 rounded-full bg-current/10 px-2.5 py-1 font-semibold hover:bg-current/20"><span className="text-inherit">{cta} →</span></Link><button aria-label="Dismiss" onClick={() => setDismissed({ ...dismissed, [key]: true })} className="shrink-0 rounded p-1 opacity-70 hover:opacity-100"><X className="size-3.5" /></button></div>
     </motion.div>
   );
 }
@@ -92,7 +92,7 @@ function MobileNav() {
   React.useEffect(() => setMore(false), [pathname]);
   return (
     <>
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden" aria-label="Primary">
+      <nav data-refract className="glass-pop fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-40 rounded-full border border-border shadow-lg md:hidden" aria-label="Primary">
         <ul className="grid grid-cols-5">
           {primary.map((i) => <li key={i.href}><Link href={i.href} aria-current={act(i.href) ? "page" : undefined} className={cn("flex h-16 flex-col items-center justify-center gap-1 text-[11px] font-medium", act(i.href) ? "text-primary" : "text-fg-subtle")}><i.icon className="size-5" />{i.label}</Link></li>)}
           <li><button onClick={() => setMore(true)} className={cn("flex h-16 w-full flex-col items-center justify-center gap-1 text-[11px] font-medium", more ? "text-primary" : "text-fg-subtle")}><MoreHorizontal className="size-5" />More</button></li>
@@ -102,7 +102,7 @@ function MobileNav() {
         {more && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-[var(--overlay)] md:hidden" onClick={() => setMore(false)} />
-            <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", stiffness: 420, damping: 38 }} className="fixed inset-x-0 bottom-0 z-50 max-h-[85dvh] overflow-y-auto rounded-t-2xl border-t border-border bg-surface p-4 pb-8 shadow-lg md:hidden" role="dialog" aria-label="More">
+            <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", stiffness: 420, damping: 38 }} className="fixed inset-x-0 bottom-0 z-50 max-h-[85dvh] overflow-y-auto glass-pop rounded-t-2xl border-t border-border p-4 pb-8 shadow-lg md:hidden" role="dialog" aria-label="More">
               <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-border-strong" />
               <div className="grid grid-cols-3 gap-2">{rest.map((i) => <Link key={i.href} href={i.href} className="flex flex-col items-center gap-2 rounded-xl border border-border p-3.5 text-xs font-medium hover:bg-surface-hover"><i.icon className="size-5 text-primary" />{i.label}</Link>)}</div>
               <div className="mt-4 space-y-1 border-t border-border pt-3"><WorkspaceSwitcher /><UserMenu /></div>
@@ -117,9 +117,9 @@ function MobileNav() {
 function Topbar() {
   const ui = useUI();
   return (
-    <header className="sticky top-0 z-30 flex h-[calc(3.5rem+env(safe-area-inset-top))] items-center pt-[env(safe-area-inset-top)] gap-3 border-b border-border bg-bg/80 px-4 backdrop-blur-xl sm:px-8">
+    <header data-refract className="glass-pop sticky top-[calc(0.75rem+env(safe-area-inset-top))] z-30 mx-3 mt-[calc(0.75rem+env(safe-area-inset-top))] flex h-14 items-center gap-3 rounded-full border border-border px-2.5 pl-4 shadow-sm sm:mx-8 sm:pl-2.5">
       <div className="md:hidden"><Link href="/app"><Logo collapsed /></Link></div>
-      <button onClick={() => ui.openCommand()} className="group flex h-9 max-w-md flex-1 items-center gap-2.5 rounded-lg border border-border bg-surface px-3 text-sm text-fg-subtle shadow-xs transition-colors hover:border-border-strong" aria-label="Search or run a command">
+      <button onClick={() => ui.openCommand()} className="group flex h-9 max-w-md flex-1 items-center gap-2.5 rounded-full border border-transparent bg-bg-subtle px-3.5 text-sm text-fg-subtle transition-colors hover:border-border-strong" aria-label="Search or run a command">
         <Search className="size-4" /><span className="flex-1 text-left">Search or jump to…</span><span className="hidden gap-1 sm:flex"><Kbd>⌘</Kbd><Kbd>K</Kbd></span>
       </button>
       <div className="ml-auto flex items-center gap-2"><div className="md:hidden"><NotificationsPopover collapsed /></div><QuickCreateMenu /></div>
@@ -133,6 +133,9 @@ function Shell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useLocalStorage("sidebar-collapsed", false);
   const { data: me, isLoading, error } = useMe();
   const { restricted } = useAccess();
+  // the colour picked in Settings follows the person to every device they sign in on
+  const { accent, setAccent } = useTheme(); const savedAccent = me?.user.preferences?.accent;
+  React.useEffect(() => { if (savedAccent && savedAccent !== accent) setAccent(savedAccent); }, [savedAccent]); // eslint-disable-line react-hooks/exhaustive-deps
   const cfg = useQuery({ queryKey: ["auth-config"], queryFn: () => api.get<{ require_email_verification: boolean }>("/api/v1/auth/config"), staleTime: Infinity });
   const items = useNavItems();
   useHotkey("mod+k", (e) => { e.preventDefault(); ui.openCommand(); });
@@ -154,7 +157,7 @@ function Shell({ children }: { children: React.ReactNode }) {
     if (code === "unauthenticated" || code === "session_revoked" || code === "token_expired" || code === "invalid_token") { if (typeof window !== "undefined") window.location.href = `/login?next=${encodeURIComponent(pathname)}`; return null; }
     return <div className="flex min-h-dvh items-center justify-center"><ErrorState kind={(error as { status?: number }).status === 0 ? "network" : "unavailable"} onRetry={() => window.location.reload()} /></div>;
   }
-  if (isLoading || !me?.workspace) return <div className="flex min-h-dvh"><div className="hidden w-[248px] border-r border-border bg-surface p-4 md:block"><Skeleton className="h-8 w-32" /><div className="mt-8 space-y-3">{Array.from({ length: 9 }).map((_, i) => <Skeleton key={i} className="h-8" />)}</div></div><div className="flex-1 p-8"><Skeleton className="h-9 w-64" /><Skeleton className="mt-6 h-40" /><Skeleton className="mt-4 h-72" /></div></div>;
+  if (isLoading || !me?.workspace) return <div className="flex min-h-dvh"><div className="glass my-3 ml-3 hidden w-[248px] rounded-2xl border border-border bg-surface p-4 md:block"><Skeleton className="h-8 w-32" /><div className="mt-8 space-y-3">{Array.from({ length: 9 }).map((_, i) => <Skeleton key={i} className="h-8" />)}</div></div><div className="flex-1 p-8"><Skeleton className="h-9 w-64" /><Skeleton className="mt-6 h-40" /><Skeleton className="mt-4 h-72" /></div></div>;
 
   const allowedWhenRestricted = pathname.startsWith("/app/billing") || pathname.startsWith("/app/settings/profile") || pathname.startsWith("/app/settings/security");
   return (

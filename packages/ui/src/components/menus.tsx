@@ -14,7 +14,7 @@ const item = "relative flex cursor-pointer select-none items-center gap-2.5 roun
 export function DropdownContent({ className, align = "end", children, sideOffset = 6, ...p }: DM.DropdownMenuContentProps) {
   return (
     <DM.Portal>
-      <DM.Content align={align} sideOffset={sideOffset} className={cn("anim-pop z-[80] min-w-[200px] rounded-lg border border-border bg-surface p-1.5 shadow-lg", className)} {...p}>{children}</DM.Content>
+      <DM.Content align={align} sideOffset={sideOffset} className={cn("anim-pop z-[80] min-w-[200px] glass-pop rounded-lg border border-border p-1.5 shadow-lg", className)} {...p}>{children}</DM.Content>
     </DM.Portal>
   );
 }
@@ -38,7 +38,7 @@ export function DropdownSubTrigger({ children, icon }: { children: React.ReactNo
   return <DM.SubTrigger className={cn(item, "justify-between")}>{icon}<span className="flex-1">{children}</span><ChevronRight className="!size-3.5" /></DM.SubTrigger>;
 }
 export function DropdownSubContent({ children }: { children: React.ReactNode }) {
-  return <DM.Portal><DM.SubContent sideOffset={6} className="anim-pop z-[80] min-w-[180px] rounded-lg border border-border bg-surface p-1.5 shadow-lg">{children}</DM.SubContent></DM.Portal>;
+  return <DM.Portal><DM.SubContent sideOffset={6} className="anim-pop z-[80] min-w-[180px] glass-pop rounded-lg border border-border p-1.5 shadow-lg">{children}</DM.SubContent></DM.Portal>;
 }
 
 /* ---------- Popover ---------- */
@@ -46,7 +46,7 @@ export const Popover = P.Root;
 export const PopoverTrigger = P.Trigger;
 export const PopoverAnchor = P.Anchor;
 export function PopoverContent({ className, align = "start", sideOffset = 8, ...p }: P.PopoverContentProps) {
-  return <P.Portal><P.Content align={align} sideOffset={sideOffset} className={cn("anim-pop z-[80] rounded-lg border border-border bg-surface p-4 shadow-lg focus:outline-none", className)} {...p} /></P.Portal>;
+  return <P.Portal><P.Content align={align} sideOffset={sideOffset} className={cn("anim-pop z-[80] glass-pop rounded-lg border border-border p-4 shadow-lg focus:outline-none", className)} {...p} /></P.Portal>;
 }
 
 /* ---------- Select ---------- */
@@ -61,7 +61,7 @@ export function Select({ value, onValueChange, options, placeholder = "Select…
         <S.Value placeholder={placeholder} /><S.Icon><ChevronDown className="size-4 text-fg-subtle" /></S.Icon>
       </S.Trigger>
       <S.Portal>
-        <S.Content position="popper" sideOffset={6} className="anim-pop z-[90] max-h-72 min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-lg border border-border bg-surface p-1.5 shadow-lg">
+        <S.Content position="popper" sideOffset={6} className="anim-pop z-[90] max-h-72 min-w-[var(--radix-select-trigger-width)] overflow-hidden glass-pop rounded-lg border border-border p-1.5 shadow-lg">
           <S.Viewport>
             {options.map((o) => (
               <S.Item key={o.value} value={o.value} disabled={o.disabled} className="relative flex cursor-pointer select-none items-center rounded-md py-2 pl-8 pr-3 text-sm outline-none data-[highlighted]:bg-surface-hover data-[disabled]:pointer-events-none data-[disabled]:opacity-50">
@@ -93,10 +93,10 @@ export const TabsContent = ({ className, ...p }: T.TabsContentProps) => <T.Conte
 /* ---------- Segmented control ---------- */
 export function Segmented<V extends string>({ value, onChange, options, size = "md", className }: { value: V; onChange: (v: V) => void; options: { value: V; label: React.ReactNode; icon?: React.ReactNode }[]; size?: "sm" | "md"; className?: string }) {
   return (
-    <div role="tablist" className={cn("inline-flex rounded-md bg-bg-subtle p-0.5", className)}>
+    <div role="tablist" className={cn("inline-flex rounded-full bg-bg-subtle p-0.5", className)}>
       {options.map((o) => (
         <button key={o.value} role="tab" aria-selected={value === o.value} onClick={() => onChange(o.value)}
-          className={cn("flex items-center gap-1.5 rounded-[7px] px-3 font-medium transition-all [&_svg]:size-3.5", size === "sm" ? "h-7 text-xs" : "h-8 text-[13px]", value === o.value ? "bg-surface text-fg shadow-xs" : "text-fg-muted hover:text-fg")}>
+          className={cn("flex items-center gap-1.5 rounded-full px-3 font-medium transition-all [&_svg]:size-3.5", size === "sm" ? "h-7 text-xs" : "h-8 text-[13px]", value === o.value ? "bg-surface text-fg shadow-xs" : "text-fg-muted hover:text-fg")}>
           {o.icon}{o.label}
         </button>
       ))}

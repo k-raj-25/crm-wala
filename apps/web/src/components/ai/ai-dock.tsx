@@ -33,8 +33,8 @@ export function AiDock() {
     <>
       <AnimatePresence>
         {open && (
-          <motion.section initial={{ opacity: 0, y: 16, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 16, scale: 0.98 }} transition={{ duration: 0.16 }} role="dialog" aria-label="Assistant"
-            className="fixed inset-x-3 bottom-[76px] top-16 z-50 flex flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-lg md:inset-x-auto md:bottom-24 md:right-6 md:top-auto md:h-[min(640px,calc(100dvh-8rem))] md:w-[400px]">
+          <motion.section initial={{ y: 16, scale: 0.98 }} animate={{ y: 0, scale: 1 }} exit={{ opacity: 0, transition: { duration: 0 } }} transition={{ duration: 0.16 }} role="dialog" aria-label="Assistant"
+            className="fixed inset-x-3 bottom-[96px] top-20 z-50 flex flex-col overflow-hidden glass-pop rounded-2xl border border-border shadow-lg md:inset-x-auto md:bottom-24 md:right-6 md:top-auto md:h-[min(640px,calc(100dvh-8rem))] md:w-[400px]">
             <header className="flex items-center gap-2 border-b border-border px-4 py-3">
               <Sparkles className="size-4 text-primary" /><h2 className="text-sm font-semibold">Assistant</h2><ModeBadge />
               <div className="ml-auto flex items-center gap-0.5">

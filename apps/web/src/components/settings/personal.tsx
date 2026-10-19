@@ -3,9 +3,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Laptop, ShieldCheck, ShieldOff } from "lucide-react";
 import QRCode from "qrcode";
 import * as React from "react";
-import { Badge, Button, Dialog, DialogContent, DialogFooter, Field, Input, NativeSelect, Select, Skeleton, Switch, formatDate, timeAgo, useToast, useTheme } from "@crm/ui";
+import { Badge, Button, Dialog, DialogContent, DialogFooter, Field, Input, NativeSelect, Select, Skeleton, Switch, formatDate, timeAgo, useToast, useTheme, ACCENTS, cn } from "@crm/ui";
 import { api } from "@/lib/api";
-import { useMe, usePipelines, keys } from "@/lib/queries";
+import { useMe, usePipelines, useSetTheme, keys } from "@/lib/queries";
 import type { Me } from "@/lib/types";
 import { PasswordInput, StrengthMeter } from "../auth/auth-shell";
 import { Divided, FieldRow, SettingsSection } from "./ui";
@@ -13,7 +13,7 @@ import { Divided, FieldRow, SettingsSection } from "./ui";
 const TZ = ["Asia/Kolkata", "Asia/Dubai", "Asia/Singapore", "Europe/London", "Europe/Berlin", "America/New_York", "America/Chicago", "America/Los_Angeles", "Australia/Sydney", "UTC"];
 
 export function ProfileSettings() {
-  const { data: me } = useMe(); const qc = useQueryClient(); const toast = useToast(); const { setPref } = useTheme(); const pipelines = usePipelines();
+  const { data: me } = useMe(); const qc = useQueryClient(); const toast = useToast(); const { pref, accent, setAccent } = useTheme(); const setTheme = useSetTheme(); const pipelines = usePipelines();
   const u = me?.user; const p = u?.preferences ?? {};
   const [name, setName] = React.useState(""); const [role, setRole] = React.useState(""); const [phone, setPhone] = React.useState(""); const [busy, setBusy] = React.useState(false);
   React.useEffect(() => { if (u) { setName(u.name); setRole(u.job_role ?? ""); setPhone(u.phone ?? ""); } }, [u?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -26,7 +26,18 @@ export function ProfileSettings() {
       </SettingsSection>
       <SettingsSection title="Preferences" description="Personalise how CRM Wala looks and formats data for you.">
         <Divided>
-          <FieldRow label="Theme"><Select value={p.theme ?? "system"} onValueChange={(v) => { setPref(v as "light" | "dark" | "system"); save({ theme: v }); }} options={[{ value: "system", label: "Match my device" }, { value: "light", label: "Light" }, { value: "dark", label: "Dark" }]} /></FieldRow>
+          <FieldRow label="Theme"><Select value={pref} onValueChange={(v) => { setTheme(v as "light" | "dark" | "system"); toast.success("Saved"); }} options={[{ value: "system", label: "Match my device" }, { value: "light", label: "Light" }, { value: "dark", label: "Dark" }]} /></FieldRow>
+          <FieldRow label="Colour" hint="Buttons, highlights and the background glow, in light and dark mode.">
+            <div role="radiogroup" aria-label="Colour" className="flex flex-wrap gap-2">
+              {ACCENTS.map((a) => (
+                <button key={a.value} type="button" role="radio" aria-checked={accent === a.value} onClick={() => { setAccent(a.value); save({ accent: a.value }); }}
+                  className={cn("flex h-9 items-center gap-2 rounded-full border pl-1.5 pr-3.5 text-[13px] font-medium transition-colors", accent === a.value ? "border-fg/30 bg-surface-hover text-fg" : "border-border text-fg-muted hover:bg-surface-hover hover:text-fg")}>
+                  <span className="grid size-6 place-items-center rounded-full text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.25)]" style={{ background: a.swatch }}>{accent === a.value && <Check className="size-3.5" strokeWidth={3} />}</span>
+                  {a.label}
+                </button>
+              ))}
+            </div>
+          </FieldRow>
           <FieldRow label="Date format"><Select value={p.date_format ?? "DD/MM/YYYY"} onValueChange={(v) => save({ date_format: v })} options={["DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD"].map((v) => ({ value: v, label: v }))} /></FieldRow>
           <FieldRow label="Currency" hint="Default for new deals."><Select value={p.currency ?? me?.workspace?.currency ?? "INR"} onValueChange={(v) => save({ currency: v })} options={["INR", "USD", "EUR", "GBP", "AED", "SGD", "AUD"].map((v) => ({ value: v, label: v }))} /></FieldRow>
           <FieldRow label="Time zone"><Select value={p.timezone ?? me?.workspace?.timezone ?? "Asia/Kolkata"} onValueChange={(v) => save({ timezone: v })} options={TZ.map((v) => ({ value: v, label: v.replace("_", " ") }))} /></FieldRow>

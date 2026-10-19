@@ -87,7 +87,7 @@ export function ComparePage() {
               <table className="w-full min-w-[calc(88px+var(--n)*132px)] table-fixed border-separate border-spacing-0 text-sm sm:min-w-[calc(140px+var(--n)*170px)]" style={{ ["--n" as string]: list.length }}>
                 <thead>
                   <tr>
-                    <th scope="col" className="sticky left-0 z-10 w-[88px] border-b sm:w-[140px] border-border bg-surface px-4 py-3 text-left align-bottom text-xs font-medium uppercase tracking-wide text-fg-subtle">Flat</th>
+                    <th scope="col" className="sticky left-0 z-10 w-[88px] border-b sm:w-[140px] border-border bg-surface-solid px-4 py-3 text-left align-bottom text-xs font-medium uppercase tracking-wide text-fg-subtle">Flat</th>
                     {list.map((f) => {
                       const meta = d?.flats.find((x) => x.id === f.id);
                       const s = meta ? STATUS[meta.status] : null;
@@ -107,10 +107,10 @@ export function ComparePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {!d ? Array.from({ length: 7 }).map((_, i) => <tr key={i}><td className="sticky left-0 bg-surface px-4 py-3"><Skeleton className="h-4 w-20" /></td>{list.map((f) => <td key={f.id} className="border-l border-border px-4 py-3"><Skeleton className="h-4 w-24" /></td>)}</tr>)
+                  {!d ? Array.from({ length: 7 }).map((_, i) => <tr key={i}><td className="sticky left-0 bg-surface-solid px-4 py-3"><Skeleton className="h-4 w-20" /></td>{list.map((f) => <td key={f.id} className="border-l border-border px-4 py-3"><Skeleton className="h-4 w-24" /></td>)}</tr>)
                     : visible.map((r, ri) => (
                       <tr key={r.key} className={cn(ri % 2 === 1 && "[&>td]:bg-surface-2")}>
-                        <th scope="row" className="sticky left-0 z-10 border-t border-border bg-surface px-3 py-2.5 sm:px-4 text-left text-[13px] font-normal text-fg-muted">{r.label}</th>
+                        <th scope="row" className="sticky left-0 z-10 border-t border-border bg-surface-solid px-3 py-2.5 sm:px-4 text-left text-[13px] font-normal text-fg-muted">{r.label}</th>
                         {r.cells.map((c, i) => (
                           <td key={list[i].id} className={cn("border-l border-t border-border px-3 py-2.5 sm:px-4 align-top", c?.best && "font-semibold text-success", r.key === "price" && "text-[15px] font-semibold")}>
                             {c ? <span className="inline-flex max-w-full items-start gap-1"><span className="min-w-0 [overflow-wrap:anywhere]">{c.v}</span>{c.best && <Check className="mt-0.5 size-3.5 shrink-0" aria-label="best" />}</span> : <Skeleton className="h-4 w-20" />}</td>

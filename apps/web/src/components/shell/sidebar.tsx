@@ -8,7 +8,7 @@ import * as React from "react";
 import { Avatar, Badge, Button, DropdownContent, DropdownItem, DropdownLabel, DropdownMenu, DropdownSeparator, DropdownTrigger, Logo, LogoMark, Tooltip, cn, humanDuration, useLocalStorage, useTheme } from "@crm/ui";
 import { api } from "@/lib/api";
 import { NAV } from "@/lib/nav";
-import { useAccess, useMe } from "@/lib/queries";
+import { useAccess, useMe, useSetTheme } from "@/lib/queries";
 import { NotificationsPopover } from "./notifications";
 import { usePendingPath } from "./pending-nav";
 import { useUI } from "./ui-context";
@@ -71,7 +71,7 @@ export function HelpMenu({ collapsed }: { collapsed?: boolean }) {
 export function UserMenu({ collapsed }: { collapsed?: boolean }) {
   const { data: me } = useMe();
   const router = useRouter();
-  const { resolved, setPref } = useTheme();
+  const { resolved } = useTheme(); const setTheme = useSetTheme();
   const logout = async () => { try { await api.post("/api/v1/auth/logout"); } finally { window.location.href = "/login"; } };
   const u = me?.user;
   return (
@@ -86,7 +86,7 @@ export function UserMenu({ collapsed }: { collapsed?: boolean }) {
         <div className="px-2.5 py-2"><p className="truncate text-sm font-medium">{u?.name}</p><p className="truncate text-xs text-fg-muted">{u?.email}</p></div>
         <DropdownSeparator />
         <DropdownItem icon={<User />} onSelect={() => router.push("/app/settings/profile")}>Profile & preferences</DropdownItem>
-        <DropdownItem icon={resolved === "dark" ? <Sun /> : <Moon />} onSelect={() => { const next = resolved === "dark" ? "light" : "dark"; setPref(next); api.patch("/api/v1/me/preferences", { theme: next }).catch(() => {}); }}>{resolved === "dark" ? "Light mode" : "Dark mode"}</DropdownItem>
+        <DropdownItem icon={resolved === "dark" ? <Sun /> : <Moon />} onSelect={() => { setTheme(resolved === "dark" ? "light" : "dark"); }}>{resolved === "dark" ? "Light mode" : "Dark mode"}</DropdownItem>
         <DropdownSeparator />
         <DropdownItem icon={<LogOut />} danger onSelect={logout}>Sign out</DropdownItem>
       </DropdownContent>
@@ -124,7 +124,7 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
   const showMore = moreOpen || more.some((n) => active(n.href)); // never hide the page you're on
   const trialLeft = me?.subscription?.status === "trialing" ? me.subscription.access.seconds_left : null;
   return (
-    <aside className={cn("sticky top-0 hidden h-dvh shrink-0 flex-col border-r border-border bg-surface transition-[width] duration-200 ease-out md:flex", collapsed ? "w-[68px]" : "w-[248px]")} aria-label="Sidebar">
+    <aside className={cn("glass sticky top-3 my-3 ml-3 hidden h-[calc(100dvh-24px)] shrink-0 flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-sm transition-[width] duration-200 ease-out md:flex", collapsed ? "w-[68px]" : "w-[248px]")} aria-label="Sidebar">
       <div className={cn("flex h-14 items-center px-4", collapsed ? "justify-center" : "justify-between")}>
         <Link href="/app" aria-label="Home">{collapsed ? <LogoMark /> : <Logo />}</Link>
         {!collapsed && <Tooltip content="Collapse sidebar" shortcut="["><Button variant="ghost" size="icon-sm" onClick={onToggle} aria-label="Collapse sidebar"><PanelLeftClose /></Button></Tooltip>}

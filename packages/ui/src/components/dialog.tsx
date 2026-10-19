@@ -15,8 +15,8 @@ export function DialogContent({ className, children, title, description, size = 
   const w = { sm: "max-w-sm", md: "max-w-lg", lg: "max-w-2xl", xl: "max-w-4xl" }[size];
   return (
     <D.Portal>
-      <D.Overlay className="anim-overlay fixed inset-0 z-50 bg-[var(--overlay)] backdrop-blur-[2px]" />
-      <D.Content className={cn("anim-dialog fixed left-1/2 top-1/2 z-50 flex max-h-[min(88vh,820px)] w-[calc(100vw-24px)] -translate-x-1/2 -translate-y-1/2 flex-col rounded-xl border border-border bg-surface shadow-lg focus:outline-none", w, className)}>
+      <D.Overlay className="anim-overlay fixed inset-0 z-50 bg-[var(--overlay)] backdrop-blur-[3px]" />
+      <D.Content className={cn("anim-dialog fixed left-1/2 top-1/2 z-50 flex max-h-[min(88vh,820px)] w-[calc(100vw-24px)] -translate-x-1/2 -translate-y-1/2 flex-col glass-pop rounded-xl border border-border shadow-lg focus:outline-none", w, className)}>
         <div className="flex items-start justify-between gap-4 px-6 pb-2 pt-5">
           <div>
             <D.Title className="text-lg font-semibold tracking-tight">{title}</D.Title>

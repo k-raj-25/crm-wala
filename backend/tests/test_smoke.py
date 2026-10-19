@@ -62,3 +62,11 @@ def test_calendar_feed_merges_meetings_tasks_and_followups(app):
     assert {"task", "follow_up"} <= kinds
     # unbounded ranges are rejected so the feed can never be used to dump everything
     assert cl.get("/api/v1/calendar?from=2020-01-01&to=2030-01-01").status_code == 400
+
+
+def test_accent_colour_preference(app):
+    cl, _ = signup(app)
+    r = cl.patch("/api/v1/me/preferences", json={"accent": "violet"})
+    assert r.status_code == 200, r.get_json()
+    assert r.get_json()["data"]["user"]["preferences"]["accent"] == "violet"
+    assert cl.patch("/api/v1/me/preferences", json={"accent": "neon"}).status_code == 422

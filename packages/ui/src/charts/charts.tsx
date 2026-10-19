@@ -191,7 +191,7 @@ export function ChartTable({ data, columns }: { data: Record<string, unknown>[];
   return (
     <div className="max-h-64 overflow-auto rounded-md border border-border">
       <table className="w-full text-[13px]">
-        <thead className="sticky top-0 bg-surface-2 text-left text-xs text-fg-subtle"><tr>{columns.map((c) => <th key={c.key} className="px-3 py-2 font-medium">{c.label}</th>)}</tr></thead>
+        <thead className="sticky top-0 bg-surface-solid text-left text-xs text-fg-subtle"><tr>{columns.map((c) => <th key={c.key} className="px-3 py-2 font-medium">{c.label}</th>)}</tr></thead>
         <tbody>{data.map((r, i) => <tr key={i} className="border-t border-border">{columns.map((c) => <td key={c.key} className="tabular px-3 py-1.5">{c.format ? c.format(r[c.key]) : String(r[c.key] ?? "")}</td>)}</tr>)}</tbody>
       </table>
     </div>

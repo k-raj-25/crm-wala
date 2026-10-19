@@ -9,7 +9,7 @@ import { Container, Reveal, Section } from "./primitives";
 const INTEGRATIONS = [["Gmail", "#ea4335"], ["Outlook", "#0a64c8"], ["Google Calendar", "#4285f4"], ["Slack", "#611f69"], ["Microsoft Teams", "#5b5fc7"], ["WhatsApp", "#25d366"], ["Zoom", "#2d8cff"], ["Stripe", "#635bff"], ["Razorpay", "#0c2451"], ["Zapier", "#ff4a00"], ["Webhooks", "#475569"], ["Google Sheets", "#0f9d58"]];
 export function Integrations() {
   return (
-    <Section id="integrations" tone="subtle" eyebrow="Integrations" title="Plays well with the tools you already use" subtitle="Connect email, calendar, chat and payments — or build your own with signed webhooks.">
+    <Section display="Connect" id="integrations" index="07" tone="subtle" eyebrow="Integrations" title="Plays well with the tools you already use" subtitle="Connect email, calendar, chat and payments — or build your own with signed webhooks.">
       <div className="mx-auto grid max-w-4xl grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {INTEGRATIONS.map(([n, c], i) => (
           <Reveal key={n} delay={(i % 4) * 0.05}>
@@ -28,7 +28,7 @@ const QUOTES = [
 ];
 export function Testimonials() {
   return (
-    <Section eyebrow="Loved by realtors" title="Simple enough to adopt in a day">
+    <Section display="Loved" index="08" eyebrow="Loved by realtors" title="Simple enough to adopt in a day">
       <div className="grid gap-4 md:grid-cols-3">
         {QUOTES.map((t, i) => (
           <Reveal key={t.n} delay={i * 0.08}>
@@ -56,7 +56,7 @@ export function Pricing() {
   const [plans, setPlans] = useState<PublicPlan[]>(FALLBACK);
   useEffect(() => { fetch("/api/v1/public/plans").then((r) => r.json()).then((j) => j?.data?.plans?.length && setPlans(j.data.plans)).catch(() => {}); }, []);
   return (
-    <Section id="pricing" tone="subtle" eyebrow="Pricing" title="Start free for 3 days. Pick a plan when you're ready." subtitle="No credit card to start. No long-term commitment. Your data is never deleted if your trial ends.">
+    <Section display="Pricing" id="pricing" index="09" tone="subtle" eyebrow="Pricing" title="Start free for 3 days. Pick a plan when you're ready." subtitle="No credit card to start. No long-term commitment. Your data is never deleted if your trial ends.">
       <div className="mb-10 flex items-center justify-center gap-3">
         <Segmented value={annual ? "annual" : "monthly"} onChange={(v) => setAnnual(v === "annual")} options={[{ value: "monthly", label: "Monthly" }, { value: "annual", label: "Annual" }]} />
         <Badge tone="success">Save ~17% yearly</Badge>
@@ -67,7 +67,7 @@ export function Pricing() {
           const price = annual ? p.price_annual : p.price_monthly;
           return (
             <Reveal key={p.key} delay={i * 0.06}>
-              <Card className={cn("relative flex h-full flex-col p-6", featured && "border-primary shadow-md ring-1 ring-primary/30")}>
+              <Card className={cn("relative flex h-full flex-col rounded-[22px] p-6", featured && "border-border-strong bg-[radial-gradient(90%_70%_at_50%_100%,rgba(48,98,240,0.38),transparent_72%)] shadow-md")}>
                 {featured && <Badge tone="primary" className="absolute -top-3 left-6 bg-primary text-primary-fg">Most popular</Badge>}
                 <h3 className="text-lg font-semibold">{p.name}</h3><p className="mt-1 min-h-10 text-sm text-fg-muted">{p.tagline}</p>
                 <div className="my-5 h-14">
@@ -101,8 +101,8 @@ const FAQS = [
 export function FAQ() {
   const [open, setOpen] = useState<number | null>(0);
   return (
-    <Section id="faq" eyebrow="FAQ" title="Questions, answered">
-      <div className="mx-auto max-w-3xl divide-y divide-border rounded-xl border border-border bg-surface">
+    <Section display="FAQ" id="faq" index="10" eyebrow="FAQ" title="Questions, answered">
+      <div className="mx-auto max-w-3xl glass divide-y divide-border overflow-hidden rounded-[22px] border border-border bg-surface">
         {FAQS.map(([q, a], i) => (
           <div key={q}>
             <h3><button className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left font-medium hover:bg-surface-hover" aria-expanded={open === i} onClick={() => setOpen(open === i ? null : i)}>{q}{open === i ? <Minus className="size-4 shrink-0 text-fg-subtle" /> : <Plus className="size-4 shrink-0 text-fg-subtle" />}</button></h3>
@@ -119,14 +119,15 @@ export function FinalCTA() {
     <section className="py-20 sm:py-28">
       <Container>
         <Reveal>
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#4f46e5] to-[#7c3aed] px-6 py-16 text-center text-white sm:px-16">
-            <div className="pointer-events-none absolute inset-0 opacity-30" style={{ background: "radial-gradient(500px 220px at 20% 0%, white, transparent), radial-gradient(400px 200px at 90% 100%, #c4b5fd, transparent)" }} aria-hidden />
-            <h2 className="relative text-balance text-3xl font-semibold tracking-tight sm:text-5xl">See your first tower in two minutes</h2>
-            <p className="relative mx-auto mt-4 max-w-xl text-lg text-white/80">Add a project, tell us its floors and flats, and watch the building appear. 3-day free trial.</p>
+          <div className="relative overflow-hidden glass rounded-[22px] border border-border bg-surface px-6 pb-16 pt-32 text-center sm:px-16 sm:pt-36">
+            <div className="pointer-events-none absolute left-1/2 top-[-140px] size-[420px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(242,200,121,0.28),rgba(124,108,240,0.16)_42%,transparent_70%)] blur-2xl" aria-hidden />
+            <div className="pointer-events-none absolute left-1/2 top-12 size-14 -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_40%_35%,#fffaf0,#ecd3a2_55%,#a2814f)] shadow-[0_0_70px_14px_rgba(243,194,122,0.3)]" aria-hidden />
+            <h2 className="relative text-balance text-3xl font-semibold tracking-[-0.02em] sm:text-5xl">See your first tower in two minutes</h2>
+            <p className="relative mx-auto mt-4 max-w-xl text-base leading-relaxed text-fg-muted sm:text-lg">Add a project, tell us its floors and flats, and watch the building appear. 3-day free trial.</p>
             <div className="relative mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <Button asChild size="lg" className="bg-white text-[#4f46e5] hover:bg-white/90"><Link href="/signup">Start Free Trial <ArrowRight /></Link></Button>
+              <Button asChild size="lg" className="rounded-full"><Link href="/signup">Start Free Trial <ArrowRight /></Link></Button>
             </div>
-            <p className="relative mt-4 text-sm text-white/70">No credit card • No long-term commitment</p>
+            <p className="relative mt-4 text-sm text-fg-subtle">No credit card • No long-term commitment</p>
           </div>
         </Reveal>
       </Container>

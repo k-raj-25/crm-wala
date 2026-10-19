@@ -1,6 +1,7 @@
 "use client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
+import { useTheme } from "@crm/ui";
 import { api } from "./api";
 import type { CustomFieldDef, Me, Member, NotificationItem, Pipeline, Role, Tag } from "./types";
 
@@ -12,6 +13,16 @@ export const keys = {
   customFields: ["custom-fields"] as const,
   roles: ["roles"] as const,
 };
+
+/** Switches light/dark/system everywhere it can be changed (Settings, the account menu, the command palette), and saves it to the
+    account so Settings always shows what is actually on screen. */
+export function useSetTheme() {
+  const { setPref } = useTheme(); const qc = useQueryClient();
+  return useCallback((p: "light" | "dark" | "system") => {
+    setPref(p);
+    api.patch<Me>("/api/v1/me/preferences", { theme: p }).then((m) => qc.setQueryData(keys.me, m)).catch(() => {});
+  }, [setPref, qc]);
+}
 
 export function useMe() {
   return useQuery({ queryKey: keys.me, queryFn: () => api.get<Me>("/api/v1/auth/me"), staleTime: 60_000, retry: false });

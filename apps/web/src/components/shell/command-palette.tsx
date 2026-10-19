@@ -7,7 +7,7 @@ import * as React from "react";
 import { Dialog as D } from "radix-ui";
 import { Kbd, Spinner, useDebounce, useTheme } from "@crm/ui";
 import { api } from "@/lib/api";
-import { useAccess } from "@/lib/queries";
+import { useAccess, useSetTheme } from "@/lib/queries";
 import { useNavItems } from "./sidebar";
 import { navigate } from "./pending-nav";
 import { useUI } from "./ui-context";
@@ -16,7 +16,7 @@ type Result = { id: string; title: string; subtitle?: string; url: string };
 const GROUPS: [string, string, React.ElementType][] = [["projects", "Projects", Building2], ["units", "Flats", Home], ["leads", "Leads", Users], ["contacts", "Clients", UserRound], ["companies", "Builders", Landmark], ["deals", "Deals", Handshake], ["tasks", "Tasks", CheckSquare], ["notes", "Notes", StickyNote], ["activities", "Activities", Activity]];
 
 export function CommandPalette() {
-  const ui = useUI(); const router = useRouter(); const { can } = useAccess(); const nav = useNavItems(); const { resolved, setPref } = useTheme();
+  const ui = useUI(); const router = useRouter(); const { can } = useAccess(); const nav = useNavItems(); const { resolved } = useTheme(); const setTheme = useSetTheme();
   const [q, setQ] = React.useState("");
   const dq = useDebounce(q, 120);
   React.useEffect(() => { setQ(ui.command ? ui.commandInitial : ""); }, [ui.command, ui.commandInitial]);
@@ -33,7 +33,7 @@ export function CommandPalette() {
     { label: "Schedule event", icon: CalendarPlus, perm: "meetings.create", on: create("meeting"), kw: "calendar book meeting site visit show" }, { label: "Send email", icon: Mail, perm: "emails.create", on: run(() => ui.openCompose()), kw: "compose write" },
     { label: "Import clients", icon: FileUp, perm: "data.import", on: run(() => navigate(router, "/app/settings/data?import=contacts")), kw: "csv upload" },
     { label: "Open settings", icon: Settings, perm: "", on: run(() => navigate(router, "/app/settings")), kw: "preferences" },
-    { label: resolved === "dark" ? "Switch to light mode" : "Switch to dark mode", icon: resolved === "dark" ? Sun : Moon, perm: "", on: run(() => setPref(resolved === "dark" ? "light" : "dark")), kw: "theme" },
+    { label: resolved === "dark" ? "Switch to light mode" : "Switch to dark mode", icon: resolved === "dark" ? Sun : Moon, perm: "", on: run(() => setTheme(resolved === "dark" ? "light" : "dark")), kw: "theme" },
   ].filter((c) => !c.perm || can(c.perm));
   const match = (label: string, kw = "") => !q.trim() || (label + " " + kw).toLowerCase().includes(q.trim().toLowerCase());
   const hasResults = GROUPS.some(([k]) => search.data?.[k]?.length);
@@ -41,7 +41,7 @@ export function CommandPalette() {
     <D.Root open={ui.command} onOpenChange={ui.setCommand}>
       <D.Portal>
         <D.Overlay className="anim-overlay fixed inset-0 z-[110] bg-[var(--overlay)] backdrop-blur-[2px]" />
-        <D.Content aria-label="Command palette" className="anim-pop fixed left-1/2 top-[12vh] z-[111] w-[calc(100vw-24px)] max-w-[640px] -translate-x-1/2 overflow-hidden rounded-xl border border-border bg-surface shadow-lg focus:outline-none">
+        <D.Content aria-label="Command palette" className="anim-pop fixed left-1/2 top-[12vh] z-[111] w-[calc(100vw-24px)] max-w-[640px] -translate-x-1/2 glass-pop overflow-hidden rounded-xl border border-border shadow-lg focus:outline-none">
           <D.Title className="sr-only">Command palette</D.Title><D.Description className="sr-only">Search records or run a command</D.Description>
           <Command shouldFilter={false} loop>
             <div className="flex items-center gap-3 border-b border-border px-4">

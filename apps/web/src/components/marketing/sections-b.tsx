@@ -22,7 +22,7 @@ export function AISection() {
   useEffect(() => { if (!inView) return; const t = setInterval(() => setI((v) => (v + 1) % CHAT.length), 7000); return () => clearInterval(t); }, [inView]);
   const items = [[Brain, "Lead scoring & deal probability", "Explainable scores that tell you why a lead is hot."], [Mail, "Messages in your voice", "Draft a follow-up or a brochure email for any lead in one click."], [Sparkles, "Next-best-action", "A daily short-list of exactly what to do next."], [TrendingDown, "Cold-lead alerts", "Spot enquiries and clients going quiet before they go elsewhere."], [Copy, "Duplicate & cleanup suggestions", "Keep your data tidy automatically."]] as const;
   return (
-    <Section id="ai" eyebrow="AI assistant" title="Ask your CRM anything" subtitle="The assistant answers from your own inventory and pipeline — respecting your permissions and never touching another brokerage's data.">
+    <Section display="Ask AI" id="ai" index="04" eyebrow="AI assistant" title="Ask your CRM anything" subtitle="The assistant answers from your own inventory and pipeline — respecting your permissions and never touching another brokerage's data.">
       <div ref={ref} className="grid items-center gap-10 lg:grid-cols-2">
         <Reveal><ul className="space-y-5">{items.map(([I, t, b]) => <li key={t} className="flex gap-4"><span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary"><I className="size-5" /></span><div><p className="font-semibold">{t}</p><p className="text-[15px] text-fg-muted">{b}</p></div></li>)}</ul></Reveal>
         <Reveal delay={0.1}>
@@ -76,7 +76,7 @@ export function FlowDiagram() {
 
 export function AutomationSection() {
   return (
-    <Section id="automation" tone="subtle" eyebrow="Automation" title="Set it once. Let it run." subtitle="Build workflows visually. When an enquiry arrives → assign an agent → send the brochure → create a call task → wait → remind.">
+    <Section display="Automate" id="automation" index="05" tone="subtle" eyebrow="Automation" title="Set it once. Let it run." subtitle="Build workflows visually. When an enquiry arrives → assign an agent → send the brochure → create a call task → wait → remind.">
       <Reveal><Card className="mx-auto max-w-5xl overflow-hidden p-6 sm:p-8"><FlowDiagram />
         <div className="mt-8 grid gap-3 border-t border-border pt-6 text-sm sm:grid-cols-3">
           {[["Triggers", "Enquiry created · Deal stage changed · Task completed · Form submitted"], ["Actions", "Send email · Create task · Assign user · Add tag · Change status · Webhook"], ["Safe by design", "Dry-run test mode, run history and loop protection built in"]].map(([t, b]) => <div key={t}><p className="font-semibold">{t}</p><p className="mt-1 text-fg-muted">{b}</p></div>)}
@@ -89,7 +89,7 @@ export function AutomationSection() {
 const REV = Array.from({ length: 12 }, (_, i) => ({ m: ["Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct"][i], revenue: [4, 6, 5.2, 8, 7.4, 10, 9.6, 12.5, 12, 15, 14.2, 18.5][i] * 100000 }));
 export function AnalyticsSection() {
   return (
-    <Section id="analytics" eyebrow="Analytics" title="Know exactly what sales are coming" subtitle="Live dashboards and a forecast you can trust — hover any chart for exact values.">
+    <Section display="Analytics" id="analytics" index="06" eyebrow="Analytics" title="Know exactly what sales are coming" subtitle="Live dashboards and a forecast you can trust — hover any chart for exact values.">
       <div className="grid gap-4 lg:grid-cols-3">
         <Reveal className="lg:col-span-2"><Card className="p-5"><p className="font-semibold">Sales over time</p><p className="mb-3 text-sm text-fg-muted">Deals closed, last 12 months</p><AreaTrend data={REV} xKey="m" series={[{ key: "revenue", label: "Sales" }]} format={(v) => formatMoneyCompact(v)} height={250} /></Card></Reveal>
         <Reveal delay={0.08}><Card className="h-full p-5"><p className="font-semibold">Deal funnel</p><p className="mb-4 text-sm text-fg-muted">Deals reaching each stage</p><FunnelBars steps={[{ label: "Enquiry", value: 64 }, { label: "Site visit", value: 41 }, { label: "Shortlisted", value: 27 }, { label: "Negotiation", value: 15 }, { label: "Closed", value: 9 }]} /></Card></Reveal>
