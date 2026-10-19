@@ -152,7 +152,7 @@ export function RecordPage({ entity }: { entity: Entity }) {
       </div>
       {entity === "deal" && <div className="mb-6"><StageStepper deal={deal} onMove={(s) => move(s)} /></div>}
 
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="min-w-0 order-2 lg:order-1">
           <Tabs value={tab} onValueChange={setTab}>
             <TabsList>{tabs.map(([k, l]) => <TabsTrigger key={k} value={k}>{l}</TabsTrigger>)}</TabsList>
