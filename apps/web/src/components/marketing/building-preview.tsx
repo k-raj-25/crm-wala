@@ -11,6 +11,8 @@ const FLOORS = 8, PER = 4;
 const START: UnitStatus[] = "vvsv rvvo vsrv vvhv rvvs ovrv vsvr rvov".replace(/ /g, "").split("").map((c) => ({ v: "vacant", s: "for_sale", r: "rented", o: "self_occupied", h: "on_hold" } as Record<string, UnitStatus>)[c]);
 const CLIENTS = ["the Mehta family", "Priya S.", "Mr. Kapoor", "Anita & Raj", "Dr. Rao", "Sana K."];
 const STEPS: Partial<Record<UnitStatus, [UnitStatus, string]>> = { vacant: ["for_sale", "listed for sale"], for_sale: ["on_hold", "held for"], on_hold: ["booked", "booked by"], booked: ["sold", "sold to"] };
+/** Every status the demo can show, so the legend keeps the same rows as counts change. */
+const SHOWN = new Set<UnitStatus>([...START, ...Object.values(STEPS).map(([to]) => to)]);
 const num = (i: number) => { const f = FLOORS - Math.floor(i / PER); return `${f}0${(i % PER) + 1}`; };
 
 /** The hero visual: a tower whose flats change status on their own, with a live feed. Purely illustrative, no data fetched. */
@@ -72,20 +74,21 @@ export function BuildingHero() {
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-fg-subtle">Tower D-13 · live</p>
             <ul className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2.5">
-              {STATUS_ORDER.filter((s) => counts[s]).map((s) => (
-                <li key={s} className="flex items-center gap-2 text-sm"><span className="size-2.5 rounded-full" style={{ background: dark ? STATUS[s].bgDark : STATUS[s].bg }} /><motion.span key={counts[s]} initial={{ y: -4, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="tabular font-semibold">{counts[s]}</motion.span><span className="text-fg-muted">{STATUS[s].label}</span></li>
+              {STATUS_ORDER.filter((s) => SHOWN.has(s)).map((s) => (
+                <li key={s} className="flex items-center gap-2 text-sm"><span className="size-2.5 rounded-full" style={{ background: dark ? STATUS[s].bgDark : STATUS[s].bg }} /><motion.span key={counts[s]} initial={{ y: -4, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="tabular font-semibold">{counts[s] ?? 0}</motion.span><span className="text-fg-muted">{STATUS[s].label}</span></li>
               ))}
             </ul>
           </div>
-          <div className="min-h-[170px] flex-1">
+          <div className="flex-1">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-fg-subtle">Just now</p>
-            <ul className="space-y-2" aria-live="polite">
-              <AnimatePresence initial={false}>
+            {/* Fixed height for four rows; popLayout takes the leaving row out of flow so the window never grows mid-animation. */}
+            <ul className="relative h-[192px] space-y-2 overflow-hidden" aria-live="polite">
+              <AnimatePresence initial={false} mode="popLayout">
                 {feed.map((f) => {
                   const m = STATUS[f.status]; const Icon = m.icon;
                   return (
                     <motion.li key={f.id} layout initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} className="flex items-center gap-2.5 rounded-lg border border-border bg-surface px-3 py-2 text-[13px]">
-                      <span className="grid size-6 shrink-0 place-items-center rounded-md" style={{ background: dark ? m.bgDark : m.bg, color: dark ? m.inkDark : m.ink }}><Icon className="size-3.5" /></span>{f.text}
+                      <span className="grid size-6 shrink-0 place-items-center rounded-md" style={{ background: dark ? m.bgDark : m.bg, color: dark ? m.inkDark : m.ink }}><Icon className="size-3.5" /></span><span className="truncate">{f.text}</span>
                     </motion.li>
                   );
                 })}
