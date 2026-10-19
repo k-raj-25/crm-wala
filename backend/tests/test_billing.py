@@ -66,3 +66,15 @@ def test_checkout_info_is_tenant_scoped(app):
     info = a.get(f"/api/v1/billing/checkout/{sid}")
     assert info.status_code == 200 and info.get_json()["data"]["quote"]["plan_key"] == "starter"
     assert b.get(f"/api/v1/billing/checkout/{sid}").status_code == 404
+
+
+def test_second_workspace_payment_gets_next_invoice_number(app):
+    # Invoices are row-level scoped, so numbering must look past the paying workspace.
+    numbers = []
+    for i, email in enumerate(["first@example.com", "second@example.com"]):
+        cl, _ = signup(app, email=email, company_name=f"Co {i}")
+        sid = cl.post("/api/v1/billing/checkout", json={"plan_key": "business", "interval": "monthly"}).get_json()["data"]["session_id"]
+        r = cl.post("/api/v1/billing/mock/complete", json={"session_id": sid, "outcome": "success"})
+        assert r.status_code == 200, r.get_json()
+        numbers.append(cl.get("/api/v1/billing/invoices").get_json()["data"][0]["number"])
+    assert numbers[0] != numbers[1] and numbers[1].endswith("000002")
