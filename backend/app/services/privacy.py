@@ -114,6 +114,11 @@ def mask_response(resp):
     return resp
 
 
+def mask_text(text: str) -> str:
+    """Free text for the current member (e.g. a WhatsApp reply): numbers written inside it are masked unless they may see them."""
+    return text if can_view() else _scrub(text)
+
+
 def mask_value(v: Any) -> Any:
     return v if can_view() else mask(v)
 

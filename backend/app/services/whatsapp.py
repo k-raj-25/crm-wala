@@ -392,6 +392,10 @@ def _receive(i: Integration, m: dict, profile_name: str | None) -> bool:
     phone = normalize_phone("+" + str(m.get("from", "")))
     if not phone:
         return False
+    from app.services import whatsapp_crm
+
+    if whatsapp_crm.handle_inbound(i, m, phone):  # a teammate updating the CRM from their own linked number: never a lead
+        return True
     kind, text = _inbound_text(m)
     found = find_record(ws_id, phone)
     created_lead = False
