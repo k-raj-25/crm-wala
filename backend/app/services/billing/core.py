@@ -8,7 +8,7 @@ import datetime as dt
 import logging
 import uuid
 
-from sqlalchemy import func
+from sqlalchemy import func, text
 
 from app.core.errors import ApiError, bad_request, conflict, not_found
 from app.extensions import db
@@ -100,8 +100,16 @@ def start_checkout(ws: Workspace, user: User, plan_key: str, interval: str, coup
 
 
 def _next_invoice_number() -> str:
-    n = (db.session.query(func.count(Invoice.id)).scalar() or 0) + 1
-    return f"INV-{utcnow():%Y}-{n:06d}"
+    # Numbers are unique across all workspaces, but row-level security only shows this
+    # workspace's invoices, so look past it. The lock stops two payments taking the same number.
+    from app.core.tenant import bypass_scope
+
+    prefix = f"INV-{utcnow():%Y}-"
+    db.session.execute(text("SELECT pg_advisory_xact_lock(hashtext('invoice_number'))"))
+    with bypass_scope():
+        last = db.session.query(func.max(Invoice.number)).filter(Invoice.number.like(f"{prefix}%")).scalar()
+    n = int(last.removeprefix(prefix)) + 1 if last else 1
+    return f"{prefix}{n:06d}"
 
 
 def apply_event(ev: BillingEvent, provider_name: str) -> str:
