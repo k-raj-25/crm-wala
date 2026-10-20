@@ -40,6 +40,7 @@
   --shadow-sm: var(--glass-edge), 0 2px 10px rgba(30, 41, 94, 0.06);
   --shadow-md: var(--glass-edge), 0 10px 30px -6px rgba(30, 41, 94, 0.14);
   --shadow-lg: var(--glass-edge), 0 24px 60px -12px rgba(30, 41, 94, 0.25);
+  --glow-live-a: rgba(90, 130, 255, 0.26); --glow-live-b: rgba(170, 120, 255, 0.2);
   --glow:
     radial-gradient(55% 45% at 12% 0%, rgba(96, 135, 255, 0.34), transparent 70%),
     radial-gradient(45% 40% at 92% 12%, rgba(160, 130, 255, 0.24), transparent 70%),
@@ -84,6 +85,7 @@
   --shadow-sm: var(--glass-edge), 0 4px 14px rgba(0, 0, 0, 0.25);
   --shadow-md: var(--glass-edge), 0 14px 34px -8px rgba(0, 0, 0, 0.5);
   --shadow-lg: var(--glass-edge), 0 30px 70px -14px rgba(0, 0, 0, 0.7);
+  --glow-live-a: rgba(50, 100, 235, 0.26); --glow-live-b: rgba(90, 70, 220, 0.18);
   --glow:
     radial-gradient(50% 45% at 55% 78%, rgba(37, 82, 210, 0.42), transparent 72%),
     radial-gradient(40% 40% at 8% 4%, rgba(40, 80, 200, 0.22), transparent 70%),
@@ -100,6 +102,7 @@
    The landing page (`.noir`) sets its own values for every one of these, so it never changes. */
 [data-accent="violet"] {
   --bg: #f5f2fc; --primary: #6d3fd9; --primary-hover: #5a2fc0; --primary-soft: rgba(109, 63, 217, 0.1); --primary-fg: #ffffff; --ring: rgba(109, 63, 217, 0.3);
+  --glow-live-a: rgba(140, 95, 255, 0.26); --glow-live-b: rgba(235, 120, 205, 0.18);
   --glow:
     radial-gradient(55% 45% at 12% 0%, rgba(140, 100, 255, 0.34), transparent 70%),
     radial-gradient(45% 40% at 92% 12%, rgba(230, 120, 200, 0.2), transparent 70%),
@@ -108,6 +111,7 @@
 }
 .dark[data-accent="violet"] {
   --bg: #06040f; --primary: #f1ecff; --primary-hover: #ffffff; --primary-soft: rgba(170, 140, 255, 0.16); --primary-fg: #070b18; --ring: rgba(190, 170, 255, 0.4); --display: rgba(160, 130, 255, 0.1);
+  --glow-live-a: rgba(125, 70, 235, 0.26); --glow-live-b: rgba(200, 80, 200, 0.16);
   --glow:
     radial-gradient(50% 45% at 55% 78%, rgba(110, 60, 220, 0.42), transparent 72%),
     radial-gradient(40% 40% at 8% 4%, rgba(100, 60, 210, 0.22), transparent 70%),
@@ -116,6 +120,7 @@
 }
 [data-accent="teal"] {
   --bg: #eff8f7; --primary: #0f766e; --primary-hover: #0b5f58; --primary-soft: rgba(15, 118, 110, 0.1); --primary-fg: #ffffff; --ring: rgba(15, 118, 110, 0.3);
+  --glow-live-a: rgba(30, 185, 170, 0.24); --glow-live-b: rgba(80, 150, 255, 0.18);
   --glow:
     radial-gradient(55% 45% at 12% 0%, rgba(40, 180, 170, 0.3), transparent 70%),
     radial-gradient(45% 40% at 92% 12%, rgba(90, 160, 255, 0.2), transparent 70%),
@@ -124,6 +129,7 @@
 }
 .dark[data-accent="teal"] {
   --bg: #020a0b; --primary: #e6faf6; --primary-hover: #ffffff; --primary-soft: rgba(80, 220, 200, 0.14); --primary-fg: #070b18; --ring: rgba(120, 230, 210, 0.38); --display: rgba(80, 220, 200, 0.08);
+  --glow-live-a: rgba(20, 160, 145, 0.24); --glow-live-b: rgba(30, 110, 170, 0.18);
   --glow:
     radial-gradient(50% 45% at 55% 78%, rgba(14, 130, 120, 0.4), transparent 72%),
     radial-gradient(40% 40% at 8% 4%, rgba(20, 110, 110, 0.22), transparent 70%),
@@ -132,6 +138,7 @@
 }
 [data-accent="rose"] {
   --bg: #fcf2f5; --primary: #c42a55; --primary-hover: #a8204a; --primary-soft: rgba(196, 42, 85, 0.1); --primary-fg: #ffffff; --ring: rgba(196, 42, 85, 0.3);
+  --glow-live-a: rgba(240, 90, 140, 0.22); --glow-live-b: rgba(255, 150, 110, 0.18);
   --glow:
     radial-gradient(55% 45% at 12% 0%, rgba(240, 90, 140, 0.28), transparent 70%),
     radial-gradient(45% 40% at 92% 12%, rgba(255, 150, 120, 0.2), transparent 70%),
@@ -140,6 +147,7 @@
 }
 .dark[data-accent="rose"] {
   --bg: #0b0408; --primary: #fdebf1; --primary-hover: #ffffff; --primary-soft: rgba(255, 120, 160, 0.15); --primary-fg: #070b18; --ring: rgba(255, 150, 180, 0.38); --display: rgba(255, 110, 150, 0.08);
+  --glow-live-a: rgba(210, 50, 105, 0.26); --glow-live-b: rgba(160, 50, 170, 0.16);
   --glow:
     radial-gradient(50% 45% at 55% 78%, rgba(190, 40, 90, 0.4), transparent 72%),
     radial-gradient(40% 40% at 8% 4%, rgba(170, 40, 90, 0.22), transparent 70%),
@@ -148,6 +156,7 @@
 }
 [data-accent="amber"] {
   --bg: #fcf6ee; --primary: #b84f0a; --primary-hover: #9a4108; --primary-soft: rgba(184, 79, 10, 0.1); --primary-fg: #ffffff; --ring: rgba(184, 79, 10, 0.3);
+  --glow-live-a: rgba(250, 160, 50, 0.24); --glow-live-b: rgba(255, 110, 80, 0.18);
   --glow:
     radial-gradient(55% 45% at 12% 0%, rgba(250, 160, 60, 0.3), transparent 70%),
     radial-gradient(45% 40% at 92% 12%, rgba(255, 120, 90, 0.2), transparent 70%),
@@ -156,6 +165,7 @@
 }
 .dark[data-accent="amber"] {
   --bg: #0a0603; --primary: #fdf1df; --primary-hover: #ffffff; --primary-soft: rgba(255, 170, 80, 0.15); --primary-fg: #070b18; --ring: rgba(255, 190, 120, 0.38); --display: rgba(255, 170, 80, 0.08);
+  --glow-live-a: rgba(215, 115, 25, 0.26); --glow-live-b: rgba(190, 60, 35, 0.18);
   --glow:
     radial-gradient(50% 45% at 55% 78%, rgba(190, 100, 20, 0.38), transparent 72%),
     radial-gradient(40% 40% at 8% 4%, rgba(170, 80, 20, 0.2), transparent 70%),
@@ -193,6 +203,13 @@
 @keyframes drawer-in-right { from { transform: translateX(24px); opacity: 0 } to { transform: none; opacity: 1 } }
 @keyframes drawer-out-right { from { transform: none; opacity: 1 } to { transform: translateX(24px); opacity: 0 } }
 @keyframes sheet-in { from { transform: translateY(100%) } to { transform: none } }
+/* turns the oversized light layer around its centre, so the two lights circle each other while the whole thing sways */
+@keyframes glow-drift {
+  0% { transform: translate3d(-3%, -2%, 0) rotate(0deg) scale(1); }
+  35% { transform: translate3d(4%, 1%, 0) rotate(28deg) scale(1.08); }
+  70% { transform: translate3d(-1%, 4%, 0) rotate(-14deg) scale(0.95); }
+  100% { transform: translate3d(3%, -3%, 0) rotate(40deg) scale(1.05); }
+}
 @keyframes sheet-out { from { transform: none } to { transform: translateY(100%) } }
 
 @layer base {
@@ -201,6 +218,17 @@
   body { background: var(--bg); color: var(--fg); font-size: 14px; line-height: 1.5; }
   /* the glowing backdrop the glass floats over; a fixed layer, so it stays put while pages scroll (and works on iOS) */
   body::before { content: ""; position: fixed; inset: 0; z-index: -1; background: var(--glow); pointer-events: none; }
+  /* two soft accent lights that drift slowly over the glow, so the backdrop feels alive. Only `transform` moves, so the
+     browser slides an already painted layer instead of repainting gradients each frame. */
+  body::after {
+    content: ""; position: fixed; inset: -25%; z-index: -1; pointer-events: none;
+    background:
+      radial-gradient(22% 24% at 34% 38%, var(--glow-live-a), transparent 70%),
+      radial-gradient(20% 22% at 66% 64%, var(--glow-live-b), transparent 70%);
+    animation: glow-drift 48s ease-in-out infinite alternate; will-change: transform;
+  }
+  /* the landing page has its own backdrop and moving artwork */
+  body:has(.noir)::after { display: none; }
   ::selection { background: var(--primary-soft); color: var(--fg); }
   :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 6px; }
   button, [role="button"], a { -webkit-tap-highlight-color: transparent; }
@@ -231,6 +259,7 @@
 @keyframes drawer-in-glass { from { transform: translateX(24px) } to { transform: none } }
 
 @media (prefers-reduced-motion: reduce) {
+  body::after { animation: none; }
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }
 
