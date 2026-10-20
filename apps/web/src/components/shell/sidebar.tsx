@@ -126,7 +126,7 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
   return (
     <aside className={cn("glass sticky top-3 my-3 ml-3 hidden h-[calc(100dvh-24px)] shrink-0 flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-sm transition-[width] duration-200 ease-out md:flex", collapsed ? "w-[68px]" : "w-[248px]")} aria-label="Sidebar">
       <div className={cn("flex h-14 items-center px-4", collapsed ? "justify-center" : "justify-between")}>
-        <Link href="/app" aria-label="Home">{collapsed ? <LogoMark /> : <Logo />}</Link>
+        <Link href="/app" aria-label={collapsed ? "Home and expand sidebar" : "Home"} onClick={collapsed ? onToggle : undefined}>{collapsed ? <LogoMark /> : <Logo />}</Link>
         {!collapsed && <Tooltip content="Collapse sidebar" shortcut="["><Button variant="ghost" size="icon-sm" onClick={onToggle} aria-label="Collapse sidebar"><PanelLeftClose /></Button></Tooltip>}
       </div>
       <nav className="hide-scrollbar flex-1 space-y-0.5 overflow-y-auto px-3 py-2" aria-label="Main">
