@@ -19,6 +19,7 @@ import { UIProvider, useUI } from "./ui-context";
 import { NotificationsPopover } from "./notifications";
 import { PendingNavigation, startNavigation, usePendingPath } from "./pending-nav";
 import { RouteSkeleton } from "./route-skeleton";
+import { Backdrop, type BackdropStyle } from "./backdrop";
 
 function TrialBanner() {
   const { data: me } = useMe();
@@ -159,9 +160,11 @@ function Shell({ children }: { children: React.ReactNode }) {
   }
   if (isLoading || !me?.workspace) return <div className="flex min-h-dvh"><div className="glass my-3 ml-3 hidden w-[248px] rounded-2xl border border-border bg-surface p-4 md:block"><Skeleton className="h-8 w-32" /><div className="mt-8 space-y-3">{Array.from({ length: 9 }).map((_, i) => <Skeleton key={i} className="h-8" />)}</div></div><div className="flex-1 p-8"><Skeleton className="h-9 w-64" /><Skeleton className="mt-6 h-40" /><Skeleton className="mt-4 h-72" /></div></div>;
 
+  const backdrop = (typeof window !== "undefined" && (localStorage.getItem("backdrop") as BackdropStyle | null)) || "spotlight";
   const allowedWhenRestricted = pathname.startsWith("/app/billing") || pathname.startsWith("/app/settings/profile") || pathname.startsWith("/app/settings/security");
   return (
     <div className="flex min-h-dvh">
+      <Backdrop variant={backdrop} />
       <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
       <div className="flex min-w-0 flex-1 flex-col">
         <ImpersonationBanner /><VerifyBanner /><TrialBanner />
