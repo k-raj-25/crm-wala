@@ -203,6 +203,13 @@
 @keyframes drawer-in-right { from { transform: translateX(24px); opacity: 0 } to { transform: none; opacity: 1 } }
 @keyframes drawer-out-right { from { transform: none; opacity: 1 } to { transform: translateX(24px); opacity: 0 } }
 @keyframes sheet-in { from { transform: translateY(100%) } to { transform: none } }
+/* turns the oversized light layer around its centre, so the two lights circle each other while the whole thing sways */
+@keyframes glow-drift {
+  0% { transform: translate3d(-3%, -2%, 0) rotate(0deg) scale(1); }
+  35% { transform: translate3d(4%, 1%, 0) rotate(28deg) scale(1.08); }
+  70% { transform: translate3d(-1%, 4%, 0) rotate(-14deg) scale(0.95); }
+  100% { transform: translate3d(3%, -3%, 0) rotate(40deg) scale(1.05); }
+}
 @keyframes sheet-out { from { transform: none } to { transform: translateY(100%) } }
 
 @layer base {
@@ -211,6 +218,17 @@
   body { background: var(--bg); color: var(--fg); font-size: 14px; line-height: 1.5; }
   /* the glowing backdrop the glass floats over; a fixed layer, so it stays put while pages scroll (and works on iOS) */
   body::before { content: ""; position: fixed; inset: 0; z-index: -1; background: var(--glow); pointer-events: none; }
+  /* two soft accent lights that drift slowly over the glow, so the backdrop feels alive. Only `transform` moves, so the
+     browser slides an already painted layer instead of repainting gradients each frame. */
+  body::after {
+    content: ""; position: fixed; inset: -25%; z-index: -1; pointer-events: none;
+    background:
+      radial-gradient(22% 24% at 34% 38%, var(--glow-live-a), transparent 70%),
+      radial-gradient(20% 22% at 66% 64%, var(--glow-live-b), transparent 70%);
+    animation: glow-drift 48s ease-in-out infinite alternate; will-change: transform;
+  }
+  /* the landing page has its own backdrop and moving artwork */
+  body:has(.noir)::after { display: none; }
   ::selection { background: var(--primary-soft); color: var(--fg); }
   :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 6px; }
   button, [role="button"], a { -webkit-tap-highlight-color: transparent; }
@@ -241,7 +259,7 @@
 @keyframes drawer-in-glass { from { transform: translateX(24px) } to { transform: none } }
 
 @media (prefers-reduced-motion: reduce) {
-  .backdrop, .backdrop * { animation: none !important; }
+  body::after { animation: none; }
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }
 
@@ -258,24 +276,6 @@
    the filter at the edge of the drop shadow, and where that anchor sits differs between Chrome versions. */
 .lg-on { -webkit-backdrop-filter: none; backdrop-filter: none; isolation: isolate; }
 .lg-on::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; -webkit-backdrop-filter: var(--lg-filter); backdrop-filter: var(--lg-filter); }
-/* The app's moving backdrop (apps/web shell/backdrop.tsx): a fixed layer between the glow and the glass, in the accent's
-   `--glow-live-*` colours. Soft liquid balls that slowly swell and settle; only transform animates. */
-.backdrop { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; contain: strict; }
-.liquid { position: absolute; translate: -50% -50%; }
-.liquid-drop { position: absolute; inset: 0; border-radius: 50%; will-change: transform; animation: liquid-swell var(--dur) ease-in-out var(--delay) infinite alternate; }
-.liquid-drop-2 { inset: 14% -6% -4% 18%; animation-name: liquid-swell-2; animation-duration: calc(var(--dur) * 0.77); }
-.liquid-a { background: radial-gradient(closest-side, var(--glow-live-a), color-mix(in srgb, var(--glow-live-a) 50%, transparent) 55%, transparent); }
-.liquid-b { background: radial-gradient(closest-side, var(--glow-live-b), color-mix(in srgb, var(--glow-live-b) 50%, transparent) 55%, transparent); }
-@keyframes liquid-swell {
-  0% { transform: translate3d(0, 0, 0) scale(0.86, 0.9) rotate(0deg); }
-  50% { transform: translate3d(18px, -12px, 0) scale(1.08, 0.98) rotate(10deg); }
-  100% { transform: translate3d(-10px, 14px, 0) scale(0.96, 1.1) rotate(-6deg); }
-}
-@keyframes liquid-swell-2 {
-  0% { transform: translate3d(-14px, 10px, 0) scale(1.05, 0.9); }
-  50% { transform: translate3d(10px, 16px, 0) scale(0.8, 0.86); }
-  100% { transform: translate3d(22px, -8px, 0) scale(1.12, 1.02); }
-}
 /* a huge faint word behind a heading, like a watermark */
 .display-word { color: var(--display); font-weight: 700; letter-spacing: -0.05em; line-height: 0.85; white-space: nowrap; pointer-events: none; user-select: none; }
 .hide-scrollbar { scrollbar-width: none; } .hide-scrollbar::-webkit-scrollbar { display: none; }

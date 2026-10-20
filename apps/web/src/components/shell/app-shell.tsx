@@ -19,7 +19,6 @@ import { UIProvider, useUI } from "./ui-context";
 import { NotificationsPopover } from "./notifications";
 import { PendingNavigation, startNavigation, usePendingPath } from "./pending-nav";
 import { RouteSkeleton } from "./route-skeleton";
-import { Backdrop } from "./backdrop";
 
 function TrialBanner() {
   const { data: me } = useMe();
@@ -163,7 +162,6 @@ function Shell({ children }: { children: React.ReactNode }) {
   const allowedWhenRestricted = pathname.startsWith("/app/billing") || pathname.startsWith("/app/settings/profile") || pathname.startsWith("/app/settings/security");
   return (
     <div className="flex min-h-dvh">
-      <Backdrop />
       <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
       <div className="flex min-w-0 flex-1 flex-col">
         <ImpersonationBanner /><VerifyBanner /><TrialBanner />
