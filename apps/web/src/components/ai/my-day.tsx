@@ -8,6 +8,7 @@ import { Button, Card, CardBody, CardHeader, EmptyState, ErrorState, Segmented, 
 import { useAiFeature, useAiStatus } from "@/lib/ai";
 import { api } from "@/lib/api";
 import { useAccess } from "@/lib/queries";
+import { CallButton, useCanCall } from "@/components/calls/calling";
 
 export type DayItem = { id: string; title: string; reason?: string; url: string; phone?: string | null; whatsapp?: string | null; maps?: string | null; time?: string | null; lead_id?: string | null; unit_id?: string | null; task_id?: string | null; hint?: string | null };
 export type TeamRow = { user_id: string; name: string; new_leads: number; uncontacted: number; overdue_follow_ups: number; visits: number; visits_today: number; won: number; median_response_hours: number | null };
@@ -20,9 +21,11 @@ const time = (iso?: string | null) => iso ? new Date(iso).toLocaleTimeString("en
 export const useMyDay = (team = false, enabled = true) => useQuery({ queryKey: ["my-day", team], enabled, staleTime: 60_000, queryFn: () => api.get<MyDayData>("/api/v1/ai/my-day", team ? { team: "1" } : undefined) });
 
 function ItemActions({ i, size = "xs" }: { i: DayItem; size?: "xs" | "sm" }) {
+  const companyCall = useCanCall() && !!i.lead_id;
   return (
     <div className="flex flex-wrap gap-1.5">
-      {i.phone && <Button asChild size={size} variant="secondary"><a href={`tel:${i.phone}`} aria-label={`Call ${i.title}`}><Phone /> Call</a></Button>}
+      {companyCall && <CallButton entity="lead" id={i.lead_id!} name={i.title} size={size} />}
+      {!companyCall && i.phone && !i.phone.includes("•") && <Button asChild size={size} variant="secondary"><a href={`tel:${i.phone}`} aria-label={`Call ${i.title}`}><Phone /> Call</a></Button>}
       {i.whatsapp && <Button asChild size={size} variant="secondary"><a href={i.whatsapp} target="_blank" rel="noreferrer noopener"><MessageCircle /> WhatsApp</a></Button>}
       {i.maps && <Button asChild size={size} variant="secondary"><a href={i.maps} target="_blank" rel="noreferrer noopener"><MapPin /> Directions</a></Button>}
       <Button asChild size={size} variant="ghost"><Link href={i.url}><ExternalLink /> Open</Link></Button>
@@ -95,7 +98,7 @@ export function MyDay() {
 
 /** Compact version for the home dashboard: counts and the first few things to do. */
 export function MyDayCard() {
-  const on = useAiFeature("briefing"); const day = useMyDay(false, on);
+  const on = useAiFeature("briefing"); const day = useMyDay(false, on); const canCall = useCanCall();
   if (!on) return null;
   const items = (day.data?.sections ?? []).flatMap((s) => s.items.map((i) => ({ ...i, key: s.key }))).slice(0, 4);
   const total = Object.values(day.data?.counts ?? {}).reduce((a, n) => a + n, 0);
@@ -110,7 +113,8 @@ export function MyDayCard() {
             <li key={i.key + i.id} className="flex items-center gap-3 py-2.5">
               <span className={cn("flex size-7 shrink-0 items-center justify-center rounded-lg", TONE[i.key])}><Icon className="size-3.5" /></span>
               <div className="min-w-0 flex-1"><Link href={i.url} className="block truncate text-sm font-medium hover:text-primary">{i.time && <span className="tabular mr-1.5 text-info">{time(i.time)}</span>}{i.title}</Link><p className="truncate text-xs text-fg-muted">{i.reason}</p></div>
-              {i.phone && <a href={`tel:${i.phone}`} aria-label={`Call ${i.title}`} className="grid size-8 place-items-center rounded-md text-fg-muted hover:bg-surface-hover hover:text-fg"><Phone className="size-4" /></a>}
+              {canCall && i.lead_id ? <CallButton entity="lead" id={i.lead_id} name={i.title} size="sm" variant="ghost" iconOnly />
+                : i.phone && !i.phone.includes("•") && <a href={`tel:${i.phone}`} aria-label={`Call ${i.title}`} className="grid size-8 place-items-center rounded-md text-fg-muted hover:bg-surface-hover hover:text-fg"><Phone className="size-4" /></a>}
               {i.whatsapp && <a href={i.whatsapp} target="_blank" rel="noreferrer noopener" aria-label={`WhatsApp ${i.title}`} className="grid size-8 place-items-center rounded-md text-fg-muted hover:bg-surface-hover hover:text-success"><MessageCircle className="size-4" /></a>}
             </li>); })}</ul>}
         </>)}

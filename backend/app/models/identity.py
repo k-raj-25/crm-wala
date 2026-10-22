@@ -131,11 +131,13 @@ class WorkspaceMember(Base, UUIDPk, Timestamps, Serializable):
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     role_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("roles.id"))
     team_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("teams.id", ondelete="SET NULL"))
+    # Their manager: who they can hand a live call to (see services/calling.py)
+    reports_to: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     status: Mapped[str] = mapped_column(String(20), default="active", server_default="active")  # active|disabled
     notification_prefs: Mapped[dict] = mapped_column(JSONB, default=dict, server_default=text("'{}'::jsonb"))
     last_seen_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
 
-    user: Mapped[User] = relationship()
+    user: Mapped[User] = relationship(foreign_keys=[user_id])
     role: Mapped[Role] = relationship()
 
 

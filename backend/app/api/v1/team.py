@@ -32,6 +32,7 @@ def _member_dict(m: WorkspaceMember) -> dict:
     u = m.user
     return {"id": str(m.id), "user_id": str(u.id), "name": u.name, "email": u.email, "avatar_url": u.avatar_url, "status": m.status,
             "role": {"id": str(m.role.id), "key": m.role.key, "name": m.role.name, "rank": m.role.rank}, "team_id": str(m.team_id) if m.team_id else None,
+            "reports_to": str(m.reports_to) if m.reports_to else None, "has_phone": bool(u.phone),
             "last_login_at": u.last_login_at.isoformat() if u.last_login_at else None, "joined_at": m.created_at.isoformat(),
             "mfa_enabled": u.totp_enabled}
 
@@ -50,7 +51,7 @@ def _role_or_404(role_id) -> Role:
 @bp.get("/team/members")
 @protect("team.read")
 def list_members():
-    rows = db.session.query(WorkspaceMember).filter_by(workspace_id=g.workspace.id).join(User).order_by(User.name).all()
+    rows = db.session.query(WorkspaceMember).filter_by(workspace_id=g.workspace.id).join(User, User.id == WorkspaceMember.user_id).order_by(User.name).all()
     return ok([_member_dict(m) for m in rows])
 
 
@@ -152,7 +153,7 @@ def invite():
     role = _role_or_404(d.role_id)
     if role.key == "owner" or role.rank > _my_rank():
         raise forbidden("You can't invite someone to that role", "rank_too_low")
-    if db.session.query(WorkspaceMember).join(User).filter(WorkspaceMember.workspace_id == g.workspace.id, User.email == d.email).first():
+    if db.session.query(WorkspaceMember).join(User, User.id == WorkspaceMember.user_id).filter(WorkspaceMember.workspace_id == g.workspace.id, User.email == d.email).first():
         raise conflict("That person is already in this workspace", "already_member")
     check_limit(g.workspace, "users")
     db.session.query(Invitation).filter(Invitation.workspace_id == g.workspace.id, Invitation.email == d.email, Invitation.accepted_at.is_(None),

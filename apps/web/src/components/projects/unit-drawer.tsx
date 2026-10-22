@@ -16,6 +16,7 @@ import { MAX_COMPARE, compare, useCompare } from "@/lib/compare";
 import { celebrate } from "@/lib/confetti";
 import { BHK_OPTIONS, FACINGS, STATUS, STATUS_ORDER, UNIT_KINDS, holdLeft, money, priceLine } from "@/lib/realestate";
 import type { MatchLead, Unit, UnitEvent, UnitStatus } from "@/lib/realestate";
+import { CallButton, useCanCall } from "@/components/calls/calling";
 
 const HOLDS = [[24, "1 day"], [48, "2 days"], [72, "3 days"], [168, "1 week"]] as const;
 const NEEDS_CLIENT: UnitStatus[] = ["booked", "sold", "rented"];
@@ -31,6 +32,7 @@ export function UnitDrawer({ unitId, onClose, canEdit }: { unitId: string | null
   const qc = useQueryClient();
   const toast = useToast();
   const router = useRouter();
+  const canCall = useCanCall();
   const { resolved } = useTheme();
   const [pending, setPending] = React.useState<UnitStatus | null>(null);
   const [hours, setHours] = React.useState(48);
@@ -196,7 +198,7 @@ export function UnitDrawer({ unitId, onClose, canEdit }: { unitId: string | null
                       <Link href={`/app/leads/${m.id}`} className="block truncate text-sm font-medium hover:text-primary">{m.name}</Link>
                       <p className="truncate text-xs text-fg-muted">{[m.intent, m.bhk, m.budget_max ? `up to ${money(m.budget_max)}` : null].filter(Boolean).join(" · ")}{m.reasons.length ? ` — ${m.reasons.join(", ")}` : ""}</p>
                     </div>
-                    {m.phone && !isMasked(m.phone) && <a href={`tel:${m.phone}`} aria-label={`Call ${m.name}`} className="grid size-8 place-items-center rounded-md text-fg-muted hover:bg-surface-hover hover:text-fg"><Phone className="size-4" /></a>}
+                    {canCall ? <CallButton entity="lead" id={m.id} name={m.name} size="sm" variant="ghost" iconOnly /> : m.phone && !isMasked(m.phone) && <a href={`tel:${m.phone}`} aria-label={`Call ${m.name}`} className="grid size-8 place-items-center rounded-md text-fg-muted hover:bg-surface-hover hover:text-fg"><Phone className="size-4" /></a>}
                     {canEdit && u.status !== "on_hold" && <Button variant="secondary" size="sm" onClick={() => holdFor(m)} disabled={busy}>Hold</Button>}
                     {canEdit && <Button variant="ghost" size="sm" onClick={() => setVisit({ lead: m.id, at: toLocalInput(new Date(Date.now() + 864e5).toISOString().replace(/T.*/, "T11:00:00")) })}>Visit</Button>}
                   </li>

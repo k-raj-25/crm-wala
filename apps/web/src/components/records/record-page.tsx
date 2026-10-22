@@ -21,6 +21,7 @@ import { PageContainer } from "../shell/page";
 import { useUI } from "../shell/ui-context";
 import { InlineField } from "./inline-field";
 import { PhoneField, isMasked } from "./phone-field";
+import { CallButton, useCanCall } from "../calls/calling";
 import { CallsTab, ContactsTab, DealsTab, EmailsTab, FilesTab, MeetingsTab, NotesTab, TasksTab, type Scope } from "./related";
 import { Timeline } from "./timeline";
 import { WA_GREEN, WhatsAppTab } from "../whatsapp/whatsapp";
@@ -76,7 +77,7 @@ function StageStepper({ deal, onMove }: { deal: Deal; onMove: (stageId: string, 
 
 export function RecordPage({ entity }: { entity: Entity }) {
   const { id } = useParams<{ id: string }>(); const router = useRouter(); const qc = useQueryClient(); const toast = useToast(); const ui = useUI();
-  const { can, has } = useAccess(); const { data: me } = useMe(); const pipelines = usePipelines(); const customDefs = useCustomFields(entity);
+  const { can, has } = useAccess(); const canCall = useCanCall(); const { data: me } = useMe(); const pipelines = usePipelines(); const customDefs = useCustomFields(entity);
   const plural = PLURAL[entity]; const base = `/api/v1/${plural}`;
   const q = useQuery({ queryKey: ["record", entity, id], queryFn: () => api.get<Rec>(`${base}/${id}`), retry: (n, e) => (e as { status?: number }).status !== 404 && n < 1 });
   const [tab, setTab] = React.useState("overview"); const [convert, setConvert] = React.useState(false); const [del, setDel] = React.useState(false); const [edit, setEdit] = React.useState(false); const [lostOpen, setLostOpen] = React.useState(false);
@@ -111,6 +112,7 @@ export function RecordPage({ entity }: { entity: Entity }) {
   const custom = rec.custom as Record<string, unknown>;
 
   const wa = (entity === "lead" || entity === "contact") && has("whatsapp_integration");
+  const companyCall = canCall && (entity === "lead" || entity === "contact") && !!(rec.phone as string | null);
   const tabs: [string, string][] = [["overview", "Activity"], ["notes", "Notes"], ["tasks", "Tasks"], ["emails", "Emails"], ["calls", "Calls"], ["meetings", "Site visits"], ...(wa ? [["whatsapp", "WhatsApp"] as [string, string]] : []), ...(entity === "contact" || entity === "company" ? [["deals", "Deals"] as [string, string]] : []), ...(entity === "company" ? [["contacts", "Contacts"] as [string, string]] : []), ["files", "Files"]];
 
   return (
@@ -138,9 +140,10 @@ export function RecordPage({ entity }: { entity: Entity }) {
           {entity === "deal" && deal.status !== "open" && canEdit && <Button variant="secondary" onClick={() => { const s = pipelines.data?.find((p) => p.id === deal.pipeline_id)?.stages.find((x) => x.kind === "open"); s && move(s.id); }}>Reopen</Button>}
           {e && can("emails.create") && <Button variant="secondary" onClick={() => ui.openCompose(composeDefaults)}><Mail /> Email</Button>}
           {wa && (rec.phone as string | null) && can("emails.create") && <Button variant="secondary" onClick={() => setTab("whatsapp")}><MessageCircle style={{ color: WA_GREEN }} /> <span className="hidden sm:inline">WhatsApp</span></Button>}
-          {can("meetings.create") && <Button variant="secondary" onClick={() => ui.openCreate("call", { [`${entity}_id`]: id })}><Phone /> <span className="hidden sm:inline">Call</span></Button>}
+          {companyCall ? <CallButton entity={entity as "lead" | "contact"} id={id} name={name} /> : can("meetings.create") && <Button variant="secondary" onClick={() => ui.openCreate("call", { [`${entity}_id`]: id })}><Phone /> <span className="hidden sm:inline">Call</span></Button>}
           <DropdownMenu><DropdownTrigger asChild><Button variant="secondary" size="icon" aria-label="More actions"><MoreHorizontal /></Button></DropdownTrigger>
             <DropdownContent>
+              {companyCall && can("meetings.create") && <DropdownItem icon={<Phone />} onSelect={() => ui.openCreate("call", { [`${entity}_id`]: id })}>Log a call</DropdownItem>}
               {can("meetings.create") && <DropdownItem icon={<Calendar />} onSelect={() => ui.openCreate("meeting", { [`${entity}_id`]: id })}>Schedule meeting</DropdownItem>}
               {can("tasks.create") && <DropdownItem icon={<CheckSquare />} onSelect={() => ui.openCreate("task", { [`${entity}_id`]: id })}>Create task</DropdownItem>}
               {can("notes.create") && <DropdownItem icon={<StickyNote />} onSelect={() => setTab("notes")}>Add note</DropdownItem>}

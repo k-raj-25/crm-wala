@@ -211,7 +211,8 @@ class Call(Base, UUIDPk, Timestamps, Tenant, SoftDelete, Related, Serializable):
     __tablename__ = "calls"
 
     direction: Mapped[str] = mapped_column(String(10), default="outbound")
-    status: Mapped[str] = mapped_column(String(15), default="completed")  # scheduled|completed|canceled
+    # scheduled|completed|canceled; calls through the company number also go ringing|in_progress -> completed|missed|failed
+    status: Mapped[str] = mapped_column(String(15), default="completed")
     outcome: Mapped[str | None] = mapped_column(String(30))
     # connected|no_answer|follow_up_required|interested|not_interested
     phone: Mapped[str | None] = mapped_column(String(40))
@@ -223,6 +224,8 @@ class Call(Base, UUIDPk, Timestamps, Tenant, SoftDelete, Related, Serializable):
     provider: Mapped[str | None] = mapped_column(String(30))  # telephony integration hook
     provider_call_id: Mapped[str | None] = mapped_column(String(120))
     recording_url: Mapped[str | None] = mapped_column(String(500))
+    # Company-number calls: who rang, who answered, hand-overs between colleagues, a pending transfer
+    data: Mapped[dict] = mapped_column(JSONB, default=dict, server_default=text("'{}'::jsonb"))
 
 
 class Meeting(Base, UUIDPk, Timestamps, Tenant, SoftDelete, Related, Serializable):
