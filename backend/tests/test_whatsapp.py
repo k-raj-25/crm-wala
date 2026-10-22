@@ -175,6 +175,9 @@ def test_templates_brochures_and_replies_on_timeline(client, meta):
     assert len(replies) == 1 and replies[0]["body"] == "Is the 3 BHK east facing?"
     conv = client.get(f"/api/v1/whatsapp/conversation?lead_id={lead['id']}").get_json()["data"]
     assert conv["window_open"] is True and conv["messages"][-1]["direction"] == "inbound"
+    # one shared business number, so each outbound message names the employee who sent it
+    assert conv["messages"][-1]["sender"] is None
+    assert all(m["sender"]["name"] == "Asha Rao" for m in conv["messages"] if m["direction"] == "outbound")
 
     # inside the window documents and free text go out directly
     r = client.post("/api/v1/whatsapp/send", json={"lead_id": lead["id"], "file_id": fp["id"], "unit_id": uid, "caption": "Here you go"})
