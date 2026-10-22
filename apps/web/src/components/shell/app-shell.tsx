@@ -14,6 +14,7 @@ import { AiDock } from "../ai/ai-dock";
 import { CommandPalette } from "./command-palette";
 import { QuickCreateDrawer, QuickCreateMenu } from "./quick-create";
 import { CompareTray } from "@/components/compare/compare-tray";
+import { LiveCalls } from "@/components/calls/calling";
 import { Sidebar, UserMenu, WorkspaceSwitcher, useNavItems } from "./sidebar";
 import { UIProvider, useUI } from "./ui-context";
 import { NotificationsPopover } from "./notifications";
@@ -178,6 +179,7 @@ function Shell({ children }: { children: React.ReactNode }) {
       </div>
       <MobileNav />
       <CompareTray />
+      <LiveCalls />
       <PendingNavigation /><CommandPalette /><AiDock /><QuickCreateDrawer /><ShortcutsDialog />
       <ComposeEmail open={!!ui.compose} onOpenChange={(o) => !o && ui.closeCompose()} defaults={ui.compose?.defaults} />
     </div>

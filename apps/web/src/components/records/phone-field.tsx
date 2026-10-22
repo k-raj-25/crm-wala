@@ -33,7 +33,7 @@ export function PhoneField({ plural, id, value, editable, onSave }: { plural: "l
       <dt className="text-[13px] text-fg-muted">Phone</dt>
       <dd className="flex min-w-0 items-center gap-2">
         {shown ? <a href={`tel:${shown}`} className="tabular hover:text-primary">{shown}</a>
-          : <span className="tabular text-fg-muted" title="Phone numbers are hidden by your workspace owner. Use WhatsApp or log a call from here."><Lock className="mr-1 inline size-3 align-[-1px]" />{value}</span>}
+          : <span className="tabular text-fg-muted" title="Phone numbers are hidden by your workspace owner. Call or WhatsApp the client from here: they see the company number."><Lock className="mr-1 inline size-3 align-[-1px]" />{value}</span>}
         {!shown && can("phones.reveal") && <Button size="xs" variant="ghost" loading={busy} onClick={reveal} title="Your workspace owner can see who viewed each number"><Eye /> Show</Button>}
       </dd>
     </div>

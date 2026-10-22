@@ -41,6 +41,8 @@ PERMISSIONS.update(
         "audit.read": ("settings", "View audit log"),
         "phones.view": ("phones", "See phone numbers of leads and clients"),
         "phones.reveal": ("phones", "Reveal phone numbers one at a time (each reveal is logged)"),
+        "calls.place": ("calls", "Call clients through the company number"),
+        "calls.transfer_any": ("calls", "Hand a live call to anyone in the team (others can only hand it to their manager)"),
     }
 )
 
@@ -71,12 +73,12 @@ SYSTEM_ROLES: dict[str, dict] = {
         "name": "Manager", "rank": 60, "description": "Manage the team's pipeline, automations and reports.",
         "permissions": _rw(*_CORE, "pipelines", "automations")
         + ["leads.convert", "deals.close", "data.import", "data.export", "reports.read", "reports.manage", "ai.use",
-           "team.read", "integrations.manage", "phones.reveal"],
+           "team.read", "integrations.manage", "phones.reveal", "calls.place"],
     },
     "sales_rep": {
         "name": "Sales Representative", "rank": 40, "description": "Work leads, contacts, deals and tasks.",
         "permissions": _rw(*_CORE, delete=False) + ["pipelines.read", "automations.read", "leads.convert", "deals.close",
-                                                    "data.export", "reports.read", "ai.use", "team.read"],
+                                                    "data.export", "reports.read", "ai.use", "team.read", "calls.place"],
     },
     "viewer": {
         "name": "Viewer", "rank": 10, "description": "Read-only access.",

@@ -11,7 +11,7 @@ from app.services import email as email_service
 NOTIFICATION_TYPES = {
     "new_lead": "New lead", "task_assigned": "Assigned task", "deal_update": "Deal update", "mention": "Mention",
     "meeting_reminder": "Meeting reminder", "automation": "Automation result", "payment_issue": "Payment issue",
-    "trial_ending": "Trial ending", "system": "System notification",
+    "trial_ending": "Trial ending", "call": "Calls (incoming, missed, handed to you)", "system": "System notification",
 }
 # Defaults when a member hasn't customised preferences: in-app on, email only for important ones.
 DEFAULT_PREFS = {t: {"in_app": True, "email": t in {"payment_issue", "trial_ending", "mention", "task_assigned"}} for t in NOTIFICATION_TYPES}
