@@ -4,7 +4,7 @@ import { Maximize2, Plus, Sparkles, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import * as React from "react";
-import { Badge, Button, Kbd, cn, useHotkey } from "@crm/ui";
+import { Badge, Button, Kbd, cn, useHotkey, useModKey } from "@crm/ui";
 import { MODE_LABEL, useAiFeature, useAiStatus } from "@/lib/ai";
 import { Composer, Messages, pageContext, useAiChat } from "./chat";
 
@@ -22,7 +22,7 @@ const chips = (path: string) => /^\/app\/leads\/[0-9a-f-]{36}/.test(path) ? LEAD
 /** Floating assistant: a ✨ button bottom right that opens a small chat which knows the page you're on. ⌘J / Ctrl+J toggles it. */
 export function AiDock() {
   const on = useAiFeature("chat"); const path = usePathname(); const s = useAiStatus().data;
-  const [open, setOpen] = React.useState(false); const chat = useAiChat();
+  const [open, setOpen] = React.useState(false); const chat = useAiChat(); const mod = useModKey();
   const hidden = !on || path.startsWith("/app/ai");
   useHotkey("mod+j", (e) => { if (hidden) return; e.preventDefault(); setOpen((o) => !o); }, [hidden]);
   React.useEffect(() => { if (!open) return; const f = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false); window.addEventListener("keydown", f); return () => window.removeEventListener("keydown", f); }, [open]);
@@ -56,10 +56,10 @@ export function AiDock() {
           </motion.section>
         )}
       </AnimatePresence>
-      <button onClick={() => setOpen((o) => !o)} aria-label={open ? "Close assistant" : "Open assistant (Ctrl+J)"} aria-expanded={open} title="Assistant (⌘J / Ctrl+J)"
+      <button onClick={() => setOpen((o) => !o)} aria-label={open ? "Close assistant" : "Open assistant (Ctrl+J)"} aria-expanded={open} title={`Assistant (${mod} J)`}
         className={cn("group fixed bottom-[148px] right-4 z-40 flex size-12 items-center justify-center rounded-full shadow-lg transition-all hover:scale-105 md:bottom-6 md:right-6", open ? "bg-surface text-fg ring-1 ring-border" : "bg-primary text-primary-fg")}>
         {open ? <X className="size-5" /> : <Sparkles className="size-5" />}
-        <span className="pointer-events-none absolute right-full mr-2 hidden items-center gap-1 whitespace-nowrap rounded-md bg-surface px-2 py-1 text-xs text-fg-muted opacity-0 shadow-sm ring-1 ring-border transition-opacity group-hover:opacity-100 md:flex">Assistant <Kbd>⌘</Kbd><Kbd>J</Kbd></span>
+        <span className="pointer-events-none absolute right-full mr-2 hidden items-center gap-1 whitespace-nowrap rounded-md bg-surface px-2 py-1 text-xs text-fg-muted opacity-0 shadow-sm ring-1 ring-border transition-opacity group-hover:opacity-100 md:flex">Assistant <Kbd>{mod}</Kbd><Kbd>J</Kbd></span>
       </button>
     </>
   );

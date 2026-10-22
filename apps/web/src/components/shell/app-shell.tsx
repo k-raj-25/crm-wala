@@ -5,7 +5,7 @@ import { AlertTriangle, Ban, CreditCard, Download, LifeBuoy, MailWarning, Menu, 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import * as React from "react";
-import { Button, Dialog, DialogContent, ErrorState, Kbd, Logo, Skeleton, cn, humanDuration, useChord, useHotkey, useLocalStorage, useTheme, useToast } from "@crm/ui";
+import { Button, Dialog, DialogContent, ErrorState, Kbd, Logo, Skeleton, cn, humanDuration, useChord, useHotkey, useLocalStorage, useModKey, useTheme, useToast } from "@crm/ui";
 import { api } from "@/lib/api";
 import { MOBILE_PRIMARY, NAV } from "@/lib/nav";
 import { useAccess, useMe } from "@/lib/queries";
@@ -79,10 +79,10 @@ function RestrictedScreen() {
   );
 }
 
-const SHORTCUTS = [["⌘ K", "Command palette / search"], ["⌘ J", "Open the AI assistant"], ["C", "Quick create menu"], ["G then B/L/C/P/K/T…", "Go to Projects, Leads, Clients, Pipeline, Calendar, Daily plan…"], ["[", "Collapse / expand sidebar"], ["?", "Show this help"], ["Esc", "Close dialogs"]];
+const SHORTCUTS = [["mod K", "Command palette / search"], ["mod J", "Open the AI assistant"], ["C", "Quick create menu"], ["G then B/L/C/P/K/T…", "Go to Projects, Leads, Clients, Pipeline, Calendar, Daily plan…"], ["[", "Collapse / expand sidebar"], ["?", "Show this help"], ["Esc", "Close dialogs"]];
 function ShortcutsDialog() {
-  const ui = useUI();
-  return <Dialog open={ui.shortcuts} onOpenChange={ui.setShortcuts}><DialogContent size="sm" title="Keyboard shortcuts"><ul className="divide-y divide-border">{SHORTCUTS.map(([k, d]) => <li key={k} className="flex items-center justify-between gap-4 py-2.5 text-sm"><span className="text-fg-muted">{d}</span><span className="flex shrink-0 gap-1">{k.split(" ").map((p, i) => <Kbd key={i}>{p}</Kbd>)}</span></li>)}</ul></DialogContent></Dialog>;
+  const ui = useUI(); const mod = useModKey();
+  return <Dialog open={ui.shortcuts} onOpenChange={ui.setShortcuts}><DialogContent size="sm" title="Keyboard shortcuts"><ul className="divide-y divide-border">{SHORTCUTS.map(([k, d]) => <li key={k} className="flex items-center justify-between gap-4 py-2.5 text-sm"><span className="text-fg-muted">{d}</span><span className="flex shrink-0 gap-1">{k.split(" ").map((p, i) => <Kbd key={i}>{p === "mod" ? mod : p}</Kbd>)}</span></li>)}</ul></DialogContent></Dialog>;
 }
 
 function MobileNav() {
@@ -115,12 +115,12 @@ function MobileNav() {
 }
 
 function Topbar() {
-  const ui = useUI();
+  const ui = useUI(); const mod = useModKey();
   return (
     <header data-refract className="glass-pop sticky top-[calc(0.75rem+env(safe-area-inset-top))] z-30 mx-3 mt-[calc(0.75rem+env(safe-area-inset-top))] flex h-14 items-center gap-3 rounded-full border border-border px-2.5 pl-4 shadow-sm sm:mx-8 sm:pl-2.5">
       <div className="md:hidden"><Link href="/app"><Logo collapsed /></Link></div>
       <button onClick={() => ui.openCommand()} className="group flex h-9 max-w-md flex-1 items-center gap-2.5 rounded-full border border-transparent bg-bg-subtle px-3.5 text-sm text-fg-subtle transition-colors hover:border-border-strong" aria-label="Search or run a command">
-        <Search className="size-4" /><span className="flex-1 text-left">Search or jump to…</span><span className="hidden gap-1 sm:flex"><Kbd>⌘</Kbd><Kbd>K</Kbd></span>
+        <Search className="size-4" /><span className="flex-1 text-left">Search or jump to…</span><span className="hidden gap-1 sm:flex"><Kbd>{mod}</Kbd><Kbd>K</Kbd></span>
       </button>
       <div className="ml-auto flex items-center gap-2"><div className="md:hidden"><NotificationsPopover collapsed /></div><QuickCreateMenu /></div>
     </header>
