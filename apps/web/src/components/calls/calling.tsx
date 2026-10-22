@@ -165,7 +165,7 @@ function CopyRow({ label, text }: { label: string; text: string }) {
 export function CallingHooks({ hooks, intro }: { hooks: CallingSettings["hooks"]; intro?: boolean }) {
   return (
     <div className="space-y-3">
-      {intro && <p className="text-sm">Connected. So callbacks reach the right person, build a call flow for your ExoPhone in <b>Exotel → App Bazaar</b>: a <b>Connect</b> applet using the first URL, then a <b>Passthru</b> applet with the second (200 goes back to Connect, 302 to Hangup).</p>}
+      {intro && <p className="text-sm">Connected. So callbacks reach the right person, build a call flow for your ExoPhone in <b>Exotel → App Bazaar</b>: a <b>Connect</b> applet using the first URL, then a <b>Passthru</b> applet with the second (200 leads to another Connect with the first URL, 302 to Hangup).</p>}
       {hooks.map((h) => <CopyRow key={h.key} label={h.label} text={h.url} />)}
     </div>
   );

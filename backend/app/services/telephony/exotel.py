@@ -43,8 +43,8 @@ class Exotel(Provider):
          "hint": "App Bazaar → My Apps: the ID of the CRM flow on your ExoPhone. Needed to ring the client first on outgoing calls."},
     ]
     hooks = {
-        "connect": "Connect applet → Dial whom → Dynamic URL",
-        "handover": "Passthru applet right after Connect (200 → back to Connect, 302 → Hangup)",
+        "connect": "Connect applet → Configure parameters dynamically → Primary URL",
+        "handover": "Passthru after each Connect (200 → another Connect with the URL above, 302 → Hangup)",
         "status": "Status / dial events (filled in automatically)",
     }
 
