@@ -26,10 +26,12 @@ can be handed over: Owners and Admins to anyone, everyone else to their manager.
 
 In **App Bazaar → Create new flow**:
 
-1. **Connect** applet → *Dial whom* → **Dynamic URL** → paste the CRM's first URL (`…/connect`).
-   Turn on "After the call conversation ends, go to the next applet".
-2. **Passthru** applet right after it → paste the CRM's second URL (`…/handover`).
-   - If the URL returns **200** → go back to the **Connect** applet above.
+1. **Connect** applet → "Configure parameters dynamically by providing a URL" → Primary URL: the CRM's first URL
+   (`…/connect`). Leave "Dial whom", recording and ringing time alone; the CRM sends those.
+2. Under the Connect applet, put a **Passthru** applet in both "After the call conversation ends" and "If nobody
+   answers", with the CRM's second URL (`…/handover`) and "Make Passthru Async" unticked.
+   - If the URL returns **200** → another **Connect** applet set up exactly like step 1 (same URL), followed by the
+     same Passthru again. Each Connect + Passthru pair allows one more hand-over; two or three pairs is plenty.
    - If it returns **302** → **Hangup**.
 3. Save the flow, then in **ExoPhones** attach this flow to your ExoPhone for incoming calls.
 4. Optional: copy the flow's **app ID** (App Bazaar → My Apps) into the CRM ("Change account details") and turn on
