@@ -94,8 +94,13 @@ class Exotel(Provider):
         else:
             data.update(From=f"+{agent}", To=f"+{client}", Record="true" if record else "false")
         r = self._call("POST", creds, "Calls/connect.json", data=data)
-        if r.status_code in (401, 403):
+        if r.status_code == 401:
             raise ApiError(409, "calling_reconnect", "Exotel rejected the saved API key. Reconnect calling in Integrations.")
+        if r.status_code == 403:
+            # Not a bad key (that's 401): Exotel refuses the call itself, e.g. a trial account calling a number that
+            # isn't verified, KYC pending, or no balance. Exotel's own reason is the useful part.
+            log.warning("exotel refused call: %s", r.text[:300])
+            raise ApiError(409, "calling_refused", f"Exotel refused the call: {self._error(r)}")
         if r.status_code >= 400:
             raise ApiError(502, "calling_failed", f"Exotel couldn't place the call: {self._error(r)}")
         sid = ((r.json() or {}).get("Call") or {}).get("Sid")

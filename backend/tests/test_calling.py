@@ -15,7 +15,7 @@ OWNER_PHONE, REP_PHONE, MGR_PHONE = "+91 90000 00001", "+91 90000 00002", "+91 9
 
 class FakeExotel:
     def __init__(self):
-        self.calls, self.n = [], 0
+        self.calls, self.n, self.refuse = [], 0, None
 
     def request(self, method, url, auth=None, data=None, **kw):
         req = httpx.Request(method, url)
@@ -24,6 +24,8 @@ class FakeExotel:
         if url == "https://api.in.exotel.com/v1/Accounts/acme1/Balance.json":
             return httpx.Response(200, json={"Account": {"AccountSid": "acme1", "BalanceData": {"Balance": "500"}}}, request=req)
         if url == "https://api.in.exotel.com/v1/Accounts/acme1/Calls/connect.json":
+            if self.refuse:
+                return httpx.Response(403, json={"RestException": {"Status": 403, "Message": self.refuse}}, request=req)
             self.n += 1
             self.calls.append(data)
             return httpx.Response(200, json={"Call": {"Sid": f"OUT{self.n}", "Status": "in-progress"}}, request=req)
@@ -227,3 +229,14 @@ def test_outgoing_client_first_runs_through_the_flow_and_can_be_handed_over(app,
     assert live["can_transfer"]
     r = owner.c.get(f"/api/v1/{_hook(owner, data, 'connect')}", query_string={"CallSid": "OUT1", "CallFrom": "09876543210", "CustomField": live["id"]})
     assert r.get_json()["destination"]["numbers"] == ["+919000000002"]
+
+
+def test_exotel_refusing_a_call_shows_its_reason(app, exo):
+    owner, _ = signup(app)
+    _profile(owner, OWNER_PHONE)
+    _connect(owner)
+    lead = owner.post("/api/v1/leads", json={"first_name": "Jasmine", "phone": CLIENT}).get_json()["data"]
+    exo.refuse = "Call to unverified number is not allowed in trial account"
+    r = owner.post("/api/v1/calling/call", json={"lead_id": lead["id"]})
+    assert r.status_code == 409 and r.get_json()["error"]["code"] == "calling_refused"
+    assert "unverified number" in r.get_json()["error"]["message"]
