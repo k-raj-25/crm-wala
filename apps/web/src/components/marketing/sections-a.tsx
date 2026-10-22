@@ -148,7 +148,7 @@ const FEATURES = [
   [Workflow, "Automations", "New enquiry? Assign it, send the brochure, create a call task and remind in 2 days."],
   [BarChart3, "Reports", "Sales, pipeline, team performance and forecast — exportable and schedulable."],
   [ShieldCheck, "Teams & security", "Roles, audit log, 2FA and strict separation between brokerages."],
-  [Zap, "Instant search", "Press ⌘K and type a flat number, a client or a project. You're there."],
+  [Zap, "Instant search", "Press Ctrl K (⌘K on Mac) and type a flat number, a client or a project. You're there."],
 ] as const;
 export function Features() {
   return (

@@ -47,6 +47,20 @@ function isTyping(t: EventTarget | null) {
   return !!el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable);
 }
 
+/** True on Apple devices, where the shortcut modifier is ⌘ rather than Ctrl. */
+export function isApplePlatform() {
+  if (typeof navigator === "undefined") return false;
+  const n = navigator as Navigator & { userAgentData?: { platform?: string } };
+  return /mac|iphone|ipad|ipod/i.test(n.userAgentData?.platform || n.platform || n.userAgent);
+}
+
+/** Label for the `mod` key: "⌘" on Apple devices, "Ctrl" elsewhere. Starts as "Ctrl" so server and client render the same, then switches after mount. */
+export function useModKey() {
+  const [k, setK] = useState("Ctrl");
+  useEffect(() => { if (isApplePlatform()) setK("⌘"); }, []);
+  return k;
+}
+
 /** Global hotkey. `mod` = Cmd on macOS / Ctrl elsewhere. Single-key hotkeys are ignored while typing. */
 export function useHotkey(combo: string, handler: (e: KeyboardEvent) => void, deps: unknown[] = []) {
   useEffect(() => {

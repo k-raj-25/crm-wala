@@ -5,7 +5,7 @@ import { Bell, Check, ChevronDown, ChevronsUpDown, HelpCircle, Keyboard, LifeBuo
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import * as React from "react";
-import { Avatar, Badge, Button, DropdownContent, DropdownItem, DropdownLabel, DropdownMenu, DropdownSeparator, DropdownTrigger, Logo, LogoMark, Tooltip, cn, humanDuration, useLocalStorage, useTheme } from "@crm/ui";
+import { Avatar, Badge, Button, DropdownContent, DropdownItem, DropdownLabel, DropdownMenu, DropdownSeparator, DropdownTrigger, Logo, LogoMark, Tooltip, cn, humanDuration, useLocalStorage, useModKey, useTheme } from "@crm/ui";
 import { api } from "@/lib/api";
 import { NAV } from "@/lib/nav";
 import { useAccess, useMe, useSetTheme } from "@/lib/queries";
@@ -53,7 +53,7 @@ export function WorkspaceSwitcher({ collapsed }: { collapsed?: boolean }) {
 }
 
 export function HelpMenu({ collapsed }: { collapsed?: boolean }) {
-  const ui = useUI();
+  const ui = useUI(); const mod = useModKey();
   return (
     <DropdownMenu>
       <Tooltip content="Help" side="right">
@@ -62,7 +62,7 @@ export function HelpMenu({ collapsed }: { collapsed?: boolean }) {
       <DropdownContent align="start" side="top">
         <DropdownItem icon={<Keyboard />} shortcut="?" onSelect={() => ui.openShortcuts()}>Keyboard shortcuts</DropdownItem>
         <DropdownItem icon={<LifeBuoy />} onSelect={() => window.open("mailto:support@crmwala.com")}>Contact support</DropdownItem>
-        <DropdownItem icon={<Settings2 />} onSelect={() => ui.openCommand()} shortcut="⌘K">Open command palette</DropdownItem>
+        <DropdownItem icon={<Settings2 />} onSelect={() => ui.openCommand()} shortcut={`${mod} K`}>Open command palette</DropdownItem>
       </DropdownContent>
     </DropdownMenu>
   );

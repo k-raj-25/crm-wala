@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Calendar, CheckCircle2, Download, FileText, Mail, Paperclip, Phone, Pin, Plus, Trash2, UploadCloud } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
-import { Avatar, Badge, Button, Card, ColorChip, ConfirmDialog, EmptyState, Input, SkeletonRows, Textarea, cn, formatDate, formatMoney, timeAgo, useToast } from "@crm/ui";
+import { Avatar, Badge, Button, Card, ColorChip, ConfirmDialog, EmptyState, Input, SkeletonRows, Textarea, cn, formatDate, formatMoney, timeAgo, useModKey, useToast } from "@crm/ui";
 import { api } from "@/lib/api";
 import { CALL_OUTCOMES, label } from "@/lib/constants";
 import { useAccess } from "@/lib/queries";
@@ -20,13 +20,13 @@ const Loading = () => <SkeletonRows rows={4} />;
 
 export function NotesTab({ scope }: { scope: Scope }) {
   const q = useList<Note>("notes", "/api/v1/notes", scope, { sort: "-created_at" }); const { can } = useAccess(); const qc = useQueryClient(); const toast = useToast();
-  const [body, setBody] = React.useState(""); const [del, setDel] = React.useState<string | null>(null);
+  const [body, setBody] = React.useState(""); const [del, setDel] = React.useState<string | null>(null); const mod = useModKey();
   const add = useMutation({ mutationFn: () => api.post("/api/v1/notes", { body, ...fk(scope) }), onSuccess: () => { setBody(""); qc.invalidateQueries({ queryKey: ["notes"] }); qc.invalidateQueries({ queryKey: ["timeline"] }); toast.success("Note added"); }, onError: (e) => toast.error("Couldn't add note", (e as Error).message) });
   const pin = useMutation({ mutationFn: (n: Note) => api.patch(`/api/v1/notes/${n.id}`, { pinned: !n.pinned }), onSuccess: () => qc.invalidateQueries({ queryKey: ["notes"] }) });
   const notes = [...(q.data?.data ?? [])].sort((a, b) => Number(b.pinned) - Number(a.pinned));
   return (
     <div className="space-y-4">
-      {can("notes.create") && <Card className="p-3"><Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={3} placeholder="Write a note… (visible to your team)" className="border-0 shadow-none focus:ring-0" onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && body.trim()) add.mutate(); }} /><div className="flex items-center justify-between px-1 pt-1"><span className="text-xs text-fg-subtle">⌘↵ to save</span><Button size="sm" onClick={() => add.mutate()} disabled={!body.trim()} loading={add.isPending}>Add note</Button></div></Card>}
+      {can("notes.create") && <Card className="p-3"><Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={3} placeholder="Write a note… (visible to your team)" className="border-0 shadow-none focus:ring-0" onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && body.trim()) add.mutate(); }} /><div className="flex items-center justify-between px-1 pt-1"><span className="text-xs text-fg-subtle">{mod === "⌘" ? "⌘↵" : "Ctrl+Enter"} to save</span><Button size="sm" onClick={() => add.mutate()} disabled={!body.trim()} loading={add.isPending}>Add note</Button></div></Card>}
       {q.isLoading ? <Loading /> : !notes.length ? <EmptyState compact icon={<FileText />} title="No notes yet" description="Capture context, decisions and next steps." /> : (
         <ul className="space-y-3">{notes.map((n) => (
           <li key={n.id} className={cn("group rounded-xl border bg-surface p-4", n.pinned ? "border-warning/40 bg-warning-soft/30" : "border-border")}>
