@@ -24,17 +24,20 @@ export function useCanCall() {
 
 /** "Call" through the company number: rings the member's own phone, then the client. Neither sees the other's number. */
 export function CallButton({ entity, id, name, size = "md", variant = "secondary", iconOnly, className }: { entity: "lead" | "contact"; id: string; name: string; size?: "xs" | "sm" | "md"; variant?: "secondary" | "primary" | "ghost"; iconOnly?: boolean; className?: string }) {
-  const qc = useQueryClient(); const toast = useToast(); const s = useCalling(); const ok = useCanCall();
+  const qc = useQueryClient(); const toast = useToast(); const ok = useCanCall();
   const [busy, setBusy] = React.useState(false);
   if (!ok) return null;
   const call = async () => {
-    if (!s.data?.my_phone_set) { toast.toast({ tone: "warning", title: "Add your mobile number first", description: "Settings → Profile → Phone. The CRM rings you on it, then connects the client." }); return; }
+    // The server checks the caller's phone itself; a cached "no phone" status would block someone who just added one.
     setBusy(true);
     try {
       await api.post("/api/v1/calling/call", { [`${entity}_id`]: id });
       toast.toast({ tone: "info", title: "Ringing your phone", description: "Pick up and we'll connect the client. They see the company number, not yours." });
       qc.invalidateQueries({ queryKey: ["live-calls"] });
-    } catch (e) { toast.error("Couldn't start the call", (e as Error).message); } finally { setBusy(false); }
+    } catch (e) {
+      if ((e as { code?: string }).code === "calling_no_phone") toast.toast({ tone: "warning", title: "Add your mobile number first", description: "Settings → Profile → Phone. The CRM rings you on it, then connects the client." });
+      else toast.error("Couldn't start the call", (e as Error).message);
+    } finally { setBusy(false); qc.invalidateQueries({ queryKey: ["calling-status"] }); }
   };
   const btnSize = iconOnly ? (size === "xs" ? "icon-xs" : size === "sm" ? "icon-sm" : "icon") : size;
   return <Button size={btnSize} variant={variant} loading={busy} onClick={call} className={className} aria-label={`Call ${name} from the company number`} title="Call from the company number"><PhoneCall />{!iconOnly && <span className={size === "md" ? "hidden sm:inline" : undefined}>Call</span>}</Button>;
