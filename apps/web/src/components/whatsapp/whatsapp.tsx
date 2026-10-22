@@ -53,12 +53,15 @@ function TemplateComposer({ templates, defaults, onSend, busy }: { templates: Wa
 /** WhatsApp conversation with a lead or contact: history, 24-hour window state, templates and free text. */
 export function WhatsAppTab({ entity, id, firstName }: { entity: "lead" | "contact"; id: string; firstName: string }) {
   const qc = useQueryClient(); const toast = useToast(); const { can } = useAccess();
-  const conv = useQuery({ queryKey: ["wa-conversation", entity, id], refetchInterval: (q) => (q.state.status === "error" ? false : 20_000), retry: 1, queryFn: () => api.get<Conversation>("/api/v1/whatsapp/conversation", { [`${entity}_id`]: id }) });
+  const conv = useQuery({ queryKey: ["wa-conversation", entity, id], refetchInterval: (q) => (q.state.status === "error" ? false : 3_000), retry: 1, queryFn: () => api.get<Conversation>("/api/v1/whatsapp/conversation", { [`${entity}_id`]: id }) });
   const c = conv.data;
   const templates = useWaTemplates(!!c?.connected);
   const [text, setText] = React.useState(""); const [busy, setBusy] = React.useState(false); const [mode, setMode] = React.useState<"text" | "template">("text");
   const end = React.useRef<HTMLDivElement>(null);
-  React.useEffect(() => { end.current?.scrollIntoView({ block: "nearest" }); }, [c?.messages.length]);
+  const count = c?.messages.length;
+  React.useEffect(() => { end.current?.scrollIntoView({ block: "nearest" }); }, [count]);
+  // A new reply also lands on the Activity timeline, so refresh it when the chat grows.
+  React.useEffect(() => { if (count !== undefined) qc.invalidateQueries({ queryKey: ["timeline"] }); }, [count, qc]);
   const send = async (body: Record<string, unknown>) => {
     setBusy(true);
     try { await api.post("/api/v1/whatsapp/send", { [`${entity}_id`]: id, ...body }); setText(""); qc.invalidateQueries({ queryKey: ["wa-conversation", entity, id] }); qc.invalidateQueries({ queryKey: ["timeline"] }); toast.success("Sent on WhatsApp"); }
