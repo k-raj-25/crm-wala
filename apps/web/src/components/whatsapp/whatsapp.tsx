@@ -9,7 +9,7 @@ import { api } from "@/lib/api";
 import { useAccess } from "@/lib/queries";
 
 export type WaTemplate = { name: string; language: string; category: string | null; body: string; body_params: number; param_names: string[]; header: string | null; supported: boolean };
-export type WaMessage = { id: string; direction: "inbound" | "outbound"; status: "sent" | "delivered" | "read" | "failed" | "received"; kind: string; body: string | null; template_name: string | null; error: string | null; created_at: string; data: { filename?: string } };
+export type WaMessage = { id: string; direction: "inbound" | "outbound"; status: "sent" | "delivered" | "read" | "failed" | "received"; kind: string; body: string | null; template_name: string | null; error: string | null; created_at: string; data: { filename?: string }; sender?: { id: string; name: string } | null };
 type Conversation = { phone: string | null; connected: boolean; window_open: boolean; messages: WaMessage[] };
 export type UnitDoc = { id: string; filename: string; mime_type: string; size_bytes: number; doc_kind: string | null; scope: "unit" | "project"; created_at: string };
 
@@ -52,13 +52,16 @@ function TemplateComposer({ templates, defaults, onSend, busy }: { templates: Wa
 
 /** WhatsApp conversation with a lead or contact: history, 24-hour window state, templates and free text. */
 export function WhatsAppTab({ entity, id, firstName }: { entity: "lead" | "contact"; id: string; firstName: string }) {
-  const qc = useQueryClient(); const toast = useToast(); const { can } = useAccess();
-  const conv = useQuery({ queryKey: ["wa-conversation", entity, id], refetchInterval: (q) => (q.state.status === "error" ? false : 20_000), retry: 1, queryFn: () => api.get<Conversation>("/api/v1/whatsapp/conversation", { [`${entity}_id`]: id }) });
+  const qc = useQueryClient(); const toast = useToast(); const { can, me } = useAccess();
+  const conv = useQuery({ queryKey: ["wa-conversation", entity, id], refetchInterval: (q) => (q.state.status === "error" ? false : 3_000), retry: 1, queryFn: () => api.get<Conversation>("/api/v1/whatsapp/conversation", { [`${entity}_id`]: id }) });
   const c = conv.data;
   const templates = useWaTemplates(!!c?.connected);
   const [text, setText] = React.useState(""); const [busy, setBusy] = React.useState(false); const [mode, setMode] = React.useState<"text" | "template">("text");
   const end = React.useRef<HTMLDivElement>(null);
-  React.useEffect(() => { end.current?.scrollIntoView({ block: "nearest" }); }, [c?.messages.length]);
+  const count = c?.messages.length;
+  React.useEffect(() => { end.current?.scrollIntoView({ block: "nearest" }); }, [count]);
+  // A new reply also lands on the Activity timeline, so refresh it when the chat grows.
+  React.useEffect(() => { if (count !== undefined) qc.invalidateQueries({ queryKey: ["timeline"] }); }, [count, qc]);
   const send = async (body: Record<string, unknown>) => {
     setBusy(true);
     try { await api.post("/api/v1/whatsapp/send", { [`${entity}_id`]: id, ...body }); setText(""); qc.invalidateQueries({ queryKey: ["wa-conversation", entity, id] }); qc.invalidateQueries({ queryKey: ["timeline"] }); toast.success("Sent on WhatsApp"); }
@@ -76,7 +79,9 @@ export function WhatsAppTab({ entity, id, firstName }: { entity: "lead" | "conta
       <div className="max-h-[420px] space-y-2 overflow-y-auto rounded-xl border border-border bg-bg-subtle p-3">
         {!c.messages.length ? <p className="py-6 text-center text-sm text-fg-muted">No WhatsApp messages yet.</p> : c.messages.map((m) => (
           <div key={m.id} className={cn("flex", m.direction === "outbound" ? "justify-end" : "justify-start")}>
-            <div className={cn("max-w-[85%] rounded-2xl px-3 py-2 text-sm shadow-xs", m.direction === "outbound" ? "rounded-br-sm bg-[#dcf8c6] text-[#111b21] dark:bg-[#005c4b] dark:text-[#e9edef]" : "rounded-bl-sm bg-surface")}>
+            {/* WhatsApp's own colours: green for ours, white (light) or dark grey (dark) for the client's. */}
+            <div className={cn("max-w-[85%] rounded-2xl px-3 py-2 text-sm shadow-xs", m.direction === "outbound" ? "rounded-br-sm bg-[#dcf8c6] text-[#111b21] dark:bg-[#005c4b] dark:text-[#e9edef]" : "rounded-bl-sm bg-white text-[#111b21] dark:bg-[#202c33] dark:text-[#e9edef]")}>
+              {m.direction === "outbound" && <p className="mb-0.5 text-xs font-semibold text-[#027eb5] dark:text-[#53bdeb]">{!m.sender ? "Automation" : m.sender.id === me?.user.id ? "You" : m.sender.name}</p>}
               {m.data?.filename && <p className="mb-1 flex items-center gap-1.5 font-medium"><FileText className="size-4 shrink-0" />{m.data.filename}</p>}
               {m.template_name && <p className="mb-0.5 text-[11px] uppercase tracking-wide opacity-60">Template · {m.template_name.replace(/_/g, " ")}</p>}
               {m.body && <p className="whitespace-pre-line">{m.body}</p>}

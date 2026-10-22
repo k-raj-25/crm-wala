@@ -7,6 +7,7 @@ from flask import Blueprint, Response, current_app, g, request
 from pydantic import Field
 
 from app.core.auth import protect
+from app.core.crud import users_map
 from app.core.errors import ApiError, bad_request, not_found
 from app.core.responses import created, ok
 from app.core.tenant import bypass_scope, set_tenant
@@ -127,13 +128,20 @@ def conversation():
     phone = svc.normalize_phone(e.phone)
     i = integrations.get(g.workspace.id, "whatsapp")
     return ok({"phone": privacy.mask_value(phone and f"+{phone}"), "connected": bool(i and i.status in ("connected", "error")),
-               "window_open": bool(phone) and svc.window_open(g.workspace.id, phone), "messages": [_message(m) for m in reversed(rows)]})
+               "window_open": bool(phone) and svc.window_open(g.workspace.id, phone), "messages": _messages(list(reversed(rows)))})
 
 
-def _message(m: WhatsAppMessage) -> dict:
-    d = m.to_dict()
-    d["phone"] = privacy.mask_value(f"+{m.phone}")
-    return d
+def _messages(rows: list[WhatsAppMessage]) -> list[dict]:
+    """Serialize messages with `sender`: the employee who sent an outbound one (everyone shares one business number)."""
+    names = users_map({m.user_id for m in rows if m.direction == "outbound"})
+    out = []
+    for m in rows:
+        d = m.to_dict()
+        d["phone"] = privacy.mask_value(f"+{m.phone}")
+        u = names.get(m.user_id)
+        d["sender"] = {"id": u["id"], "name": u["name"]} if u else None
+        out.append(d)
+    return out
 
 
 class TemplateIn(Schema):
@@ -189,7 +197,7 @@ def send():
         template = {**t, "params": d.template.params}
     m = svc.send(i, etype, e, text=d.text, template=template, file=file, caption=d.caption, unit=unit)
     db.session.commit()
-    return created(_message(m))
+    return created(_messages([m])[0])
 
 
 # ---- Meta webhook ------------------------------------------------------------------------------------------------
