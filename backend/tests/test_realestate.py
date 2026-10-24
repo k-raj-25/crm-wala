@@ -156,3 +156,11 @@ def test_sample_project_details_fill_only_whats_missing(client):
     assert m["photos"][0]["mime_type"] == "image/png"
     r = client.app.test_cli_runner().invoke(args=["seed-project-details"])  # running again adds nothing
     assert "Added sample details to 0 projects" in r.output
+
+
+def test_project_video_link(client):
+    r = client.post("/api/v1/projects", json={"name": "Ireo Skyon", "video_url": "youtu.be/abc123"})
+    assert r.status_code == 201 and r.get_json()["data"]["video_url"] == "https://youtu.be/abc123"  # scheme added
+    pid = r.get_json()["data"]["id"]
+    assert client.patch(f"/api/v1/projects/{pid}", json={"video_url": "not a link"}).status_code == 400
+    assert client.patch(f"/api/v1/projects/{pid}", json={"video_url": "  "}).get_json()["data"]["video_url"] is None

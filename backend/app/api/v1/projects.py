@@ -54,15 +54,31 @@ class ProjectResource(CrudResource):
     def prepare_create(self, data):
         data["owner_id"] = data.get("owner_id") or g.user.id
         data["sizes"] = _sizes(data.get("sizes"))
+        data["video_url"] = _video(data.get("video_url"))
         return data
 
     def prepare_update(self, obj, changes):
         if "sizes" in changes:
             changes["sizes"] = _sizes(changes["sizes"], obj.id)
+        if "video_url" in changes:
+            changes["video_url"] = _video(changes["video_url"])
         return changes
 
     def after_delete(self, p):
         db.session.query(Unit).filter(Unit.project_id == p.id, Unit.deleted_at.is_(None)).update({"deleted_at": utcnow()}, synchronize_session=False)
+
+
+def _video(v: str | None) -> str | None:
+    """A walkthrough link. "youtu.be/x" becomes "https://youtu.be/x"; anything that isn't a web link is refused."""
+    v = (v or "").strip()
+    if not v:
+        return None
+    if not v.lower().startswith(("http://", "https://")):
+        v = f"https://{v}"
+    host = v.split("//", 1)[1].split("/", 1)[0]
+    if any(ch.isspace() for ch in v) or "." not in host:
+        raise bad_request("Enter a full video link, like https://youtu.be/…", "invalid_video_url")
+    return v
 
 
 def _sizes(sizes, project_id=None) -> list[dict]:

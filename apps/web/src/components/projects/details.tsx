@@ -1,6 +1,6 @@
 "use client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { BadgeCheck, ChevronLeft, ChevronRight, Download, FileText, ImagePlus, LayoutTemplate, Pencil, Plus, Ruler, Sparkles, Upload, X } from "lucide-react";
+import { BadgeCheck, ChevronLeft, ChevronRight, Download, FileText, ImagePlus, LayoutTemplate, Pencil, Plus, Ruler, Sparkles, Upload, Video, X } from "lucide-react";
 import * as React from "react";
 import { ApiError, Button, Card, Dialog, DialogContent, DialogFooter, Field, Input, Skeleton, cn, useToast } from "@crm/ui";
 import { api } from "@/lib/api";
@@ -14,19 +14,19 @@ const AMENITY_IDEAS = ["Clubhouse", "Swimming pool", "Gym", "Kids' play area", "
 /** A file picked on this screen (not uploaded yet), or one the project already has. */
 type Picked = { key: string; file?: File; stored?: StoredFile; preview?: string };
 type SizeDraft = { key: string; label: string; area: string; plan: Picked | null };
-export type DetailsDraft = { rera: string; amenities: string[]; sizes: SizeDraft[]; brochure: Picked | null; photos: Picked[] };
+export type DetailsDraft = { rera: string; video: string; amenities: string[]; sizes: SizeDraft[]; brochure: Picked | null; photos: Picked[] };
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 const picked = (file: File): Picked => ({ key: uid(), file, preview: file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined });
 const stored = (f: StoredFile): Picked => ({ key: f.id, stored: f, preview: f.mime_type.startsWith("image/") ? f.url : undefined });
 const nameOf = (p: Picked) => p.file?.name ?? p.stored?.filename ?? "";
-export const emptyDetails = (): DetailsDraft => ({ rera: "", amenities: [], sizes: [], brochure: null, photos: [] });
+export const emptyDetails = (): DetailsDraft => ({ rera: "", video: "", amenities: [], sizes: [], brochure: null, photos: [] });
 const tooBig = (f: File) => f.size > MAX_MB * 1024 * 1024;
 
 export function draftFrom(p: Project, m: ProjectMedia): DetailsDraft {
   const plans = new Map(m.floor_plans.map((f) => [f.id, f]));
   return {
-    rera: p.rera_id ?? "", amenities: p.amenities ?? [], brochure: m.brochures.length ? stored(m.brochures[m.brochures.length - 1]) : null, photos: m.photos.map(stored),
+    rera: p.rera_id ?? "", video: p.video_url ?? "", amenities: p.amenities ?? [], brochure: m.brochures.length ? stored(m.brochures[m.brochures.length - 1]) : null, photos: m.photos.map(stored),
     sizes: (p.sizes ?? []).map((z) => ({ key: uid(), label: z.label, area: z.area_sqft != null ? String(z.area_sqft) : "", plan: z.floor_plan_file_id && plans.get(z.floor_plan_file_id) ? stored(plans.get(z.floor_plan_file_id)!) : null })),
   };
 }
@@ -74,6 +74,7 @@ export function DetailsFields({ v, onChange }: { v: DetailsDraft; onChange: (v: 
             <input ref={brochureInput} type="file" accept="application/pdf" hidden onChange={(e) => pickBrochure(e.target.files?.[0])} />
           </div>
         </Field>
+        <div className="sm:col-span-2"><Field label="Video link" hint="A walkthrough or drone video on YouTube, Google Drive or Instagram"><Input icon={<Video />} type="url" inputMode="url" value={v.video} onChange={(e) => set("video", e.target.value)} onBlur={() => { const t = v.video.trim(); if (t && !/^https?:\/\//i.test(t)) set("video", `https://${t}`); }} maxLength={500} placeholder="https://youtu.be/…" /></Field></div>
       </section>
 
       <section>
@@ -170,7 +171,7 @@ export async function saveDetails(projectId: string, v: DetailsDraft, before?: D
     onProgress?.(++done, uploads.length);
   }
   const sizes: ProjectSize[] = v.sizes.filter((z) => z.label.trim()).map((z) => ({ label: z.label.trim(), area_sqft: z.area ? Number(z.area) : null, floor_plan_file_id: z.plan ? (z.plan.stored?.id ?? ids.get(z.plan.key) ?? null) : null }));
-  await api.patch(`/api/v1/projects/${projectId}`, { rera_id: v.rera.trim() || null, amenities: v.amenities, sizes });
+  await api.patch(`/api/v1/projects/${projectId}`, { rera_id: v.rera.trim() || null, video_url: v.video.trim() || null, amenities: v.amenities, sizes });
   return failed;
 }
 
@@ -196,7 +197,7 @@ export function EditDetailsDialog({ open, onOpenChange, project }: { open: boole
   };
   return (
     <Dialog open={open} onOpenChange={(o) => !busy && onOpenChange(o)}>
-      <DialogContent size="lg" title="Project details" description="What buyers ask about first: RERA, sizes, floor plans, photos and the brochure.">
+      <DialogContent size="lg" title="Project details" description="What buyers ask about first: RERA, sizes, floor plans, photos, a video and the brochure.">
         {!v ? <div className="space-y-3"><Skeleton className="h-9" /><Skeleton className="h-28" /><Skeleton className="h-20" /></div> : <DetailsFields v={v} onChange={setV} />}
         <DialogFooter><Button variant="ghost" disabled={!!busy} onClick={() => onOpenChange(false)}>Cancel</Button><Button loading={!!busy} disabled={!v} onClick={save}>{busy ?? "Save details"}</Button></DialogFooter>
       </DialogContent>
@@ -215,7 +216,7 @@ export function ProjectDetailsCard({ project, canEdit, onEdit }: { project: Proj
   const brochure = m?.brochures[m.brochures.length - 1];
   const plans = new Map((m?.floor_plans ?? []).map((f) => [f.id, f]));
   const sizes = project.sizes ?? [];
-  const empty = !project.rera_id && !project.amenities?.length && !sizes.length && !photos.length && !brochure;
+  const empty = !project.rera_id && !project.video_url && !project.amenities?.length && !sizes.length && !photos.length && !brochure;
   const openFile = (f: StoredFile, set: StoredFile[] = [f]) => { if (f.mime_type.startsWith("image/")) setView({ items: set, i: Math.max(set.indexOf(f), 0) }); else window.open(f.url, "_blank", "noopener"); };
 
   if (media.isLoading) return <Skeleton className="mb-5 h-40" />;
@@ -223,7 +224,7 @@ export function ProjectDetailsCard({ project, canEdit, onEdit }: { project: Proj
     if (!canEdit) return null;
     return (
       <Card className="mb-5 flex flex-wrap items-center justify-between gap-3 p-4">
-        <div className="flex items-center gap-3"><span className="grid size-9 place-items-center rounded-lg bg-primary-soft text-primary"><Sparkles className="size-4" /></span><div><p className="text-sm font-medium">Add the details buyers ask for</p><p className="text-xs text-fg-muted">Brochure, society photos, RERA No., amenities, sizes and floor plans.</p></div></div>
+        <div className="flex items-center gap-3"><span className="grid size-9 place-items-center rounded-lg bg-primary-soft text-primary"><Sparkles className="size-4" /></span><div><p className="text-sm font-medium">Add the details buyers ask for</p><p className="text-xs text-fg-muted">Brochure, society photos, a video link, RERA No., amenities, sizes and floor plans.</p></div></div>
         <Button variant="secondary" onClick={onEdit}><Plus /> Add details</Button>
       </Card>
     );
@@ -248,6 +249,7 @@ export function ProjectDetailsCard({ project, canEdit, onEdit }: { project: Proj
             <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
               {project.rera_id && <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1 text-xs font-medium"><BadgeCheck className="size-3.5 text-success" />RERA {project.rera_id}</span>}
               {brochure && <Button variant="soft" size="sm" onClick={() => openFile(brochure)}><Download /> Brochure</Button>}
+              {project.video_url && <Button asChild variant="soft" size="sm"><a href={project.video_url} target="_blank" rel="noopener noreferrer"><Video /> Watch video</a></Button>}
             </div>
             {canEdit && <Button variant="ghost" size="sm" className="shrink-0" onClick={onEdit} aria-label="Edit details"><Pencil /> <span className="hidden sm:inline">Edit details</span></Button>}
           </div>
