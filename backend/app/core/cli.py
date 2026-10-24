@@ -115,6 +115,11 @@ def register_cli(app: Flask) -> None:
         from app.models import Project, Workspace
         from app.seeds.project_media import fill_project
 
+        from sqlalchemy import inspect
+
+        if "sizes" not in {c["name"] for c in inspect(db.engine).get_columns("projects")}:
+            raise click.ClickException("This database doesn't have the projects.sizes column yet. Run `flask db upgrade` first, or if your database's "
+                                       "migration history is out of step, add it by hand: ALTER TABLE projects ADD COLUMN sizes JSONB NOT NULL DEFAULT '[]'::jsonb;")
         with bypass_scope():
             q = db.session.query(Project).filter(Project.deleted_at.is_(None))
             if slug:
@@ -123,12 +128,16 @@ def register_cli(app: Flask) -> None:
                     raise click.ClickException(f"No workspace with slug {slug!r}")
                 q = q.filter(Project.workspace_id == ws.id)
             n = 0
-            for p in q.order_by(Project.created_at).all():
-                added = fill_project(p, p.owner_id)
-                if added:
-                    n += 1
-                    click.echo(f"  {p.name}: {', '.join(added)}")
-            db.session.commit()
+            try:
+                for p in q.order_by(Project.created_at).all():
+                    added = fill_project(p, p.owner_id)
+                    if added:
+                        n += 1
+                        click.echo(f"  {p.name}: {', '.join(added)}")
+                db.session.commit()
+            except Exception:
+                db.session.rollback()  # so the real error shows, not "current transaction is aborted"
+                raise
         click.echo(f"Added sample details to {n} project{'' if n == 1 else 's'}.")
 
     @app.cli.command("seed-demo")
