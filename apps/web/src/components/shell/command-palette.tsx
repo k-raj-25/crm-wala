@@ -28,6 +28,7 @@ export function CommandPalette() {
     { label: "Add lead", icon: Plus, perm: "leads.create", on: create("lead"), kw: "new enquiry buyer renter" }, { label: "New project", icon: Building2, perm: "projects.create", on: run(() => navigate(router, "/app/projects?new=1")), kw: "add tower building society" },
     { label: "Add client", icon: Plus, perm: "contacts.create", on: create("contact"), kw: "new add person owner buyer tenant" },
     { label: "New comparison", icon: Scale, perm: "units.read", on: run(() => navigate(router, "/app/compare?pick=1")), kw: "compare flats side by side shortlist share pdf" },
+    { label: "Compare societies", icon: Scale, perm: "projects.read", on: run(() => navigate(router, "/app/compare?tab=societies&pick=1")), kw: "compare societies projects side by side layouts floor plans brochure photos share pdf" },
     { label: "Create deal", icon: Plus, perm: "deals.create", on: create("deal"), kw: "new add booking" }, { label: "Add to-do", icon: CheckSquare, perm: "tasks.create", on: create("task"), kw: "new add task reminder" },
     { label: "Add builder", icon: Landmark, perm: "companies.create", on: create("company"), kw: "new developer company" },
     { label: "Schedule event", icon: CalendarPlus, perm: "meetings.create", on: create("meeting"), kw: "calendar book meeting site visit show" }, { label: "Send email", icon: Mail, perm: "emails.create", on: run(() => ui.openCompose()), kw: "compose write" },

@@ -11,6 +11,7 @@ import { api } from "@/lib/api";
 import { MAX_COMPARE, compare, useCompare } from "@/lib/compare";
 import { STATUS } from "@/lib/realestate";
 import type { UnitStatus } from "@/lib/realestate";
+import { CompareTabs } from "./compare-tabs";
 import { FlatPicker } from "./flat-picker";
 import { ShareComparison, comparisonPdf } from "./share-dialog";
 
@@ -49,7 +50,7 @@ export function ComparePage() {
   const download = async () => {
     setDownloading(true);
     try {
-      const f = await comparisonPdf(ids);
+      const f = await comparisonPdf("flats", { unit_ids: ids });
       const url = URL.createObjectURL(f); const a = document.createElement("a"); a.href = url; a.download = f.name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 2000);
     } catch (e) { toast.error((e as Error).message); } finally { setDownloading(false); }
   };
@@ -63,7 +64,7 @@ export function ComparePage() {
 
   return (
     <PageContainer wide>
-      <PageHeader title="Compare flats" description={list.length ? `${list.length} of ${MAX_COMPARE} flats, side by side. Green marks the best value.` : "Line flats up side by side and send the comparison to your client."}
+      <PageHeader title="Compare flats" tabs={<CompareTabs value="flats" />} description={list.length ? `${list.length} of ${MAX_COMPARE} flats, side by side. Green marks the best value.` : "Line flats up side by side and send the comparison to your client."}
         actions={mounted && list.length > 0 && <>
           <Button variant="secondary" onClick={() => setPicker(true)} disabled={list.length >= MAX_COMPARE}><Plus /> Add flats</Button>
           <Button variant="secondary" onClick={download} loading={downloading}><Download /> PDF</Button>
@@ -126,7 +127,7 @@ export function ComparePage() {
         )}
 
       <FlatPicker open={picker} onOpenChange={setPicker} />
-      <ShareComparison open={share} onOpenChange={setShare} unitIds={ids} flatsLabel={flatsLabel} />
+      <ShareComparison open={share} onOpenChange={setShare} body={{ unit_ids: ids }} label={flatsLabel} />
     </PageContainer>
   );
 }
