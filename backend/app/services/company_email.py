@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import smtplib
 import socket
+import ssl
 from email.message import EmailMessage
 from email.utils import formataddr, parseaddr
 
@@ -57,13 +58,37 @@ def from_for(i: Integration, sender: User) -> tuple[str, str | None]:
     return formataddr((name.replace('"', "").replace("\n", " ")[:80], company)), sender.email
 
 
-def _connect(creds: dict) -> smtplib.SMTP:
-    host, port = creds["host"], int(creds["port"])
+def _open(host: str, port: int, username: str, password: str) -> smtplib.SMTP:
     s = smtplib.SMTP_SSL(host, port, timeout=15) if port == 465 else smtplib.SMTP(host, port, timeout=15)
-    if port != 465:
-        s.starttls()
-    s.login(creds["username"], creds["password"])
+    try:
+        if port != 465:
+            s.starttls()
+        s.login(username, password)
+    except BaseException:
+        s.close()
+        raise
     return s
+
+
+def _connect(creds: dict) -> smtplib.SMTP:
+    """Log in. If the server or network drops a 587/25 connection (often an ISP, firewall or antivirus mail scanner),
+    try SSL on 465 before giving up; on success creds["port"] is updated so the working port is saved."""
+    host, port = creds["host"], int(creds["port"])
+    try:
+        return _open(host, port, creds["username"], creds["password"])
+    except smtplib.SMTPAuthenticationError:
+        raise
+    except (smtplib.SMTPServerDisconnected, smtplib.SMTPConnectError, ssl.SSLError, ConnectionError, TimeoutError, socket.timeout) as first:
+        if port == 465:
+            raise
+        try:
+            s = _open(host, 465, creds["username"], creds["password"])
+        except smtplib.SMTPAuthenticationError:
+            raise
+        except Exception:
+            raise first from None
+        creds["port"] = 465
+        return s
 
 
 def friendly(e: Exception) -> str:
@@ -71,6 +96,9 @@ def friendly(e: Exception) -> str:
         return "The email server rejected the username or password. For Gmail and Google Workspace, use an app password, not your normal password."
     if isinstance(e, (socket.gaierror, ConnectionRefusedError, TimeoutError, socket.timeout)):
         return "Couldn't reach the email server. Check the server name and port."
+    if isinstance(e, (smtplib.SMTPServerDisconnected, ConnectionResetError, ssl.SSLError)):
+        return ("The email server closed the connection before we could log in, on port 587 and on 465. Usually an antivirus "
+                "'email shield' or a firewall on this computer or network is blocking it. Turn that off for outgoing mail, or try another network.")
     if isinstance(e, smtplib.SMTPSenderRefused):
         return "The email server won't send from this address with this login."
     return f"The email server said: {str(e)[:200]}"
