@@ -116,5 +116,5 @@ def test_a_dropped_587_connection_falls_back_to_ssl_on_465(monkeypatch):
     assert tried == [587, 465] and creds["port"] == 465
 
     monkeypatch.setattr(company_email, "_open", lambda *a: (_ for _ in ()).throw(smtplib.SMTPServerDisconnected("Connection unexpectedly closed")))
-    with pytest.raises(ValueError, match="antivirus"):
+    with pytest.raises(ValueError, match="VPN"):
         company_email.verify({**creds, "port": 587})

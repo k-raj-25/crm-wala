@@ -97,8 +97,8 @@ def friendly(e: Exception) -> str:
     if isinstance(e, (socket.gaierror, ConnectionRefusedError, TimeoutError, socket.timeout)):
         return "Couldn't reach the email server. Check the server name and port."
     if isinstance(e, (smtplib.SMTPServerDisconnected, ConnectionResetError, ssl.SSLError)):
-        return ("The email server closed the connection before we could log in, on port 587 and on 465. Usually an antivirus "
-                "'email shield' or a firewall on this computer or network is blocking it. Turn that off for outgoing mail, or try another network.")
+        return ("The email server closed the connection during login, on port 587 and on 465. Usually a VPN (such as Cloudflare WARP), "
+                "an antivirus 'email shield' or a firewall is in the way. Turn it off for a moment and try again, or try another network.")
     if isinstance(e, smtplib.SMTPSenderRefused):
         return "The email server won't send from this address with this login."
     return f"The email server said: {str(e)[:200]}"
