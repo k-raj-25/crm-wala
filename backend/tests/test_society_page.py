@@ -27,6 +27,7 @@ def test_public_page_shows_the_society_without_login(client):
     three = next(z for z in d["sizes"] if z["label"] == "3 BHK")
     assert three["available"] == 8 and three["from_price"] == "₹2 Cr" and three["floor_plan"]["download_url"].endswith("?download=1")
     assert d["contact"]["name"] and d["company"]["name"]
+    assert set(d["contact"]) == {"name", "avatar_url"}  # no phone numbers on the public page
     assert "owner_id" not in s and "tags" not in s
 
     # its files open without login, and download as attachments

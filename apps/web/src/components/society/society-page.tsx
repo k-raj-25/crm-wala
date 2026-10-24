@@ -1,7 +1,7 @@
 "use client";
 import {
   ArrowUpDown, BadgeCheck, Baby, Building2, Car, ChevronLeft, ChevronRight, Download, Dumbbell, ExternalLink, FileText, Footprints, Gamepad2, Images, LayoutTemplate,
-  MapPin, MessageCircle, PartyPopper, Phone, PlayCircle, Ruler, ShieldCheck, Sparkles, Trees, Waves, Zap,
+  MapPin, PartyPopper, PlayCircle, Ruler, ShieldCheck, Sparkles, Trees, Waves, Zap,
 } from "lucide-react";
 import * as React from "react";
 import { Avatar, Button, Dialog, DialogContent, cn } from "@crm/ui";
@@ -17,7 +17,7 @@ export type SocietyPageData = {
   photos: PublicFile[];
   brochure: PublicFile | null;
   floor_plans: PublicFile[];
-  contact: { name: string; avatar_url: string | null; phone: string | null; whatsapp: string | null; company_number: boolean } | null;
+  contact: { name: string; avatar_url: string | null } | null;
   company: { name: string; logo_url: string | null; website: string | null } | null;
   shared_with: string | null;
 };
@@ -48,9 +48,6 @@ export function SocietyPage({ data, token }: { data: SocietyPageData; token: str
   const openPlan = (f: PublicFile) => (isImage(f) ? setView({ title: "Floor plans", items: planImages, i: Math.max(planImages.indexOf(f), 0) }) : window.open(f.url, "_blank", "noopener"));
   const openPhoto = (i: number) => setView({ title: "Photos", items: photos, i });
   const maps = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([s.name, s.address || s.location].filter(Boolean).join(", "))}`;
-  const waText = `Hi${contact ? ` ${contact.name.split(" ")[0]}` : ""}, I'm looking at ${s.name} and would like to know more.`;
-  const call = contact?.phone ? `tel:${contact.phone}` : null;
-  const whatsapp = contact?.whatsapp ? `https://wa.me/${contact.whatsapp}?text=${encodeURIComponent(waText)}` : null;
 
   // tell the employee their client is looking (once per visit; link-preview bots never run this)
   React.useEffect(() => {
@@ -79,10 +76,6 @@ export function SocietyPage({ data, token }: { data: SocietyPageData; token: str
             {company?.logo_url ? <img src={company.logo_url} alt="" className="size-8 rounded-lg object-contain" />
               : <span className="grid size-8 place-items-center rounded-lg bg-primary text-sm font-bold text-primary-fg">{(company?.name ?? s.name).slice(0, 1).toUpperCase()}</span>}
             <span className="truncate text-sm font-semibold tracking-tight">{company?.name ?? s.name}</span>
-          </div>
-          <div className="hidden items-center gap-2 sm:flex">
-            {call && <Button asChild variant="secondary" size="sm"><a href={call}><Phone /> Call</a></Button>}
-            {whatsapp && <Button asChild size="sm"><a href={whatsapp} target="_blank" rel="noopener noreferrer"><MessageCircle /> WhatsApp</a></Button>}
           </div>
         </div>
       </header>
@@ -207,13 +200,7 @@ export function SocietyPage({ data, token }: { data: SocietyPageData; token: str
                   <Avatar name={contact.name} src={contact.avatar_url ?? undefined} size={44} />
                   <div className="min-w-0"><p className="truncate font-semibold">{contact.name}</p>{company && <p className="truncate text-sm text-fg-muted">{company.name}</p>}</div>
                 </div>
-                {(call || whatsapp) && (
-                  <div className="mt-4 grid gap-2">
-                    {whatsapp && <Button asChild><a href={whatsapp} target="_blank" rel="noopener noreferrer"><MessageCircle /> Chat on WhatsApp</a></Button>}
-                    {call && <Button asChild variant="secondary"><a href={call}><Phone /> Call {contact.company_number ? "us" : contact.name.split(" ")[0]}</a></Button>}
-                  </div>
-                )}
-                <p className="mt-3 text-xs text-fg-subtle">Ask for a site visit, today's prices or a flat on a floor you like.</p>
+                <p className="mt-3 text-xs text-fg-subtle">Reply to their message for a site visit, today's prices or a flat on a floor you like.</p>
               </div>
             )}
             {(brochure || plans.length > 0) && (
@@ -234,13 +221,9 @@ export function SocietyPage({ data, token }: { data: SocietyPageData; token: str
       </main>
 
       {/* phone: actions stay in reach */}
-      {(call || whatsapp || brochure) && (
+      {brochure && (
         <div className="glass fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface/85 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:hidden">
-          <div className="flex gap-2">
-            {brochure && <Button asChild variant="secondary" size="lg" className={cn(call || whatsapp ? "px-4" : "flex-1")}><a href={brochure.download_url} download={brochure.filename} aria-label="Download brochure"><Download />{!(call || whatsapp) && " Brochure"}</a></Button>}
-            {call && <Button asChild variant="secondary" size="lg" className="flex-1"><a href={call}><Phone /> Call</a></Button>}
-            {whatsapp && <Button asChild size="lg" className="flex-1"><a href={whatsapp} target="_blank" rel="noopener noreferrer"><MessageCircle /> WhatsApp</a></Button>}
-          </div>
+          <Button asChild size="lg" className="w-full"><a href={brochure.download_url} download={brochure.filename}><Download /> Download brochure</a></Button>
         </div>
       )}
 

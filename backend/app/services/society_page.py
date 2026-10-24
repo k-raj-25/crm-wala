@@ -95,22 +95,11 @@ def recipient(link: Link):
 
 
 def _contact_person(project: Project, link: Link) -> dict | None:
-    """Who the client should reach. When calls go through the company number, the page shows that number instead of the
-    employee's own, so clients stay with the firm; otherwise the employee's phone from their profile."""
-    from app.services import calling, integrations
-    from app.services.whatsapp import normalize_phone
-
-    row = db.session.query(User.name, User.phone, User.avatar_url).join(WorkspaceMember, WorkspaceMember.user_id == User.id).filter(
+    """The employee who shared the link, by name only: the page carries no phone numbers, so clients reply through the
+    chat or email the link came in."""
+    row = db.session.query(User.name, User.avatar_url).join(WorkspaceMember, WorkspaceMember.user_id == User.id).filter(
         WorkspaceMember.workspace_id == project.workspace_id, WorkspaceMember.user_id == link.sharer_id, WorkspaceMember.status == "active").first()
-    if row is None:
-        return None
-    name, phone, avatar = row
-    company = calling.find_connection(project.workspace_id)
-    if company is not None:
-        number = integrations.get_creds(company).get("exophone")
-        return {"name": name, "avatar_url": avatar, "phone": normalize_phone(number) if number else None, "whatsapp": None, "company_number": True}
-    phone = normalize_phone(phone) if phone else None
-    return {"name": name, "avatar_url": avatar, "phone": phone, "whatsapp": phone.lstrip("+") if phone else None, "company_number": False}
+    return {"name": row[0], "avatar_url": row[1]} if row else None
 
 
 def build(project: Project, link: Link, token: str) -> dict:
