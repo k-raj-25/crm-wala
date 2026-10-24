@@ -59,7 +59,7 @@ def sender_info(user: User) -> dict:
     if integ is not None and integ.mode == "live":
         return {"mode": integ.provider, "address": integ.account_label or user.email, "verified": verified}
     return {"mode": "platform", "address": user.email, "verified": verified,
-            "platform_from": current_app.config["EMAIL_FROM"]}
+            "platform_from": current_app.config["EMAIL_FROM"], "can_deliver": email_service.delivers()}
 
 
 def load_attachments(email: Email) -> list[tuple[str, str, bytes]]:
@@ -91,7 +91,10 @@ def deliver(email: Email, sender: User) -> None:
             else:
                 # Sandbox/platform path: send as platform address with the rep as Reply-To.
                 email.provider = f"{integ.provider}:sandbox" if integ else "platform"
-                email_service.send_raw(to, email.subject, body_html, workspace_id=email.workspace_id, reply_to=sender.email, template_key="crm_email", from_name=sender.name, attachments=files)
+                if not email_service.delivers():
+                    raise RuntimeError(email_service.NOT_SET_UP)
+                email_service.send_raw(to, email.subject, body_html, workspace_id=email.workspace_id, reply_to=sender.email, template_key="crm_email",
+                                       from_name=sender.name, attachments=files, raise_errors=True)
         email.status, email.sent_at, email.error = "sent", utcnow(), None
     except Exception as e:
         log.exception("crm email failed")
