@@ -101,6 +101,45 @@ def register_cli(app: Flask) -> None:
             return
         click.echo(f"Seeded {sample_platform.seed()}")
 
+    @app.cli.command("seed-project-details")
+    @click.option("--workspace", "slug", default=None, help="Only this workspace (its slug). Default: every workspace")
+    @click.option("--force", is_flag=True, help="Allow in production (not recommended)")
+    def seed_project_details_cmd(slug, force):
+        """Give existing projects sample details they are missing: RERA, amenities, sizes with floor plans, photos and a brochure."""
+        from app.config import Config
+
+        if Config.ENV == "production" and not force:
+            raise click.ClickException("Refusing to add sample project details in production. Use --force if you really mean it.")
+        from app.core.tenant import bypass_scope
+        from app.extensions import db
+        from app.models import Project, Workspace
+        from app.seeds.project_media import fill_project
+
+        from sqlalchemy import inspect
+
+        if "sizes" not in {c["name"] for c in inspect(db.engine).get_columns("projects")}:
+            raise click.ClickException("This database doesn't have the projects.sizes column yet. Run `flask db upgrade` first, or if your database's "
+                                       "migration history is out of step, add it by hand: ALTER TABLE projects ADD COLUMN sizes JSONB NOT NULL DEFAULT '[]'::jsonb;")
+        with bypass_scope():
+            q = db.session.query(Project).filter(Project.deleted_at.is_(None))
+            if slug:
+                ws = db.session.query(Workspace).filter_by(slug=slug).one_or_none()
+                if ws is None:
+                    raise click.ClickException(f"No workspace with slug {slug!r}")
+                q = q.filter(Project.workspace_id == ws.id)
+            n = 0
+            try:
+                for p in q.order_by(Project.created_at).all():
+                    added = fill_project(p, p.owner_id)
+                    if added:
+                        n += 1
+                        click.echo(f"  {p.name}: {', '.join(added)}")
+                db.session.commit()
+            except Exception:
+                db.session.rollback()  # so the real error shows, not "current transaction is aborted"
+                raise
+        click.echo(f"Added sample details to {n} project{'' if n == 1 else 's'}.")
+
     @app.cli.command("seed-demo")
     @click.option("--reset", is_flag=True, help="Delete and recreate the demo workspace")
     @click.option("--plan", default="trial", help="trial (default) or a paid plan key such as growth")

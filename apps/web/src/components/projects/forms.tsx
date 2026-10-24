@@ -7,6 +7,8 @@ import { ApiError, Button, Checkbox, Dialog, DialogContent, DialogFooter, Field,
 import { api } from "@/lib/api";
 import { BHK_OPTIONS, PROJECT_KINDS, PROJECT_STAGES, UNIT_KINDS } from "@/lib/realestate";
 import type { Project } from "@/lib/realestate";
+import { DetailsFields, emptyDetails, saveDetails } from "./details";
+import type { DetailsDraft } from "./details";
 
 const KIND_TO_UNIT: Record<string, string> = { residential: "apartment", commercial: "office", villa: "villa", plotted: "plot", mixed: "apartment" };
 
@@ -55,18 +57,28 @@ const towerBody = (v: TowerForm) => ({ name: v.name.trim(), floors: v.floors, un
 
 export function NewProjectDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const router = useRouter(); const qc = useQueryClient(); const toast = useToast();
-  const [step, setStep] = React.useState<1 | 2>(1);
+  const [step, setStep] = React.useState<1 | 2 | 3>(1);
   const [p, setP] = React.useState({ name: "", developer: "", city: "", sector: "", locality: "", kind: "residential", stage: "ready" });
+  const [d, setD] = React.useState<DetailsDraft>(emptyDetails);
   const [t, setT] = React.useState<TowerForm>(emptyTower());
-  const [busy, setBusy] = React.useState(false);
+  const [busy, setBusy] = React.useState<string | null>(null);
   const [err, setErr] = React.useState<Record<string, string>>({});
   React.useEffect(() => { if (open) { setStep(1); setErr({}); } }, [open]);
+  // The first size entered becomes the tower's usual size and area
+  const toTower = () => {
+    const z = d.sizes.find((x) => x.label.trim());
+    if (z && t.kind === "apartment") setT({ ...t, bhk: BHK_OPTIONS.includes(z.label.trim()) ? z.label.trim() : t.bhk, area: t.area || z.area });
+    setStep(3);
+  };
   const kindChange = (kind: string) => { setP({ ...p, kind }); setT({ ...t, kind: KIND_TO_UNIT[kind] ?? "apartment", bhk: KIND_TO_UNIT[kind] === "apartment" ? t.bhk || "3 BHK" : "" }); };
 
   const create = async (withTower: boolean) => {
-    setBusy(true);
+    setBusy("Creating…");
     try {
       const proj = await api.post<Project>("/api/v1/projects", { name: p.name.trim(), developer: p.developer || undefined, city: p.city || undefined, sector: p.sector || undefined, locality: p.locality || undefined, kind: p.kind, stage: p.stage });
+      const failed = await saveDetails(proj.id, d, undefined, (n, total) => total && setBusy(`Uploading ${Math.min(n + 1, total)} of ${total}…`));
+      if (failed.length) toast.error("Some files couldn't be uploaded", `${failed.join(", ")}. Add them again from Edit details on the project page.`);
+      setD(emptyDetails());
       let tid: string | undefined;
       if (withTower) tid = (await api.post<{ id: string }>(`/api/v1/projects/${proj.id}/towers`, towerBody(t))).id;
       qc.invalidateQueries({ queryKey: ["projects"] });
@@ -75,12 +87,13 @@ export function NewProjectDialog({ open, onOpenChange }: { open: boolean; onOpen
       router.push(`/app/projects/${proj.id}${tid ? `?tower=${tid}` : ""}`);
     } catch (e) {
       if (e instanceof ApiError) { setErr(Object.fromEntries(Object.entries((e.details ?? {}) as Record<string, string>))); toast.error(e.message); } else toast.error("Something went wrong. Please try again.");
-    } finally { setBusy(false); }
+    } finally { setBusy(null); }
   };
+  const titles = { 1: ["New project", "Where is it, and who is building it?"], 2: ["Project details", "What buyers ask about first. All optional, and you can add them later."], 3: ["Build the first tower", "Tell us how tall it is. We'll draw every flat for you — you can fine-tune them afterwards."] }[step];
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="lg" title={step === 1 ? "New project" : "Build the first tower"} description={step === 1 ? "Where is it, and who is building it?" : "Tell us how tall it is. We'll draw every flat for you — you can fine-tune them afterwards."}>
+    <Dialog open={open} onOpenChange={(o) => !busy && onOpenChange(o)}>
+      <DialogContent size="lg" title={<span className="flex items-center gap-3">{titles[0]}<span className="text-xs font-normal tabular-nums text-fg-subtle">Step {step} of 3</span></span>} description={titles[1]}>
         {step === 1 ? (
           <>
             <div className="grid grid-cols-2 gap-3">
@@ -92,12 +105,17 @@ export function NewProjectDialog({ open, onOpenChange }: { open: boolean; onOpen
               <Field label="Kind"><NativeSelect value={p.kind} onChange={(e) => kindChange(e.target.value)}>{PROJECT_KINDS.map(([a, b]) => <option key={a} value={a}>{b}</option>)}</NativeSelect></Field>
               <Field label="Status"><NativeSelect value={p.stage} onChange={(e) => setP({ ...p, stage: e.target.value })}>{PROJECT_STAGES.map(([a, b]) => <option key={a} value={a}>{b}</option>)}</NativeSelect></Field>
             </div>
-            <DialogFooter><Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button><Button variant="secondary" loading={busy} disabled={!p.name.trim()} onClick={() => create(false)}>Create without towers</Button><Button disabled={!p.name.trim()} onClick={() => setStep(2)}>Next: build a tower</Button></DialogFooter>
+            <DialogFooter><Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button><Button disabled={!p.name.trim()} onClick={() => setStep(2)}>Next: details</Button></DialogFooter>
+          </>
+        ) : step === 2 ? (
+          <>
+            <DetailsFields v={d} onChange={setD} />
+            <DialogFooter><Button variant="ghost" disabled={!!busy} onClick={() => setStep(1)}>Back</Button><Button variant="secondary" loading={!!busy} onClick={() => create(false)}>{busy ?? "Create without towers"}</Button><Button disabled={!!busy} onClick={toTower}>Next: build a tower</Button></DialogFooter>
           </>
         ) : (
           <>
             <TowerFields v={t} onChange={setT} errors={err} />
-            <DialogFooter><Button variant="ghost" onClick={() => setStep(1)}>Back</Button><Button loading={busy} disabled={!t.name.trim()} onClick={() => create(true)}>Create project &amp; tower</Button></DialogFooter>
+            <DialogFooter><Button variant="ghost" disabled={!!busy} onClick={() => setStep(2)}>Back</Button><Button loading={!!busy} disabled={!t.name.trim()} onClick={() => create(true)}>{busy ?? <>Create project &amp; tower</>}</Button></DialogFooter>
           </>
         )}
       </DialogContent>

@@ -1,7 +1,7 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { ArrowRight, BarChart3, Building2, Check, ChevronRight, Download, Layers, LayoutGrid, List, MapPin, MoreHorizontal, Plus, Rows3, Scale, Search, Trash2, Wand2 } from "lucide-react";
+import { ArrowRight, BarChart3, Building2, Check, ChevronRight, Download, FileText, Layers, LayoutGrid, List, MapPin, MoreHorizontal, Plus, Rows3, Scale, Search, Trash2, Wand2 } from "lucide-react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import * as React from "react";
@@ -16,6 +16,7 @@ import { useAccess } from "@/lib/queries";
 import { AVAILABLE, PROJECT_KINDS, PROJECT_STAGES, STATUS, STATUS_ORDER, floorLabel, priceLine, where } from "@/lib/realestate";
 import type { Building, Project, Summary, UnitMini, UnitStatus } from "@/lib/realestate";
 import { AddFloorsDialog, AddTowerDialog, AddUnitDialog } from "./forms";
+import { EditDetailsDialog, ProjectDetailsCard } from "./details";
 import { BuildingView, Legend, NO_SPOT, Sky, fitsSpot, isSpotting } from "./building";
 import type { Spot } from "./building";
 import { TowerArt } from "./tower-art";
@@ -31,9 +32,10 @@ export function ProjectView() {
   const toast = useToast();
   const { can } = useAccess();
   const canEdit = can("units.update");
+  const canEditProject = can("projects.update");
   const [spot, setSpot] = React.useState<Spot>(NO_SPOT);
   const [unitId, setUnitId] = React.useState<string | null>(sp.get("unit"));
-  const [dialog, setDialog] = React.useState<null | "tower" | "floors" | "unit" | "delete">(null);
+  const [dialog, setDialog] = React.useState<null | "tower" | "floors" | "unit" | "delete" | "details">(null);
   const [flash, setFlash] = React.useState<number | null>(null);
   const writer = useAiFeature("writer"); const [writing, setWriting] = React.useState(false);
   const floorEls = React.useRef(new Map<number, HTMLElement>());
@@ -92,7 +94,7 @@ export function ProjectView() {
       <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
           {p ? <h1 className="flex flex-wrap items-center gap-3 text-2xl font-semibold tracking-tight sm:text-[28px]">{p.name}<Badge tone={p.stage === "ready" ? "success" : p.stage === "under_construction" ? "warning" : "info"}>{PROJECT_STAGES.find((s) => s[0] === p.stage)?.[1]}</Badge></h1> : <Skeleton className="h-9 w-72" />}
-          {p && <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[15px] text-fg-muted"><span className="inline-flex items-center gap-1"><MapPin className="size-4" />{where(p) || "No address yet"}</span>{p.developer && <span>by {p.developer}</span>}<span>{PROJECT_KINDS.find((k) => k[0] === p.kind)?.[1]}</span>{p.rera_id && <span className="text-xs">RERA {p.rera_id}</span>}</p>}
+          {p && <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[15px] text-fg-muted"><span className="inline-flex items-center gap-1"><MapPin className="size-4" />{where(p) || "No address yet"}</span>{p.developer && <span>by {p.developer}</span>}<span>{PROJECT_KINDS.find((k) => k[0] === p.kind)?.[1]}</span></p>}
         </div>
         {p && !canEdit && writer && <Button variant="secondary" onClick={() => setWriting(true)}><Wand2 /> Write listing</Button>}
         {canEdit && p && (
@@ -103,6 +105,7 @@ export function ProjectView() {
             <DropdownMenu>
               <DropdownTrigger asChild><Button variant="secondary" size="icon" aria-label="More actions"><MoreHorizontal /></Button></DropdownTrigger>
               <DropdownContent>
+                {canEditProject && <DropdownItem icon={<FileText />} onSelect={() => setDialog("details")}>Edit project details</DropdownItem>}
                 {towerId && <DropdownItem icon={<Layers />} onSelect={() => setDialog("floors")}>Add floors to this tower</DropdownItem>}
                 {towerId && <DropdownItem icon={<Download />} onSelect={() => window.open(`/api/v1/units/export?tower_id=${towerId}`)}>Download flats (CSV)</DropdownItem>}
                 {can("projects.delete") && <DropdownItem danger icon={<Trash2 />} onSelect={() => setDialog("delete")}>Delete project</DropdownItem>}
@@ -111,6 +114,8 @@ export function ProjectView() {
           </div>
         )}
       </div>
+
+      {p && <ProjectDetailsCard project={p} canEdit={canEditProject} onEdit={() => setDialog("details")} />}
 
       {p && towers.length > 1 && (
         <div className="mb-5 flex flex-wrap gap-2" role="tablist" aria-label="Towers">
@@ -198,6 +203,7 @@ export function ProjectView() {
 
       <UnitDrawer unitId={unitId} onClose={() => setUnitId(null)} canEdit={canEdit} />
       {writer && p && <ListingWriter open={writing} onOpenChange={setWriting} projectId={p.id} label={p.name} />}
+      {p && canEditProject && <EditDetailsDialog open={dialog === "details"} onOpenChange={(o) => !o && setDialog(null)} project={p} />}
       {p && <AddTowerDialog open={dialog === "tower"} onOpenChange={(o) => !o && setDialog(null)} projectId={p.id} projectKind={p.kind} onCreated={(tid) => { setSpot(NO_SPOT); nav({ tower: tid, view: null }); }} />}
       {p && tower && towerId && <AddFloorsDialog open={dialog === "floors"} onOpenChange={(o) => !o && setDialog(null)} projectId={p.id} towerId={towerId} perFloor={b?.summary.units_per_floor ?? 4} />}
       {tower && towerId && <AddUnitDialog open={dialog === "unit"} onOpenChange={(o) => !o && setDialog(null)} towerId={towerId} floors={tower.floors} hasGround={tower.has_ground} />}

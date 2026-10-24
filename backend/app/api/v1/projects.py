@@ -6,14 +6,14 @@ from sqlalchemy import func, literal_column
 
 from app.core.auth import protect, require
 from app.core.crud import CrudResource
-from app.core.errors import conflict, not_found
+from app.core.errors import bad_request, conflict, not_found
 from app.core.responses import created, no_content, ok
 from app.extensions import db
-from app.models import Project, Tower, Unit
+from app.models import FileAsset, Project, Tower, Unit
 from app.models.base import utcnow
 from app.schemas.common import parse, provided
 from app.schemas.realestate import AddFloorsIn, ProjectIn, ProjectPatch, TowerIn, TowerPatch
-from app.services import activities, audit, inventory
+from app.services import activities, audit, inventory, storage
 
 bp = Blueprint("projects", __name__, url_prefix="/api/v1/projects")
 
@@ -53,14 +53,50 @@ class ProjectResource(CrudResource):
 
     def prepare_create(self, data):
         data["owner_id"] = data.get("owner_id") or g.user.id
+        data["sizes"] = _sizes(data.get("sizes"))
         return data
+
+    def prepare_update(self, obj, changes):
+        if "sizes" in changes:
+            changes["sizes"] = _sizes(changes["sizes"], obj.id)
+        return changes
 
     def after_delete(self, p):
         db.session.query(Unit).filter(Unit.project_id == p.id, Unit.deleted_at.is_(None)).update({"deleted_at": utcnow()}, synchronize_session=False)
 
 
+def _sizes(sizes, project_id=None) -> list[dict]:
+    """Store sizes as plain JSON. A floor plan must be a file in this workspace (and on this project once it exists)."""
+    out = []
+    for z in sizes or []:
+        z = z if isinstance(z, dict) else z.model_dump()
+        fid = z.get("floor_plan_file_id")
+        if fid:
+            q = db.session.query(FileAsset.id).filter(FileAsset.id == fid, FileAsset.workspace_id == g.workspace.id, FileAsset.deleted_at.is_(None))
+            if project_id:
+                q = q.filter(FileAsset.project_id == project_id)
+            if q.first() is None:
+                raise bad_request(f"The floor plan for {z['label']} wasn't found. Upload it again.", "invalid_floor_plan")
+        out.append({"label": z["label"].strip(), "area_sqft": z.get("area_sqft"), "floor_plan_file_id": str(fid) if fid else None})
+    return out
+
+
 res = ProjectResource()
 res.register(bp)
+
+
+@bp.get("/<uuid:pid>/media")
+@protect("projects.read")
+def media(pid):
+    """The project's brochure, society photos and floor plans, with short-lived links to show or download them."""
+    project = res.get_or_404(pid)
+    rows = db.session.query(FileAsset).filter(FileAsset.project_id == project.id, FileAsset.unit_id.is_(None), FileAsset.deleted_at.is_(None),
+                                              FileAsset.doc_kind.in_(("brochure", "photo", "floor_plan"))).order_by(FileAsset.created_at).all()
+    st = storage.get_storage()
+    out: dict[str, list] = {"brochure": [], "photo": [], "floor_plan": []}
+    for f in rows:
+        out[f.doc_kind].append({**f.to_dict(), "url": st.signed_url(f.storage_key, f.filename, expires=3600)})
+    return ok({"brochures": out["brochure"], "photos": out["photo"], "floor_plans": out["floor_plan"], "max_photos": inventory.MAX_PROJECT_PHOTOS})
 
 
 # ---- towers ----------------------------------------------------------------------------------------------------------

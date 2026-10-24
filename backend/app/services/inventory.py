@@ -26,6 +26,7 @@ STATUSES: dict[str, dict[str, str]] = {
 }
 AVAILABLE = ("vacant", "for_sale", "for_rent")  # a client could still take these
 DEFAULT_HOLD_HOURS, MAX_HOLD_HOURS = 48, 24 * 30
+MAX_PROJECT_PHOTOS = 10  # society photos per project
 OPEN_LEAD_STATUSES = ("new", "contacted", "qualified")
 
 

@@ -294,7 +294,7 @@ class FileAsset(Base, UUIDPk, Timestamps, Tenant, SoftDelete, Related, Serializa
     status: Mapped[str] = mapped_column(String(15), default="ready", server_default="ready")  # pending|ready
     project_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), index=True)
     unit_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("units.id", ondelete="CASCADE"), index=True)
-    doc_kind: Mapped[str | None] = mapped_column(String(20))  # brochure|floor_plan|price_list|other (project / unit documents)
+    doc_kind: Mapped[str | None] = mapped_column(String(20))  # brochure|floor_plan|price_list|photo|other (project / unit documents)
 
 
 class Activity(Base, UUIDPk, Tenant, Related, Serializable):
@@ -380,6 +380,8 @@ class Project(Base, UUIDPk, Timestamps, Tenant, SoftDelete, Serializable):
     cover_url: Mapped[str | None] = mapped_column(String(500))
     owner_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
     tags: Mapped[list[str]] = mapped_column(ARRAY(String), default=list, server_default=text("'{}'"))
+    # Flat sizes on offer: [{"label": "3 BHK", "area_sqft": 1800, "floor_plan_file_id": "<files.id>"}]
+    sizes: Mapped[list[dict]] = mapped_column(JSONB, default=list, server_default=text("'[]'::jsonb"))
 
     towers: Mapped[list["Tower"]] = relationship(back_populates="project", order_by="Tower.position", cascade="all, delete-orphan")
 

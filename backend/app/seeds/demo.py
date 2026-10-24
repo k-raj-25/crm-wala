@@ -139,7 +139,7 @@ def seed_demo(reset: bool = False, plan: str = "trial") -> dict:
             for pname, bi, sector, locality, pkind, pstage, towers in PROJECTS:
                 p = Project(workspace_id=ws.id, name=pname, developer=BUILDERS[bi][0], kind=pkind, stage=pstage, city="Gurgaon", locality=locality, sector=sector,
                             rera_id=f"RC/REP/HARERA/GGM/{rnd.randint(100, 999)}/{rnd.randint(10, 99)}/2023", owner_id=users[0].id,
-                            amenities=["Clubhouse", "Swimming pool", "Gym", "Kids play area", "24x7 security", "Power backup"],
+                            amenities=["Food court", "High-speed lifts", "Visitor parking", "24x7 security", "Power backup"] if pkind == "commercial" else ["Clubhouse", "Swimming pool", "Gym", "Kids play area", "24x7 security", "Power backup"],
                             possession_date=(now + dt.timedelta(days=500)).date() if pstage != "ready" else None,
                             description=f"{pname} by {BUILDERS[bi][0]} in {sector}, Gurgaon.", created_at=now - dt.timedelta(days=rnd.randint(100, 400)))
                 db.session.add(p)
@@ -174,6 +174,11 @@ def seed_demo(reset: bool = False, plan: str = "trial") -> dict:
                 if u.status != "vacant":
                     db.session.add(UnitEvent(workspace_id=ws.id, unit_id=u.id, type="status", from_status="vacant", to_status=u.status, user_id=users[rnd.randint(0, 3)].id,
                                              created_at=u.status_changed_at, note="Hold placed for a client" if u.status == "on_hold" else None))
+            db.session.flush()
+            from app.seeds.project_media import fill_project
+
+            for p in projects:  # brochure, society photos, sizes and floor plans
+                fill_project(p, users[0].id, random.Random(p.name))
             db.session.flush()
 
             # ---- leads -----------------------------------------------------------------------------------------------

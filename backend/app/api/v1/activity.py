@@ -157,8 +157,18 @@ def upload_file():
     if rel.get("unit_id"):  # a unit's documents also belong to its project
         rel["project_id"] = db.session.query(Unit.project_id).filter(Unit.id == rel["unit_id"]).scalar()
     doc_kind = request.form.get("doc_kind") or None
-    if doc_kind and doc_kind not in ("brochure", "floor_plan", "price_list", "other"):
+    if doc_kind and doc_kind not in ("brochure", "floor_plan", "price_list", "photo", "other"):
         raise bad_request("Invalid document type")
+    if doc_kind == "photo":
+        if not mime.startswith("image/"):
+            raise ApiError(415, "unsupported_file_type", "Photos must be JPG, PNG, WebP or GIF images.")
+        if rel.get("project_id") and not rel.get("unit_id"):
+            from app.services.inventory import MAX_PROJECT_PHOTOS
+
+            n = db.session.query(func.count(FileAsset.id)).filter(FileAsset.project_id == rel["project_id"], FileAsset.unit_id.is_(None),
+                                                                  FileAsset.doc_kind == "photo", FileAsset.deleted_at.is_(None)).scalar()
+            if n >= MAX_PROJECT_PHOTOS:
+                raise ApiError(409, "photo_limit", f"A project can have up to {MAX_PROJECT_PHOTOS} society photos. Remove one to add another.")
     safe_name = "".join(ch for ch in f.filename if ch.isalnum() or ch in " ._-()")[:200] or "file"
     key = storage.new_key(g.workspace.id, safe_name)
     storage.get_storage().put(key, f.stream, mime)
@@ -204,6 +214,10 @@ def delete_file(fid):
     if fa is None:
         raise not_found("File")
     fa.deleted_at = utcnow()
+    if fa.doc_kind == "floor_plan" and fa.project_id:  # unlink it from the project's sizes
+        p = db.session.get(Project, fa.project_id)
+        if p and any(z.get("floor_plan_file_id") == str(fa.id) for z in p.sizes or []):
+            p.sizes = [{**z, "floor_plan_file_id": None} if z.get("floor_plan_file_id") == str(fa.id) else z for z in p.sizes]
     audit.record("file.deleted", entity_type="file", entity_id=fa.id, summary=f"Deleted file {fa.filename}")
     db.session.commit()
     return no_content()

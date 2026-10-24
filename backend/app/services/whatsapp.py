@@ -35,7 +35,7 @@ log = logging.getLogger("app.whatsapp")
 GRAPH = "https://graph.facebook.com"
 WINDOW = dt.timedelta(hours=24)
 STATUS_RANK = {"sent": 1, "delivered": 2, "read": 3, "failed": 4}
-DOC_KINDS = {"brochure": "Brochure", "floor_plan": "Floor plan", "price_list": "Price list", "other": "Document"}
+DOC_KINDS = {"brochure": "Brochure", "floor_plan": "Floor plan", "price_list": "Price list", "photo": "Photo", "other": "Document"}
 IMAGE_MAX_BYTES = 5 * 1024 * 1024  # Meta limits; documents may be up to 100 MB
 DOC_MAX_BYTES = 100 * 1024 * 1024
 
