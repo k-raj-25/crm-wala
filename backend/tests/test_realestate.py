@@ -141,3 +141,18 @@ def test_project_details_brochure_photos_sizes_and_floor_plans(client):
     assert client.get(f"/api/v1/projects/{pid}").get_json()["data"]["sizes"][0]["floor_plan_file_id"] is None
     assert client.delete(f"/api/v1/files/{m['photos'][0]['id']}").status_code == 204
     assert _file(client, "replacement.jpg", "image/jpeg", project_id=pid, doc_kind="photo").status_code == 201
+
+
+def test_sample_project_details_fill_only_whats_missing(client):
+    pid, _ = _project(client)  # a tower of 3 BHKs, no details yet
+    client.patch(f"/api/v1/projects/{pid}", json={"rera_id": "MY-RERA-1"})
+    r = client.app.test_cli_runner().invoke(args=["seed-project-details"])
+    assert r.exit_code == 0 and "Ireo Victory Valley" in r.output, r.output
+    p = client.get(f"/api/v1/projects/{pid}").get_json()["data"]
+    assert p["rera_id"] == "MY-RERA-1" and p["amenities"]  # kept what was there, filled the rest
+    assert [z["label"] for z in p["sizes"]] == ["3 BHK"] and p["sizes"][0]["area_sqft"] == 1800 and p["sizes"][0]["floor_plan_file_id"]
+    m = client.get(f"/api/v1/projects/{pid}/media").get_json()["data"]
+    assert len(m["photos"]) == 6 and len(m["brochures"]) == 1 and m["floor_plans"][0]["id"] == p["sizes"][0]["floor_plan_file_id"]
+    assert m["photos"][0]["mime_type"] == "image/png"
+    r = client.app.test_cli_runner().invoke(args=["seed-project-details"])  # running again adds nothing
+    assert "Added sample details to 0 projects" in r.output
