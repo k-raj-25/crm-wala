@@ -382,6 +382,7 @@ class Project(Base, UUIDPk, Timestamps, Tenant, SoftDelete, Serializable):
     tags: Mapped[list[str]] = mapped_column(ARRAY(String), default=list, server_default=text("'{}'"))
     # Flat sizes on offer: [{"label": "3 BHK", "area_sqft": 1800, "floor_plan_file_id": "<files.id>"}]
     sizes: Mapped[list[dict]] = mapped_column(JSONB, default=list, server_default=text("'[]'::jsonb"))
+    video_url: Mapped[str | None] = mapped_column(String(500))  # walkthrough / drone video (YouTube, Drive, ...)
 
     towers: Mapped[list["Tower"]] = relationship(back_populates="project", order_by="Tower.position", cascade="all, delete-orphan")
 

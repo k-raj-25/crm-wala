@@ -41,6 +41,7 @@ class ProjectIn(Schema):
     owner_id: uuid.UUID | None = None
     tags: list[str] = Field(default_factory=list, max_length=25)
     sizes: list[ProjectSize] = Field(default_factory=list, max_length=20)
+    video_url: str | None = Field(default=None, max_length=500)
 
     @field_validator("amenities", "tags")
     @classmethod
