@@ -99,3 +99,22 @@ def test_a_failed_send_shows_the_reason_and_flags_the_connection(app, smtp):
     assert owner.get("/api/v1/emails/company").get_json()["data"]["status"] == "connected"
     assert owner.delete("/api/v1/emails/company").status_code == 200
     assert owner.get("/api/v1/emails/sender").get_json()["data"]["mode"] == "platform"
+
+
+def test_a_dropped_587_connection_falls_back_to_ssl_on_465(monkeypatch):
+    tried = []
+
+    def fake_open(host, port, username, password):
+        tried.append(port)
+        if port == 587:
+            raise smtplib.SMTPServerDisconnected("Connection unexpectedly closed")
+        return FakeSmtp([])
+
+    monkeypatch.setattr(company_email, "_open", fake_open)
+    creds = {"host": "smtp.gmail.com", "port": 587, "username": "a@b.co", "password": "x"}
+    company_email.verify(creds)
+    assert tried == [587, 465] and creds["port"] == 465
+
+    monkeypatch.setattr(company_email, "_open", lambda *a: (_ for _ in ()).throw(smtplib.SMTPServerDisconnected("Connection unexpectedly closed")))
+    with pytest.raises(ValueError, match="VPN"):
+        company_email.verify({**creds, "port": 587})
