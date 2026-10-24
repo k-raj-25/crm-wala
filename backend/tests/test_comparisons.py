@@ -89,7 +89,7 @@ def test_share_on_whatsapp_gives_a_chat_link_and_a_public_pdf(client):
 # ---- societies -------------------------------------------------------------------------------------------------------
 
 def _societies(cl):
-    """Two societies with sample photos, a brochure and floor plans; the second has cheaper 2 BHKs and fewer amenities."""
+    """Two societies with sample photos, a brochure and floor plans (the brochure never goes in the comparison); the second has cheaper 2 BHKs and fewer amenities."""
     from tests.test_realestate import _project
 
     a, _ = _project(cl)
@@ -131,7 +131,7 @@ def test_society_preview_rejects_unknown_and_too_many(client):
     assert client.post("/api/v1/comparisons/societies/preview", json={"societies": []}).status_code == 422
 
 
-def test_society_pdf_carries_the_chosen_photos_floor_plans_and_brochure(client):
+def test_society_pdf_carries_the_chosen_photos_and_floor_plans(client):
     from pypdf import PdfReader
 
     a, b, media = _societies(client)
@@ -141,17 +141,16 @@ def test_society_pdf_carries_the_chosen_photos_floor_plans_and_brochure(client):
     base = len(PdfReader(io.BytesIO(r.data)).pages)
     assert "Society comparison" in r.headers["Content-Disposition"]
 
-    brochure_pages = len(PdfReader(io.BytesIO(client.c.get(media[a]["brochures"][0]["url"]).data)).pages)
     full = {"societies": [{"project_id": a, "photo_ids": [p["id"] for p in media[a]["photos"][:3]], "brochure": True}, {"project_id": b, "sizes": []}]}
     r = client.post("/api/v1/comparisons/societies/pdf", json=full)
     assert r.status_code == 200, r.get_json()
     pages = PdfReader(io.BytesIO(r.data)).pages
-    # + one page of photos for society A, its 3 BHK floor plan (a one-page PDF), and the whole brochure
-    # after the table: one page of photos for society A, its 3 BHK floor plan (a one-page PDF), then the whole brochure
-    section = pages[-(brochure_pages + 2)].extract_text()
+    # after the table: one page of photos for society A, then its 3 BHK floor plan (a one-page PDF); never the brochure
+    section = pages[-2].extract_text()
     assert section.startswith("Ireo Victory Valley") and "RERA" in section
-    assert "M3M Golf Estate" in pages[-(brochure_pages + 3)].extract_text()  # the last page of the table
-    assert len(pages) - (brochure_pages + 2) >= base
+    assert "M3M Golf Estate" in pages[-3].extract_text()  # the last page of the table
+    assert len(pages) - 2 >= base
+    assert not any("brochure" in p.extract_text().lower() for p in pages)
 
     # a photo from the other society, or one deleted since, is skipped rather than failing the send
     stray = {"societies": [{"project_id": a, "sizes": [], "photo_ids": [media[b]["photos"][0]["id"]]}, {"project_id": b, "sizes": []}]}
@@ -163,14 +162,13 @@ def test_society_pdf_survives_broken_files(client):
 
     a, _ = _project(client)
     photo = _file(client, "broken.jpg", "image/jpeg", project_id=a, doc_kind="photo").get_json()["data"]
-    _file(client, "broken.pdf", "application/pdf", project_id=a, doc_kind="brochure")
-    r = client.post("/api/v1/comparisons/societies/pdf", json={"societies": [{"project_id": a, "photo_ids": [photo["id"]], "brochure": True}]})
+    r = client.post("/api/v1/comparisons/societies/pdf", json={"societies": [{"project_id": a, "photo_ids": [photo["id"]]}]})
     assert r.status_code == 200 and r.data.startswith(b"%PDF")
 
 
 def test_society_share_on_whatsapp(client):
     a, b, media = _societies(client)
-    r = client.post("/api/v1/comparisons/societies/share", json={"societies": [{"project_id": a, "brochure": True}, {"project_id": b}], "channel": "whatsapp",
+    r = client.post("/api/v1/comparisons/societies/share", json={"societies": [{"project_id": a}, {"project_id": b}], "channel": "whatsapp",
                                                                 "phone": "98765 43210", "client_name": "Meera"})
     assert r.status_code == 200, r.get_json()
     d = r.get_json()["data"]

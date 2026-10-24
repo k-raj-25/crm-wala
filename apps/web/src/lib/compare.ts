@@ -42,9 +42,9 @@ export function useCompare(): CompareFlat[] {
   return React.useSyncExternalStore((cb) => { subs.add(cb); return () => subs.delete(cb); }, read, () => EMPTY);
 }
 
-/** Societies (projects) lined up to compare, with what to send for each: which layouts, which photos, and the brochure.
+/** Societies (projects) lined up to compare, with what to send for each: which layouts and which photos.
  *  `sizes` / `photos` stay null until the user changes them, so the defaults follow the project (all layouts, first photos). */
-export type CompareSociety = { id: string; name: string; where: string; sizes: string[] | null; photos: string[] | null; brochure: boolean };
+export type CompareSociety = { id: string; name: string; where: string; sizes: string[] | null; photos: string[] | null };
 
 export const MAX_SOCIETIES = 4;
 export const DEFAULT_PHOTOS = 4;
@@ -72,7 +72,7 @@ export const societyCompare = {
     const cur = sRead();
     if (cur.some((x) => x.id === s.id)) { sWrite(cur.filter((x) => x.id !== s.id)); return "removed"; }
     if (cur.length >= MAX_SOCIETIES) return "full";
-    sWrite([...cur, { ...s, sizes: null, photos: null, brochure: false }]); return "added";
+    sWrite([...cur, { ...s, sizes: null, photos: null }]); return "added";
   },
   remove(id: string) { sWrite(sRead().filter((x) => x.id !== id)); },
   update(id: string, patch: Partial<CompareSociety>) { sWrite(sRead().map((x) => (x.id === id ? { ...x, ...patch } : x))); },

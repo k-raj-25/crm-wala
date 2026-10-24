@@ -55,7 +55,6 @@ class SocietyPick(Schema):
     project_id: uuid.UUID
     sizes: list[str] | None = Field(default=None, max_length=20)  # layouts to show and attach; None means all
     photo_ids: list[uuid.UUID] = Field(default_factory=list, max_length=10)
-    brochure: bool = False
 
 
 class SocietyPreviewIn(Schema):
@@ -150,7 +149,7 @@ def _send(d: SendIn, rel: dict, pdf: bytes, name: str, *, what: str, things: str
     """Stores the PDF as a file on the lead / client, then emails it or hands back a WhatsApp link to it."""
     if d.channel == "email" and len(pdf) > soc.EMAIL_LIMIT_MB * 1024 * 1024:
         raise ApiError(422, "too_big_for_email", f"The PDF is {len(pdf) / 1048576:.0f} MB, too big to email (the limit is {soc.EMAIL_LIMIT_MB} MB). "
-                       "Leave out the brochure or some photos, or send it on WhatsApp.")
+                       "Leave out some photos or layouts, or send it on WhatsApp.")
     key = storage.new_key(g.workspace.id, name)
     storage.get_storage().put(key, io.BytesIO(pdf), "application/pdf")
     fa = FileAsset(workspace_id=g.workspace.id, filename=name, storage_key=key, mime_type="application/pdf", size_bytes=len(pdf), uploaded_by=g.user.id,

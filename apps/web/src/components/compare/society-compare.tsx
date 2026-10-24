@@ -1,7 +1,7 @@
 "use client";
 import { keepPreviousData, useQueries, useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Building2, Check, Download, FileText, ImageOff, LayoutTemplate, Minus, Plus, Scale, Search, Share2, Trash2, X } from "lucide-react";
+import { Building2, Check, Download, ImageOff, LayoutTemplate, Minus, Plus, Scale, Search, Share2, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
@@ -23,7 +23,6 @@ export type SocietyComparison = {
 };
 
 const GROUPS: Record<string, string> = { layouts: "Layouts", amenities: "Amenities" };
-const mb = (n: number) => (n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 const toastFull = (toast: ReturnType<typeof useToast>) => toast.error(`You can compare up to ${MAX_SOCIETIES} societies`, "Remove one to add another.");
 
 /** The photos that go in the PDF: the ones the user ticked (still on the project), or the first few until they choose. */
@@ -59,7 +58,7 @@ export function SocietyComparePage({ openPicker }: { openPicker?: boolean }) {
     }
   }, [q.error]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const body = { societies: list.map((s, i) => ({ project_id: s.id, sizes: s.sizes, photo_ids: photoIds(s, mediaOf(i)), brochure: s.brochure && !!mediaOf(i)?.brochures.length })) };
+  const body = { societies: list.map((s, i) => ({ project_id: s.id, sizes: s.sizes, photo_ids: photoIds(s, mediaOf(i)) })) };
   const download = async () => {
     setDownloading(true);
     try {
@@ -78,7 +77,7 @@ export function SocietyComparePage({ openPicker }: { openPicker?: boolean }) {
   return (
     <PageContainer wide>
       <PageHeader title="Compare societies" tabs={<CompareTabs value="societies" />}
-        description={list.length ? `${list.length} of ${MAX_SOCIETIES} societies, side by side. Pick the layouts, photos and brochure to send at the bottom.` : "Line societies up side by side and send your client one PDF with layouts, photos and brochures."}
+        description={list.length ? `${list.length} of ${MAX_SOCIETIES} societies, side by side. Pick the layouts and photos to send at the bottom.` : "Line societies up side by side and send your client one PDF with layouts and photos."}
         actions={mounted && list.length > 0 && <>
           <Button variant="secondary" onClick={() => setPicker(true)} disabled={list.length >= MAX_SOCIETIES}><Plus /> Add societies</Button>
           <Button variant="secondary" onClick={download} loading={downloading}><Download /> PDF</Button>
@@ -145,7 +144,7 @@ export function SocietyComparePage({ openPicker }: { openPicker?: boolean }) {
                   {d && !visible.length && <tr><td colSpan={list.length + 1} className="px-4 py-8 text-center text-sm text-fg-muted">These societies are the same on every detail we have.</td></tr>}
 
                   {d && <>
-                    <GroupRow n={list.length} title="What to send" hint={`One PDF: the table above, then each society's ticked floor plans, photos and brochure${attached ? ` (${attached} photos so far)` : ""}`} primary />
+                    <GroupRow n={list.length} title="What to send" hint={`One PDF: the table above, then each society's ticked floor plans and photos${attached ? ` (${attached} photos so far)` : ""}`} primary />
                     <tr>
                       <th scope="row" className="sticky left-0 z-10 border-t border-border bg-surface-solid px-3 py-3 text-left align-top text-[13px] font-normal text-fg-muted sm:px-4">Layouts</th>
                       {list.map((s) => <td key={s.id} className="border-l border-t border-border p-3 align-top"><LayoutPicker s={s} meta={d.societies.find((x) => x.id === s.id)} /></td>)}
@@ -153,10 +152,6 @@ export function SocietyComparePage({ openPicker }: { openPicker?: boolean }) {
                     <tr>
                       <th scope="row" className="sticky left-0 z-10 border-t border-border bg-surface-solid px-3 py-3 text-left align-top text-[13px] font-normal text-fg-muted sm:px-4">Photos</th>
                       {list.map((s, i) => <td key={s.id} className="border-l border-t border-border p-3 align-top"><PhotoPicker s={s} m={mediaOf(i)} loading={!!media[i]?.isLoading} /></td>)}
-                    </tr>
-                    <tr>
-                      <th scope="row" className="sticky left-0 z-10 border-t border-border bg-surface-solid px-3 py-3 text-left align-top text-[13px] font-normal text-fg-muted sm:px-4">Brochure</th>
-                      {list.map((s, i) => <td key={s.id} className="border-l border-t border-border p-3 align-top"><BrochurePicker s={s} m={mediaOf(i)} loading={!!media[i]?.isLoading} /></td>)}
                     </tr>
                   </>}
                 </tbody>
@@ -234,18 +229,6 @@ function PhotoPicker({ s, m, loading }: { s: CompareSociety; m?: ProjectMedia; l
         <button type="button" className="font-medium text-primary hover:underline" onClick={() => societyCompare.update(s.id, { photos: on.size === m.photos.length ? [] : m.photos.map((p) => p.id) })}>{on.size === m.photos.length ? "None" : "All"}</button>
       </div>
     </div>
-  );
-}
-
-function BrochurePicker({ s, m, loading }: { s: CompareSociety; m?: ProjectMedia; loading: boolean }) {
-  if (loading || !m) return <Skeleton className="h-6 w-32" />;
-  const b = m.brochures[m.brochures.length - 1];
-  if (!b) return <p className="flex items-center gap-1.5 text-xs text-fg-subtle"><FileText className="size-3.5" />No brochure uploaded.</p>;
-  return (
-    <label className="flex items-center gap-2.5 text-sm">
-      <Switch checked={s.brochure} onCheckedChange={(v) => societyCompare.update(s.id, { brochure: v })} aria-label={`Include the ${s.name} brochure`} />
-      <span className="min-w-0"><span className="block font-medium leading-tight">{s.brochure ? "Included" : "Not included"}</span><span className="block truncate text-xs text-fg-subtle">{mb(b.size_bytes)} PDF</span></span>
-    </label>
   );
 }
 

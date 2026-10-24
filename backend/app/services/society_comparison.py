@@ -1,5 +1,5 @@
 """Side-by-side society (project) comparison. The client gets one PDF: the comparison table, then for each society the photos,
-floor plans and brochure the broker chose to send."""
+and floor plans the broker chose to send."""
 from __future__ import annotations
 
 import datetime as dt
@@ -161,10 +161,10 @@ def build(projects: list[Project], picks: dict[uuid.UUID, dict] | None = None) -
 # ---- what goes into the PDF -------------------------------------------------------------------------------------------
 
 def attachments(projects: list[Project], picks: dict[uuid.UUID, dict]) -> dict[uuid.UUID, dict]:
-    """For each society: the photos, floor plans (with their size) and brochure the broker ticked. Ids that aren't this
+    """For each society: the photos and floor plans (with their size) the broker ticked. Ids that aren't this
     project's files are skipped, so a photo deleted since the page loaded doesn't break the send."""
     files = db.session.query(FileAsset).filter(FileAsset.project_id.in_([p.id for p in projects]), FileAsset.unit_id.is_(None), FileAsset.deleted_at.is_(None),
-                                               FileAsset.doc_kind.in_(("brochure", "photo", "floor_plan"))).order_by(FileAsset.created_at).all()
+                                               FileAsset.doc_kind.in_(("photo", "floor_plan"))).order_by(FileAsset.created_at).all()
     out = {}
     for p in projects:
         pick = picks.get(p.id) or {}
@@ -178,8 +178,7 @@ def attachments(projects: list[Project], picks: dict[uuid.UUID, dict]) -> dict[u
             f = by_id.get(uuid.UUID(fid)) if fid else None
             if f is not None and f.doc_kind == "floor_plan":
                 plans.append((z, f))
-        brochures = [f for f in mine if f.doc_kind == "brochure"]
-        out[p.id] = {"photos": photos, "plans": plans, "brochure": brochures[-1] if pick.get("brochure") and brochures else None}
+        out[p.id] = {"photos": photos, "plans": plans}
     return out
 
 
@@ -264,9 +263,9 @@ def render_pdf(data: dict, extras: dict[uuid.UUID, dict], projects: list[Project
         table.append(cells)
     t = Table(table, colWidths=[label_w] + [col_w] * n, repeatRows=1)
     t.setStyle(TableStyle(styles))
-    sent = [p.name for p in projects if (x := extras.get(p.id)) and (x["photos"] or x["plans"] or x["brochure"])]
+    sent = [p.name for p in projects if (x := extras.get(p.id)) and (x["photos"] or x["plans"])]
     els += [t, Spacer(1, 10), Paragraph("✓ marks the lowest starting price and rate, and the most flats available and amenities. Prices and availability are as of "
-                                        + today + " and can change; please confirm before booking." + (" Photos, floor plans and brochures follow on the next pages." if sent else ""), st["foot"])]
+                                        + today + " and can change; please confirm before booking." + (" Photos and floor plans follow on the next pages." if sent else ""), st["foot"])]
     writer = PdfWriter()
     writer.append(PdfReader(io.BytesIO(chunk(els))))
 
@@ -278,11 +277,11 @@ def render_pdf(data: dict, extras: dict[uuid.UUID, dict], projects: list[Project
         except Exception:
             log.warning("comparison: skipped a %s that isn't a readable PDF", what, exc_info=True)
 
-    # 2. per society: photos and image floor plans, then PDF floor plans and the brochure as they are
+    # 2. per society: photos and image floor plans, then PDF floor plans as they are
     body_w, body_h = page[0] - 2 * margin, page[1] - 2 * margin
     for p in projects:
         x = extras.get(p.id)
-        if not x or not (x["photos"] or x["plans"] or x["brochure"]):
+        if not x or not (x["photos"] or x["plans"]):
             continue
         els = [Paragraph(escape(p.name), st["h2"]), Paragraph(escape(" · ".join(b for b in (", ".join(y for y in (p.sector, p.locality, p.city) if y), f"RERA {p.rera_id}" if p.rera_id else None) if b)), st["sub"]), Spacer(1, 10)]
         photos = [im for f in x["photos"] if (raw := read(f)) and (im := picture(raw, (body_w - 12) / 2, (body_h - 80) / 2 - 8))]
@@ -301,14 +300,12 @@ def render_pdf(data: dict, extras: dict[uuid.UUID, dict], projects: list[Project
                 cap = " · ".join(b for b in (z["label"], f"{_indian_digits(round(z['area_sqft']))} sq ft" if z.get("area_sqft") else None) if b)
                 # the first plan shares the society's opening page when there are no photos above it
                 els += ([PageBreak(), Paragraph(escape(f"{p.name} · Floor plan"), st["h2"])] if len(els) > 3 else []) + [Paragraph(escape(cap), st["caption"]), Spacer(1, 8), im]
-        if pdf_plans or x["brochure"]:
-            later = [f"{z['label']} floor plan" for z, _ in pdf_plans] + (["brochure"] if x["brochure"] else [])
+        if pdf_plans:
+            later = [f"{z['label']} floor plan" for z, _ in pdf_plans]
             els += [Spacer(1, 10), Paragraph(escape("Next pages: " + ", ".join(later) + "."), st["caption"])]
         writer.append(PdfReader(io.BytesIO(chunk(els))))
         for z, f in pdf_plans:
             append_pdf(read(f), "floor plan")
-        if x["brochure"]:
-            append_pdf(read(x["brochure"]), "brochure")
 
     writer.add_metadata({"/Title": title, "/Author": prepared_by})
     out = io.BytesIO()
