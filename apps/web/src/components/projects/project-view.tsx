@@ -8,6 +8,7 @@ import * as React from "react";
 import { Badge, BarsChart, Button, Card, ConfirmDialog, DonutChart, DropdownContent, DropdownItem, DropdownMenu, DropdownTrigger, EmptyState, ErrorState, Input, NativeSelect, Segmented, Skeleton, Tooltip, cn, formatMoneyCompact, useTheme, useToast } from "@crm/ui";
 import { ListingWriter } from "@/components/ai/listing-writer";
 import { SocietyCompareButton } from "@/components/compare/society-compare";
+import { ShareSocietyButton } from "@/components/society/share-society";
 import { PageContainer } from "@/components/shell/page";
 import { useAiFeature } from "@/lib/ai";
 import { api } from "@/lib/api";
@@ -97,9 +98,10 @@ export function ProjectView() {
           {p ? <h1 className="flex flex-wrap items-center gap-3 text-2xl font-semibold tracking-tight sm:text-[28px]">{p.name}<Badge tone={p.stage === "ready" ? "success" : p.stage === "under_construction" ? "warning" : "info"}>{PROJECT_STAGES.find((s) => s[0] === p.stage)?.[1]}</Badge></h1> : <Skeleton className="h-9 w-72" />}
           {p && <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[15px] text-fg-muted"><span className="inline-flex items-center gap-1"><MapPin className="size-4" />{where(p) || "No address yet"}</span>{p.developer && <span>by {p.developer}</span>}<span>{PROJECT_KINDS.find((k) => k[0] === p.kind)?.[1]}</span></p>}
         </div>
-        {p && !canEdit && <div className="flex items-center gap-2"><SocietyCompareButton p={p} />{writer && <Button variant="secondary" onClick={() => setWriting(true)}><Wand2 /> Write listing</Button>}</div>}
+        {p && !canEdit && <div className="flex items-center gap-2"><ShareSocietyButton p={p} /><SocietyCompareButton p={p} />{writer && <Button variant="secondary" onClick={() => setWriting(true)}><Wand2 /> Write listing</Button>}</div>}
         {canEdit && p && (
           <div className="flex items-center gap-2">
+            <ShareSocietyButton p={p} />
             <SocietyCompareButton p={p} />
             {writer && <Button variant="secondary" aria-label="Write listing" onClick={() => setWriting(true)}><Wand2 /> <span className="hidden sm:inline">Write listing</span></Button>}
             {towerId && <Button variant="secondary" onClick={() => setDialog("unit")}><Plus /> Add flat</Button>}
