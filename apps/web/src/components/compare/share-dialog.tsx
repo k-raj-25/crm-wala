@@ -12,18 +12,25 @@ type Channel = "whatsapp" | "email";
 type Who = "lead" | "contact";
 type Person = { id: string; name?: string; first_name?: string; email?: string | null; phone?: string | null };
 
+/** What's being compared: the API path under /api/v1/comparisons and the request body that names the flats or societies. */
+export type CompareKind = "flats" | "societies";
+const BASE: Record<CompareKind, string> = { flats: "/api/v1/comparisons", societies: "/api/v1/comparisons/societies" };
+const WORD: Record<CompareKind, string> = { flats: "Flat", societies: "Society" };
+
 /** Fetches the comparison PDF as a file (used for download and the phone's own share sheet). */
-export async function comparisonPdf(unitIds: string[], extra: { client_name?: string; title?: string; note?: string } = {}): Promise<File> {
-  const res = await api.raw("POST", "/api/v1/comparisons/pdf", { unit_ids: unitIds, ...extra });
+export async function comparisonPdf(kind: CompareKind, body: Record<string, unknown>, extra: { client_name?: string; title?: string; note?: string } = {}): Promise<File> {
+  const res = await api.raw("POST", `${BASE[kind]}/pdf`, { ...body, ...extra });
   if (!res.ok) {
     const e = (await res.json().catch(() => null))?.error ?? {};
     throw new ApiError(res.status, e.code ?? "error", e.message ?? "Couldn't make the PDF. Please try again.");
   }
-  const name = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") ?? "")?.[1] ?? "Flat comparison.pdf";
+  const cd = res.headers.get("Content-Disposition") ?? "";
+  const utf = /filename\*=UTF-8''([^;]+)/.exec(cd)?.[1];
+  const name = (utf ? decodeURIComponent(utf) : /filename="([^"]+)"/.exec(cd)?.[1]) ?? `${WORD[kind]} comparison.pdf`;
   return new File([await res.blob()], name, { type: "application/pdf" });
 }
 
-export function ShareComparison({ open, onOpenChange, unitIds, flatsLabel }: { open: boolean; onOpenChange: (o: boolean) => void; unitIds: string[]; flatsLabel: string }) {
+export function ShareComparison({ open, onOpenChange, kind = "flats", body, label }: { open: boolean; onOpenChange: (o: boolean) => void; kind?: CompareKind; body: Record<string, unknown>; label: string }) {
   const toast = useToast(); const qc = useQueryClient(); const { can } = useAccess();
   const canEmail = can("emails.create");
   const [channel, setChannel] = React.useState<Channel>("whatsapp");
@@ -40,10 +47,10 @@ export function ShareComparison({ open, onOpenChange, unitIds, flatsLabel }: { o
 
   React.useEffect(() => {
     if (!open) return;
-    setPerson(null); setName(""); setPhone(""); setEmail(""); setErr(null); setSubject("Flat comparison: {{first_name}}");
-    setMessage(`Hi {{first_name}},\n\nAs discussed, here is a side-by-side comparison of ${flatsLabel}.\n\nHappy to arrange site visits for any of these.`);
+    setPerson(null); setName(""); setPhone(""); setEmail(""); setErr(null); setSubject(`${WORD[kind]} comparison: {{first_name}}`);
+    setMessage(`Hi {{first_name}},\n\nAs discussed, here is a side-by-side comparison of ${label}.\n\nHappy to arrange site visits for any of these.`);
     try { setCanShareFile(!!navigator.canShare?.({ files: [new File([""], "x.pdf", { type: "application/pdf" })] })); } catch { setCanShareFile(false); }
-  }, [open, flatsLabel]);
+  }, [open, label, kind]);
 
   const first = (name.trim().split(/\s+/)[0] || "there");
   const merged = (s: string) => s.replace(/\{\{\s*first_name\s*\}\}/g, first);
@@ -60,8 +67,8 @@ export function ShareComparison({ open, onOpenChange, unitIds, flatsLabel }: { o
     const win = channel === "whatsapp" ? window.open("about:blank", "_blank") : null;
     setBusy("send");
     try {
-      const r = await api.post<{ whatsapp_url?: string; status?: string }>("/api/v1/comparisons/share", {
-        unit_ids: unitIds, channel, client_name: name.trim() || undefined, ...rel,
+      const r = await api.post<{ whatsapp_url?: string; status?: string }>(`${BASE[kind]}/share`, {
+        ...body, channel, client_name: name.trim() || undefined, ...rel,
         ...(channel === "whatsapp" ? { phone: phone.trim() || undefined, message: merged(message) } : { to: email.split(/[,;\s]+/).filter(Boolean), subject, message }),
       });
       if (channel === "whatsapp" && r.whatsapp_url) { if (win) win.location.href = r.whatsapp_url; else window.location.href = r.whatsapp_url; }
@@ -77,7 +84,7 @@ export function ShareComparison({ open, onOpenChange, unitIds, flatsLabel }: { o
   const shareFile = async () => {
     setBusy("file"); setErr(null);
     try {
-      const file = await comparisonPdf(unitIds, { client_name: name.trim() || undefined });
+      const file = await comparisonPdf(kind, body, { client_name: name.trim() || undefined });
       await navigator.share({ files: [file], text: merged(message) });
     } catch (e) {
       if ((e as Error).name !== "AbortError") setErr((e as Error).message || "Couldn't open the share menu");

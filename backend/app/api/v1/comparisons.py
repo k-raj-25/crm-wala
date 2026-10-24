@@ -1,4 +1,4 @@
-"""Flat comparison: side-by-side preview, PDF download, and sharing the PDF with a client by email or WhatsApp."""
+"""Flat and society comparisons: side-by-side preview, PDF download, and sharing the PDF with a client by email or WhatsApp."""
 from __future__ import annotations
 
 import hmac
@@ -23,6 +23,7 @@ from app.models.base import utcnow
 from app.schemas.common import Email, Schema, parse
 from app.services import activities, audit, mailbox, storage
 from app.services import comparison as cmp
+from app.services import society_comparison as soc
 from app.services.usage import check_limit
 
 bp = Blueprint("comparisons", __name__, url_prefix="/api/v1/comparisons")
@@ -36,7 +37,7 @@ class PdfIn(Schema):
     note: str | None = Field(default=None, max_length=1000)
 
 
-class ShareIn(PdfIn):
+class SendIn(Schema):
     channel: Literal["email", "whatsapp"]
     lead_id: uuid.UUID | None = None
     contact_id: uuid.UUID | None = None
@@ -44,6 +45,31 @@ class ShareIn(PdfIn):
     phone: str | None = Field(default=None, max_length=40)
     subject: str | None = Field(default=None, max_length=300)
     message: str | None = Field(default=None, max_length=5000)
+
+
+class ShareIn(PdfIn, SendIn):
+    pass
+
+
+class SocietyPick(Schema):
+    project_id: uuid.UUID
+    sizes: list[str] | None = Field(default=None, max_length=20)  # layouts to show and attach; None means all
+    photo_ids: list[uuid.UUID] = Field(default_factory=list, max_length=10)
+    brochure: bool = False
+
+
+class SocietyPreviewIn(Schema):
+    societies: list[SocietyPick] = Field(min_length=1, max_length=soc.MAX_SOCIETIES)
+
+
+class SocietyPdfIn(SocietyPreviewIn):
+    title: str | None = Field(default=None, max_length=120)
+    client_name: str | None = Field(default=None, max_length=120)
+    note: str | None = Field(default=None, max_length=1000)
+
+
+class SocietyShareIn(SocietyPdfIn, SendIn):
+    pass
 
 
 def _ids_arg() -> list[uuid.UUID]:
@@ -91,6 +117,14 @@ def _phone_digits(raw: str | None) -> str:
 @limiter.limit("60 per hour")
 def share():
     d = parse(ShareIn)
+    rel = _check_send(d)
+    data, pdf = _pdf(d)
+    flats = ", ".join(f["title"] for f in data["flats"])
+    return _send(d, rel, pdf, cmp.filename(data), what="Flat comparison", things=flats)
+
+
+def _check_send(d: SendIn) -> dict:
+    """Checks the recipient before the PDF is made; returns the lead / contact / company the share is filed under."""
     require("files.create")
     rel: dict = {}
     if d.lead_id:
@@ -109,20 +143,24 @@ def share():
         if not g.user.email_verified_at:
             raise ApiError(403, "email_not_verified", "Verify your email address to send emails. Check your inbox for the link, or request a new one.")
         check_limit(g.workspace, "emails_month", len(d.to))
+    return rel
 
-    data, pdf = _pdf(d)
-    name = cmp.filename(data)
+
+def _send(d: SendIn, rel: dict, pdf: bytes, name: str, *, what: str, things: str):
+    """Stores the PDF as a file on the lead / client, then emails it or hands back a WhatsApp link to it."""
+    if d.channel == "email" and len(pdf) > soc.EMAIL_LIMIT_MB * 1024 * 1024:
+        raise ApiError(422, "too_big_for_email", f"The PDF is {len(pdf) / 1048576:.0f} MB, too big to email (the limit is {soc.EMAIL_LIMIT_MB} MB). "
+                       "Leave out the brochure or some photos, or send it on WhatsApp.")
     key = storage.new_key(g.workspace.id, name)
     storage.get_storage().put(key, io.BytesIO(pdf), "application/pdf")
     fa = FileAsset(workspace_id=g.workspace.id, filename=name, storage_key=key, mime_type="application/pdf", size_bytes=len(pdf), uploaded_by=g.user.id,
                    **{k: v for k, v in rel.items() if k in ("lead_id", "contact_id", "company_id")})
     db.session.add(fa)
     db.session.flush()
-    flats = ", ".join(f["title"] for f in data["flats"])
 
     if d.channel == "email":
-        subject = d.subject or "Flat comparison: {{first_name}}"
-        body = d.message or f"Hi {{{{first_name}}}},\n\nAs discussed, here is a side-by-side comparison of {flats}. The PDF is attached.\n\nHappy to arrange site visits for any of these.\n\n{{{{sender_name}}}}"
+        subject = d.subject or f"{what}: {{{{first_name}}}}"
+        body = d.message or f"Hi {{{{first_name}}}},\n\nAs discussed, here is a side-by-side comparison of {things}. The PDF is attached.\n\nHappy to arrange site visits for any of these.\n\n{{{{sender_name}}}}"
         ctx = {"sender_name": g.user.name, "first_name": (d.client_name or "").split(" ")[0] or "there"}
         if rel.get("contact_id"):
             c = db.session.get(Contact, rel["contact_id"])
@@ -132,23 +170,68 @@ def share():
             ctx.update(first_name=l.first_name, last_name=l.last_name or "", company=l.company_name or "")
         email = mailbox.send_crm_email(g.user, to=d.to, cc=[], subject=mailbox.merge_fields(subject, ctx), body=mailbox.merge_fields(body, ctx),
                                        track=True, related=rel, attachment_file_ids=[str(fa.id)])
-        audit.record("comparison.shared", entity_type="file", entity_id=fa.id, summary=f"Emailed a comparison of {flats} to {', '.join(d.to)}")
+        audit.record("comparison.shared", entity_type="file", entity_id=fa.id, summary=f"Emailed a comparison of {things} to {', '.join(d.to)}")
         db.session.commit()
         if email.status == "failed":
             raise ApiError(502, "delivery_failed", f"The email couldn't be delivered: {email.error or 'unknown error'}")
         return ok({"channel": "email", "status": email.status, "file_id": str(fa.id), "email_id": str(email.id)})
 
     link = cmp.public_url(fa.id)
-    text = (d.message or f"Hi {(d.client_name or '').split(' ')[0] or 'there'}, here is the comparison of {flats} we discussed.").strip() + f"\n\n{link}"
+    text = (d.message or f"Hi {(d.client_name or '').split(' ')[0] or 'there'}, here is the comparison of {things} we discussed.").strip() + f"\n\n{link}"
     phone = _phone_digits(d.phone)
-    activities.log_activity("file", "Flat comparison sent on WhatsApp", body=f"{flats}\n{link}", data={"file_id": str(fa.id), "channel": "whatsapp"},
+    activities.log_activity("file", f"{what} sent on WhatsApp", body=f"{things}\n{link}", data={"file_id": str(fa.id), "channel": "whatsapp"},
                             lead_id=rel.get("lead_id"), contact_id=rel.get("contact_id"), company_id=rel.get("company_id"))
     if rel.get("lead_id") or rel.get("contact_id"):
         mailbox.touch_contacted(SimpleNamespace(lead_id=rel.get("lead_id"), contact_id=rel.get("contact_id")), utcnow())
-    audit.record("comparison.shared", entity_type="file", entity_id=fa.id, summary=f"Shared a comparison of {flats} on WhatsApp")
+    audit.record("comparison.shared", entity_type="file", entity_id=fa.id, summary=f"Shared a comparison of {things} on WhatsApp")
     db.session.commit()
     return ok({"channel": "whatsapp", "file_id": str(fa.id), "pdf_url": link, "text": text,
                "whatsapp_url": f"https://wa.me/{phone}?text={quote(text)}" if phone else f"https://wa.me/?text={quote(text)}"})
+
+
+# ---- societies -------------------------------------------------------------------------------------------------------
+
+def _society_data(d: SocietyPreviewIn):
+    projects = soc.load_projects([x.project_id for x in d.societies])
+    picks = {x.project_id: x.model_dump() for x in d.societies}
+    return projects, picks, soc.build(projects, picks)
+
+
+def _society_pdf(d: SocietyPdfIn) -> tuple[dict, bytes]:
+    projects, picks, data = _society_data(d)
+    pdf = soc.render_pdf(data, soc.attachments(projects, picks), projects, title=d.title or "Society comparison", client_name=d.client_name, note=d.note,
+                         prepared_by=g.user.name, workspace_name=g.workspace.name)
+    return data, pdf
+
+
+@bp.post("/societies/preview")
+@protect("projects.read")
+def society_preview():
+    return ok(_society_data(parse(SocietyPreviewIn))[2])
+
+
+@bp.post("/societies/pdf")
+@protect("projects.read")
+def society_pdf():
+    data, pdf = _society_pdf(parse(SocietyPdfIn))
+    return Response(pdf, mimetype="application/pdf", headers={"Content-Disposition": _disposition(soc.filename(data))})
+
+
+def _disposition(name: str) -> str:
+    """Society names can be in any script; headers must be ASCII, so send a plain fallback plus the real name."""
+    plain = name.encode("ascii", "ignore").decode().replace('"', "") or "Society comparison.pdf"
+    return f"attachment; filename=\"{plain}\"; filename*=UTF-8''{quote(name)}"
+
+
+@bp.post("/societies/share")
+@protect("projects.read")
+@limiter.limit("60 per hour")
+def society_share():
+    d = parse(SocietyShareIn)
+    rel = _check_send(d)
+    data, pdf = _society_pdf(d)
+    names = ", ".join(s["name"] for s in data["societies"])
+    return _send(d, rel, pdf, soc.filename(data), what="Society comparison", things=names)
 
 
 @public_bp.get("/<uuid:fid>/<sig>.pdf")
