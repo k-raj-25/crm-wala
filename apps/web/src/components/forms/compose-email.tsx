@@ -17,7 +17,7 @@ export function ComposeEmail({ open, onOpenChange, defaults }: { open: boolean; 
   const [busy, setBusy] = React.useState(false); const [err, setErr] = React.useState<string | null>(null); const [drafting, setDrafting] = React.useState(false);
   React.useEffect(() => { if (open) { setTo((defaults?.to as string) ?? ""); setSubject((defaults?.subject as string) ?? ""); setBody((defaults?.body as string) ?? ""); setSchedule(false); setWhen(null); setErr(null); } }, [open, defaults]);
   const tpls = useQuery({ queryKey: ["email-templates"], enabled: open, queryFn: () => api.get<Tpl[]>("/api/v1/emails/templates") });
-  const sender = useQuery({ queryKey: ["email-sender"], enabled: open, queryFn: () => api.get<{ mode: string; address: string; verified: boolean; can_deliver?: boolean }>("/api/v1/emails/sender") });
+  const sender = useQuery({ queryKey: ["email-sender"], enabled: open, queryFn: () => api.get<{ mode: string; address: string; verified: boolean; can_deliver?: boolean; from?: string; status?: string; last_error?: string | null }>("/api/v1/emails/sender") });
   const unverified = sender.data ? !sender.data.verified : false;
   const notSetUp = sender.data?.mode === "platform" && sender.data.can_deliver === false;
   const [resent, setResent] = React.useState(false); const [resending, setResending] = React.useState(false);
@@ -63,15 +63,17 @@ export function ComposeEmail({ open, onOpenChange, defaults }: { open: boolean; 
             <div role="alert" className="flex gap-3 rounded-lg border border-warning/30 bg-warning-soft p-3.5 text-sm text-warning">
               <AlertTriangle className="mt-0.5 size-4 shrink-0" />
               <div className="flex-1">
-                <p className="font-medium">Email sending isn&apos;t set up yet</p>
-                <p className="mt-0.5 text-[13px] opacity-90">The server has no mail provider, so emails won&apos;t reach anyone. Ask your admin to set one up, or <Link href="/app/integrations" className="underline" onClick={() => onOpenChange(false)}>connect your Gmail or Outlook</Link>.</p>
+                <p className="font-medium">Company email isn&apos;t connected yet</p>
+                <p className="mt-0.5 text-[13px] opacity-90">Emails won&apos;t reach anyone until the workspace owner connects the company email in <Link href="/app/settings/email" className="underline" onClick={() => onOpenChange(false)}>Settings → Email</Link>.</p>
               </div>
             </div>
           )}
           {sender.data && !unverified && !notSetUp && (
             <p className="flex items-start gap-2 rounded-lg bg-bg-subtle px-3.5 py-2.5 text-[13px] text-fg-muted">
               <MailCheck className="mt-0.5 size-4 shrink-0 text-success" />
-              {sender.data.mode === "platform"
+              {sender.data.mode === "company"
+                ? <span>Sent from the company email as <b className="font-medium text-fg">{sender.data.from}</b>{sender.data.status === "error" ? <>. <span className="text-danger">Last send failed: {sender.data.last_error}</span></> : <>; replies go to <b className="font-medium text-fg">{sender.data.address}</b>.</>}</span>
+                : sender.data.mode === "platform"
                 ? <span>Sent as <b className="font-medium text-fg">your name via CRM Wala</b>; replies go to <b className="font-medium text-fg">{sender.data.address}</b>. To send from your own address, <Link href="/app/integrations" className="text-primary hover:underline" onClick={() => onOpenChange(false)}>connect your Gmail or Outlook</Link>.</span>
                 : <span>Sending from your own {sender.data.mode === "gmail" ? "Gmail" : "Outlook"} account, <b className="font-medium text-fg">{sender.data.address}</b>.</span>}
             </p>
