@@ -12,7 +12,7 @@ from app.core import crypto
 from app.extensions import db
 from app.models import Contact, Email, FileAsset, Integration, Lead, User
 from app.models.base import utcnow
-from app.services import activities
+from app.services import activities, company_email
 from app.services import email as email_service
 
 log = logging.getLogger("app.mailbox")
@@ -58,8 +58,13 @@ def sender_info(user: User) -> dict:
     verified = bool(user.email_verified_at)
     if integ is not None and integ.mode == "live":
         return {"mode": integ.provider, "address": integ.account_label or user.email, "verified": verified}
+    company = company_email.active(g.workspace.id)
+    if company is not None:
+        from_, reply_to = company_email.from_for(company, user)
+        return {"mode": "company", "address": user.email, "from": from_, "reply_to": reply_to, "verified": verified,
+                "status": company.status, "last_error": company.last_error}
     return {"mode": "platform", "address": user.email, "verified": verified,
-            "platform_from": current_app.config["EMAIL_FROM"]}
+            "platform_from": current_app.config["EMAIL_FROM"], "can_deliver": email_service.delivers()}
 
 
 def load_attachments(email: Email) -> list[tuple[str, str, bytes]]:
@@ -77,6 +82,7 @@ def load_attachments(email: Email) -> list[tuple[str, str, bytes]]:
 def deliver(email: Email, sender: User) -> None:
     """Actually send an Email row. Marks it sent/failed; never raises."""
     integ = _mailbox_integration(email.workspace_id, sender.id)
+    company = company_email.active(email.workspace_id) if integ is None or integ.mode != "live" else None
     body_html = text_to_html(email.body)
     if email.tracking_id:
         body_html += f"<img src='{current_app.config['WEB_ORIGIN']}/api/v1/public/t/{email.tracking_id}.gif' width='1' height='1' alt='' style='display:none'>"
@@ -88,10 +94,17 @@ def deliver(email: Email, sender: User) -> None:
 
                 email.provider_message_id = send_via_integration(integ, to, email.cc_addresses, email.subject, body_html, email.from_address, attachments=files)
                 email.provider = integ.provider
+            elif company is not None:
+                # The firm's own account, set up by the owner: goes out under the sender's name, replies come back to them.
+                company_email.send(company, sender, to, email.cc_addresses, email.subject, body_html, attachments=files)
+                email.provider = company_email.PROVIDER
             else:
                 # Sandbox/platform path: send as platform address with the rep as Reply-To.
                 email.provider = f"{integ.provider}:sandbox" if integ else "platform"
-                email_service.send_raw(to, email.subject, body_html, workspace_id=email.workspace_id, reply_to=sender.email, template_key="crm_email", from_name=sender.name, attachments=files)
+                if not email_service.delivers():
+                    raise RuntimeError(email_service.NOT_SET_UP)
+                email_service.send_raw(to, email.subject, body_html, workspace_id=email.workspace_id, reply_to=sender.email, template_key="crm_email",
+                                       from_name=sender.name, attachments=files, raise_errors=True)
         email.status, email.sent_at, email.error = "sent", utcnow(), None
     except Exception as e:
         log.exception("crm email failed")

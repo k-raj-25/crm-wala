@@ -78,3 +78,30 @@ def test_connecting_gmail_is_per_user_in_the_integrations_list(app):
     cl.post("/api/v1/integrations/gmail/disconnect", json={})
     rows = {i["provider"]: i for i in cl.get("/api/v1/integrations").get_json()["data"]["integrations"]}
     assert rows["gmail"]["status"] == "not_connected"
+
+
+def test_failed_delivery_is_reported_not_marked_sent(app, monkeypatch):
+    cl, me = signup(app)
+    _verify(app, me["user"]["email"])
+    from app.services.email import ConsoleProvider
+
+    def boom(self, *a, **kw):
+        raise OSError("Connection refused")
+
+    monkeypatch.setattr(ConsoleProvider, "send", boom)
+    r = cl.post("/api/v1/emails/send", json={"to": ["client@example.com"], "subject": "Hello", "body": "Hi"})
+    assert r.status_code == 201
+    d = r.get_json()["data"]
+    assert d["status"] == "failed" and "Connection refused" in d["error"]
+
+
+def test_console_provider_outside_tests_says_email_is_not_set_up(app):
+    cl, me = signup(app)
+    _verify(app, me["user"]["email"])
+    app.testing = False
+    try:
+        assert cl.get("/api/v1/emails/sender").get_json()["data"]["can_deliver"] is False
+        d = cl.post("/api/v1/emails/send", json={"to": ["client@example.com"], "subject": "Hello", "body": "Hi"}).get_json()["data"]
+    finally:
+        app.testing = True
+    assert d["status"] == "failed" and "isn't set up" in d["error"]

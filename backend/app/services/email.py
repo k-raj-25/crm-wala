@@ -30,6 +30,7 @@ class EmailProvider(Protocol):
 
 
 class ConsoleProvider:
+    """Dev sink: prints the email to the server log. Nothing leaves the machine."""
     name = "console"
 
     def send(self, to, subject, html, *, from_addr, reply_to=None, attachments=None):
@@ -49,8 +50,16 @@ class SmtpProvider:
         msg.set_content("Please view this email in an HTML-capable client.")
         msg.add_alternative(html, subtype="html")
         add_attachments(msg, attachments)
-        with smtplib.SMTP(cfg["SMTP_HOST"], cfg["SMTP_PORT"], timeout=15) as s:
-            s.starttls()
+        if not cfg["SMTP_HOST"]:
+            raise RuntimeError("SMTP_HOST is not set")
+        # 465 is SSL from the first byte; 587/25 start plain and upgrade with STARTTLS
+        if cfg["SMTP_PORT"] == 465:
+            conn = smtplib.SMTP_SSL(cfg["SMTP_HOST"], 465, timeout=15)
+        else:
+            conn = smtplib.SMTP(cfg["SMTP_HOST"], cfg["SMTP_PORT"], timeout=15)
+        with conn as s:
+            if cfg["SMTP_PORT"] != 465:
+                s.starttls()
             if cfg["SMTP_USER"]:
                 s.login(cfg["SMTP_USER"], cfg["SMTP_PASSWORD"])
             s.send_message(msg)
@@ -61,6 +70,8 @@ class ResendProvider:
     name = "resend"
 
     def send(self, to, subject, html, *, from_addr, reply_to=None, attachments=None):
+        if not current_app.config["RESEND_API_KEY"]:
+            raise RuntimeError("RESEND_API_KEY is not set")
         files = [{"filename": n, "content": base64.b64encode(b).decode()} for n, _, b in attachments or []]
         r = httpx.post(
             "https://api.resend.com/emails",
@@ -82,6 +93,15 @@ def get_provider() -> EmailProvider:
     return {"smtp": SmtpProvider, "resend": ResendProvider}.get(current_app.config["EMAIL_PROVIDER"], ConsoleProvider)()
 
 
+NOT_SET_UP = ("Email sending isn't set up on the server yet, so nothing was sent. "
+              "Set EMAIL_PROVIDER to smtp or resend (with its settings) in backend/.env and restart the backend.")
+
+
+def delivers() -> bool:
+    """False when mail only goes to the server log (console provider), so callers can say so instead of claiming it was sent."""
+    return get_provider().name != "console" or current_app.testing
+
+
 def _render(s: str, ctx: dict) -> str:
     return _env.from_string(s).render(**ctx)
 
@@ -97,9 +117,11 @@ def render_template(key: str, ctx: dict) -> tuple[str, str]:
 
 
 def send_raw(to: str, subject: str, html: str, *, workspace_id=None, template_key: str | None = None,
-             reply_to: str | None = None, from_name: str | None = None, attachments: list[Attachment] | None = None) -> bool:
+             reply_to: str | None = None, from_name: str | None = None, attachments: list[Attachment] | None = None,
+             raise_errors: bool = False) -> bool:
+    """Send one email and log it. Returns False on failure; with raise_errors the failure is re-raised for the caller to report."""
     provider = get_provider()
-    status, error = "sent", None
+    status, error = ("sent" if provider.name != "console" else "logged"), None
     from_addr = current_app.config["EMAIL_FROM"]
     if from_name:
         # We can't send *as* a user's own address without their mailbox (SPF/DKIM would fail), so show their name and route replies to them.
@@ -113,7 +135,9 @@ def send_raw(to: str, subject: str, html: str, *, workspace_id=None, template_ke
         log.exception("email send failed")
     db.session.add(EmailLog(workspace_id=workspace_id, to_address=to, template_key=template_key, subject=subject[:300],
                             provider=provider.name, status=status, error=error))
-    return status == "sent"
+    if error and raise_errors:
+        raise RuntimeError(error)
+    return status != "failed"
 
 
 def send_template(key: str, to: str, ctx: dict, *, workspace_id=None) -> bool:
