@@ -132,7 +132,7 @@ export function UnitDocuments({ unit, canEdit, defaultLead }: { unit: { id: stri
           {docs.data.map((d) => (
             <li key={d.id} className="flex items-center gap-3 px-3 py-2.5">
               <FileText className="size-5 shrink-0 text-fg-subtle" />
-              <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{d.filename}</p><p className="text-xs text-fg-subtle">{DOC_KINDS.find((k) => k[0] === d.doc_kind)?.[1] ?? "Document"} · {d.scope === "unit" ? "this flat" : "whole project"}</p></div>
+              <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{d.filename}</p><p className="text-xs text-fg-subtle">{DOC_KINDS.find((k) => k[0] === d.doc_kind)?.[1] ?? (d.doc_kind === "photo" ? "Society photo" : "Document")} · {d.scope === "unit" ? "this flat" : "whole project"}</p></div>
               <Button variant="ghost" size="icon-sm" aria-label={`Download ${d.filename}`} onClick={() => open(d)}><Download /></Button>
               {wa && <Button variant="secondary" size="sm" onClick={() => setSending(sending?.id === d.id ? null : d)} style={{ color: WA_GREEN }}><MessageCircle /> Send</Button>}
               {canEdit && can("files.delete") && <Button variant="ghost" size="icon-sm" aria-label={`Delete ${d.filename}`} onClick={() => setDel(d)}><Trash2 /></Button>}

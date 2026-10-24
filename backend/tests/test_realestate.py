@@ -1,4 +1,5 @@
 import datetime as dt
+import io
 
 from app.core.tenant import bypass_scope
 from app.extensions import db
@@ -103,3 +104,40 @@ def test_onboarding_accepts_every_choice_the_screen_offers(app):
                                                           "goals": goals, "import_choice": first, "complete": True})
         assert r.status_code == 200, (first, r.get_json())
         assert r.get_json()["data"]["onboarding_completed_at"]
+
+
+def _file(cl, name, mime, **form):
+    return cl.c.post("/api/v1/files", data={"file": (io.BytesIO(b"x" * 64), name, mime), **form}, headers=cl._h(), content_type="multipart/form-data")
+
+
+def test_project_details_brochure_photos_sizes_and_floor_plans(client):
+    r = client.post("/api/v1/projects", json={"name": "Ireo Skyon", "rera_id": "RC/REP/HARERA/GGM/2024/12", "amenities": ["Clubhouse", " Pool ", ""],
+                                              "sizes": [{"label": "3 BHK", "area_sqft": 1800}, {"label": "4 BHK + study", "area_sqft": 2650.5}]})
+    assert r.status_code == 201, r.get_json()
+    p = r.get_json()["data"]
+    assert p["rera_id"].startswith("RC/") and p["amenities"] == ["Clubhouse", "Pool"]
+    assert p["sizes"] == [{"label": "3 BHK", "area_sqft": 1800, "floor_plan_file_id": None}, {"label": "4 BHK + study", "area_sqft": 2650.5, "floor_plan_file_id": None}]
+    pid = p["id"]
+
+    assert _file(client, "brochure.pdf", "application/pdf", project_id=pid, doc_kind="brochure").status_code == 201
+    plan = _file(client, "3bhk.pdf", "application/pdf", project_id=pid, doc_kind="floor_plan").get_json()["data"]
+    assert _file(client, "notes.pdf", "application/pdf", project_id=pid, doc_kind="photo").status_code == 415  # photos must be images
+    for i in range(10):
+        assert _file(client, f"tower-{i}.jpg", "image/jpeg", project_id=pid, doc_kind="photo").status_code == 201
+    r = _file(client, "one-too-many.jpg", "image/jpeg", project_id=pid, doc_kind="photo")
+    assert r.status_code == 409 and r.get_json()["error"]["code"] == "photo_limit"
+
+    sizes = [{"label": "3 BHK", "area_sqft": 1800, "floor_plan_file_id": plan["id"]}, {"label": "4 BHK + study", "area_sqft": 2650.5}]
+    r = client.patch(f"/api/v1/projects/{pid}", json={"sizes": sizes})
+    assert r.status_code == 200 and r.get_json()["data"]["sizes"][0]["floor_plan_file_id"] == plan["id"]
+    other = client.post("/api/v1/projects", json={"name": "Elsewhere"}).get_json()["data"]["id"]
+    assert client.patch(f"/api/v1/projects/{other}", json={"sizes": sizes}).status_code == 400  # a floor plan from another project
+
+    m = client.get(f"/api/v1/projects/{pid}/media").get_json()["data"]
+    assert len(m["brochures"]) == 1 and len(m["photos"]) == 10 and m["max_photos"] == 10 and m["floor_plans"][0]["id"] == plan["id"]
+    assert all(x["url"] for x in m["photos"])
+
+    assert client.delete(f"/api/v1/files/{plan['id']}").status_code == 204  # removing the plan unlinks it from its size
+    assert client.get(f"/api/v1/projects/{pid}").get_json()["data"]["sizes"][0]["floor_plan_file_id"] is None
+    assert client.delete(f"/api/v1/files/{m['photos'][0]['id']}").status_code == 204
+    assert _file(client, "replacement.jpg", "image/jpeg", project_id=pid, doc_kind="photo").status_code == 201

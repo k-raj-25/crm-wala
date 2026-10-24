@@ -31,8 +31,11 @@ export type TowerLite = { id: string; name: string; floors: number; has_ground: 
 export type Project = {
   id: string; name: string; developer: string | null; kind: string; stage: string; city: string | null; locality: string | null; sector: string | null; address: string | null;
   rera_id: string | null; amenities: string[]; description: string | null; owner_id: string | null; tags: string[]; possession_date: string | null;
-  summary: Summary; towers: TowerLite[]; starting_price: number | null; created_at: string;
+  summary: Summary; towers: TowerLite[]; starting_price: number | null; created_at: string; sizes: ProjectSize[];
 };
+export type ProjectSize = { label: string; area_sqft: number | null; floor_plan_file_id: string | null };
+export type StoredFile = { id: string; filename: string; mime_type: string; size_bytes: number; doc_kind: string | null; url: string };
+export type ProjectMedia = { brochures: StoredFile[]; photos: StoredFile[]; floor_plans: StoredFile[]; max_photos: number };
 export type UnitMini = { id: string; number: string; floor: number; position: number; status: UnitStatus; kind: string; bhk: string | null; area_sqft: number | null; facing: string | null; sale_price: number | null; monthly_rent: number | null; hold_until: string | null };
 export type Building = {
   project: { id: string; name: string; city: string | null; locality: string | null; sector: string | null; developer: string | null; stage: string };

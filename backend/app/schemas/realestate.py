@@ -16,6 +16,14 @@ UnitStatus = Literal["vacant", "for_sale", "for_rent", "on_hold", "booked", "sol
 Money = decimal.Decimal | None
 
 
+class ProjectSize(Schema):
+    """One flat size on offer, e.g. 3 BHK of 1,800 sq ft, with its floor plan (an uploaded file)."""
+
+    label: str = Field(min_length=1, max_length=40)
+    area_sqft: float | None = Field(default=None, ge=0, le=9999999)
+    floor_plan_file_id: uuid.UUID | None = None
+
+
 class ProjectIn(Schema):
     name: str = Field(min_length=1, max_length=160)
     developer: str | None = Field(default=None, max_length=160)
@@ -32,6 +40,7 @@ class ProjectIn(Schema):
     cover_url: str | None = Field(default=None, max_length=500)
     owner_id: uuid.UUID | None = None
     tags: list[str] = Field(default_factory=list, max_length=25)
+    sizes: list[ProjectSize] = Field(default_factory=list, max_length=20)
 
     @field_validator("amenities", "tags")
     @classmethod
